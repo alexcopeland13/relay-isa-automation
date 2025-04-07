@@ -19,10 +19,12 @@ interface SentimentGraphProps {
   messages: Message[];
 }
 
+// Updated to include both sentiment and interest properties
 interface SentimentPoint {
   timestamp: string;
   index: number;
   sentiment: number;
+  interest?: number; // Added optional interest property
   message: Message;
 }
 
@@ -86,9 +88,11 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
     return Math.max(0, Math.min(1, interest));
   };
   
+  // Updated to create data points with both sentiment and interest properties
   const interestData = messages.map((message, index) => ({
     timestamp: message.timestamp,
     index,
+    sentiment: sentimentToNumber(message.sentiment), // Keep sentiment for type consistency
     interest: calculateInterestLevel(messages, index),
     message
   }));
@@ -208,9 +212,9 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
                 <div className="flex items-center gap-1">
                   <Flame className="h-4 w-4 text-emmaccent" />
                   <span className="text-sm font-medium">
-                    {selectedPoint.interest >= 0.8 
+                    {selectedPoint.interest && selectedPoint.interest >= 0.8 
                       ? 'High Interest' 
-                      : selectedPoint.interest >= 0.5 
+                      : selectedPoint.interest && selectedPoint.interest >= 0.5 
                         ? 'Medium Interest' 
                         : 'Low Interest'}
                   </span>

@@ -63,7 +63,7 @@ export const Sidebar = () => {
         {!isCollapsed ? (
           <div className="flex items-center gap-2 text-white">
             <Home size={24} className="text-emmaccent" />
-            <span className="font-bold text-lg">EMM AI Nexus</span>
+            <span className="font-bold text-lg">NexusISA</span>
           </div>
         ) : (
           <Home size={24} className="mx-auto text-emmaccent" />

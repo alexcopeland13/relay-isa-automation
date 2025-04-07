@@ -4,6 +4,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LeadsList, Lead } from '@/components/leads/LeadsList';
+import { LeadsBoard } from '@/components/leads/LeadsBoard';
 import { LeadMetrics } from '@/components/leads/LeadMetrics';
 import { LeadDistribution } from '@/components/leads/LeadDistribution';
 import { PlusCircle, UserPlus, UploadCloud, ArrowDownToLine, ListFilter } from 'lucide-react';
@@ -78,9 +79,10 @@ const Leads = () => {
             </TabsContent>
             
             <TabsContent value="board" className="mt-0">
-              <div className="flex justify-center items-center h-64 text-muted-foreground">
-                <p>Kanban board view will be implemented in the next phase.</p>
-              </div>
+              <LeadsBoard
+                leads={leads}
+                onSelectLead={handleSelectLead}
+              />
             </TabsContent>
           </Tabs>
           

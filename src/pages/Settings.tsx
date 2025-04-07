@@ -8,7 +8,7 @@ import { FollowUpRulesConfig } from '@/components/ai-integration/FollowUpRulesCo
 import { AiMonitoringDashboard } from '@/components/ai-integration/AiMonitoringDashboard';
 import { ConversationSimulator } from '@/components/ai-integration/ConversationSimulator';
 import { Badge } from '@/components/ui/badge';
-import { ServerStack, MessageSquare, CalendarClock, Activity, Gauge, TestTube2 } from 'lucide-react';
+import { Server, MessageSquare, CalendarClock, Activity, Gauge, TestTube2 } from 'lucide-react';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -24,7 +24,7 @@ const Settings = () => {
         <TabsList className="grid grid-cols-6 w-full mb-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="ai-services" className="flex items-center gap-2">
-            <ServerStack className="h-4 w-4" />
+            <Server className="h-4 w-4" />
             AI Services
             <Badge variant="secondary" className="ml-1">New</Badge>
           </TabsTrigger>

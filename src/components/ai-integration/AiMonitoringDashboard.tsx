@@ -15,7 +15,8 @@ import {
   PieChart,
   ArrowUp,
   ArrowDown,
-  MessageCircle
+  MessageCircle,
+  ArrowRight
 } from 'lucide-react';
 
 // Sample monitoring data
@@ -91,6 +92,13 @@ const recentErrors = [
 
 export const AiMonitoringDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Custom color function for bar chart
+  const getBarColor = (entry) => {
+    if (entry.name === 'Successful') return '#10b981';
+    if (entry.name === 'Degraded') return '#f59e0b';
+    return '#ef4444';
+  };
 
   return (
     <div className="space-y-6">
@@ -229,11 +237,7 @@ export const AiMonitoringDashboard = () => {
                         <Tooltip />
                         <Bar 
                           dataKey="value" 
-                          fill={(entry) => {
-                            if (entry.name === 'Successful') return '#10b981';
-                            if (entry.name === 'Degraded') return '#f59e0b';
-                            return '#ef4444';
-                          }} 
+                          fill={(entry) => getBarColor(entry)}
                           label={{ position: 'right', formatter: (value) => `${value}%` }}
                         />
                       </RechartsBarChart>

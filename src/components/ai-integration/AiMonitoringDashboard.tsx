@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, CartesianGrid, Cell } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Activity, 
@@ -94,9 +94,9 @@ export const AiMonitoringDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
   // Custom color function for bar chart
-  const getBarColor = (entry) => {
-    if (entry.name === 'Successful') return '#10b981';
-    if (entry.name === 'Degraded') return '#f59e0b';
+  const getBarColor = (name: string): string => {
+    if (name === 'Successful') return '#10b981';
+    if (name === 'Degraded') return '#f59e0b';
     return '#ef4444';
   };
 
@@ -237,9 +237,13 @@ export const AiMonitoringDashboard = () => {
                         <Tooltip />
                         <Bar 
                           dataKey="value" 
-                          fill={(entry) => getBarColor(entry)}
+                          fill="#8884d8" // Default color, will be overridden by Cell components
                           label={{ position: 'right', formatter: (value) => `${value}%` }}
-                        />
+                        >
+                          {serviceBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getBarColor(entry.name)} />
+                          ))}
+                        </Bar>
                       </RechartsBarChart>
                     </ResponsiveContainer>
                   </div>

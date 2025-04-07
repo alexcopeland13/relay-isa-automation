@@ -64,11 +64,24 @@ const Leads = () => {
       {/* Lead List View */}
       <div className="bg-card rounded-lg border border-border p-6">
         <div className="flex justify-between items-center mb-4">
-          <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'list' | 'board')}>
+          <Tabs defaultValue={activeView} onValueChange={(value) => setActiveView(value as 'list' | 'board')}>
             <TabsList>
               <TabsTrigger value="list">List View</TabsTrigger>
               <TabsTrigger value="board">Board View</TabsTrigger>
             </TabsList>
+          
+            <TabsContent value="list" className="mt-0">
+              <LeadsList 
+                leads={leads}
+                onSelectLead={handleSelectLead}
+              />
+            </TabsContent>
+            
+            <TabsContent value="board" className="mt-0">
+              <div className="flex justify-center items-center h-64 text-muted-foreground">
+                <p>Kanban board view will be implemented in the next phase.</p>
+              </div>
+            </TabsContent>
           </Tabs>
           
           <div className="flex items-center gap-2">
@@ -78,19 +91,6 @@ const Leads = () => {
             </Button>
           </div>
         </div>
-        
-        <TabsContent value="list" className="mt-0">
-          <LeadsList 
-            leads={leads}
-            onSelectLead={handleSelectLead}
-          />
-        </TabsContent>
-        
-        <TabsContent value="board" className="mt-0">
-          <div className="flex justify-center items-center h-64 text-muted-foreground">
-            <p>Kanban board view will be implemented in the next phase.</p>
-          </div>
-        </TabsContent>
       </div>
     </PageLayout>
   );

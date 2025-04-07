@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  BarChart, 
   Calendar, 
   ChevronDown,
   ChevronUp, 
@@ -198,7 +197,7 @@ export const PerformanceMetrics = ({ followUps, templates, sequences }: Performa
                     </div>
                   ) : (
                     <div className="flex items-center">
-                      <BarChart className="h-4 w-4 mr-1 text-primary" />
+                      <BarChart3 className="h-4 w-4 mr-1 text-primary" />
                       <span>Overall Conversion</span>
                     </div>
                   )}
@@ -300,7 +299,7 @@ export const PerformanceMetrics = ({ followUps, templates, sequences }: Performa
         <CardContent>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={templatePerformanceData}>
+              <RechartsBarChart data={templatePerformanceData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -316,7 +315,7 @@ export const PerformanceMetrics = ({ followUps, templates, sequences }: Performa
                   name="Conversion Rate"
                   fill="#3b82f6" 
                 />
-              </BarChart>
+              </RechartsBarChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
@@ -407,7 +406,7 @@ export const PerformanceMetrics = ({ followUps, templates, sequences }: Performa
         <CardContent>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sequencePerformanceData} layout="vertical">
+              <RechartsBarChart data={sequencePerformanceData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" />
@@ -423,7 +422,7 @@ export const PerformanceMetrics = ({ followUps, templates, sequences }: Performa
                   name="Conversion Rate"
                   fill="#3b82f6" 
                 />
-              </BarChart>
+              </RechartsBarChart>
             </ResponsiveContainer>
           </div>
         </CardContent>

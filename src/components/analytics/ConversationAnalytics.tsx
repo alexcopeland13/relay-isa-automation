@@ -2,6 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Fragment } from "react";
 
 interface ConversationAnalyticsProps {
   compact?: boolean;
@@ -54,14 +55,16 @@ export const ConversationAnalytics = ({ compact = false }: ConversationAnalytics
         <CardContent>
           <div className="h-[200px]">
             <ChartContainer config={chartConfig}>
-              <AreaChart data={conversationData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.2} />
-              </AreaChart>
-              <ChartLegend content={<ChartLegendContent />} />
+              <Fragment>
+                <AreaChart data={conversationData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.2} />
+                </AreaChart>
+                <ChartLegend content={<ChartLegendContent />} />
+              </Fragment>
             </ChartContainer>
           </div>
         </CardContent>
@@ -79,14 +82,16 @@ export const ConversationAnalytics = ({ compact = false }: ConversationAnalytics
         <CardContent>
           <div className="h-[300px]">
             <ChartContainer config={chartConfig}>
-              <AreaChart data={conversationData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.2} />
-              </AreaChart>
-              <ChartLegend content={<ChartLegendContent />} />
+              <Fragment>
+                <AreaChart data={conversationData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area type="monotone" dataKey="count" stroke="var(--color-count)" fill="var(--color-count)" fillOpacity={0.2} />
+                </AreaChart>
+                <ChartLegend content={<ChartLegendContent />} />
+              </Fragment>
             </ChartContainer>
           </div>
         </CardContent>
@@ -101,14 +106,16 @@ export const ConversationAnalytics = ({ compact = false }: ConversationAnalytics
           <CardContent>
             <div className="h-[300px]">
               <ChartContainer config={chartConfig}>
-                <LineChart data={conversationData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="duration" stroke="var(--color-duration)" strokeWidth={2} />
-                </LineChart>
-                <ChartLegend content={<ChartLegendContent />} />
+                <Fragment>
+                  <LineChart data={conversationData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="duration" stroke="var(--color-duration)" strokeWidth={2} />
+                  </LineChart>
+                  <ChartLegend content={<ChartLegendContent />} />
+                </Fragment>
               </ChartContainer>
             </div>
           </CardContent>

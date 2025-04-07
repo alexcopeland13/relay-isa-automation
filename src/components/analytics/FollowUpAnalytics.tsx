@@ -2,6 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Fragment } from "react";
 
 interface FollowUpAnalyticsProps {
   compact?: boolean;
@@ -62,15 +63,17 @@ export const FollowUpAnalytics = ({ compact = false }: FollowUpAnalyticsProps) =
         <CardContent>
           <div className="h-[200px]">
             <ChartContainer config={chartConfig}>
-              <BarChart data={followUpData.slice(-4)}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="completed" fill="var(--color-completed)" />
-                <Bar dataKey="scheduled" fill="var(--color-scheduled)" />
-              </BarChart>
-              <ChartLegend content={<ChartLegendContent />} />
+              <Fragment>
+                <BarChart data={followUpData.slice(-4)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="completed" fill="var(--color-completed)" />
+                  <Bar dataKey="scheduled" fill="var(--color-scheduled)" />
+                </BarChart>
+                <ChartLegend content={<ChartLegendContent />} />
+              </Fragment>
             </ChartContainer>
           </div>
         </CardContent>
@@ -88,15 +91,17 @@ export const FollowUpAnalytics = ({ compact = false }: FollowUpAnalyticsProps) =
         <CardContent>
           <div className="h-[300px]">
             <ChartContainer config={chartConfig}>
-              <BarChart data={followUpData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="completed" fill="var(--color-completed)" />
-                <Bar dataKey="scheduled" fill="var(--color-scheduled)" />
-              </BarChart>
-              <ChartLegend content={<ChartLegendContent />} />
+              <Fragment>
+                <BarChart data={followUpData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="completed" fill="var(--color-completed)" />
+                  <Bar dataKey="scheduled" fill="var(--color-scheduled)" />
+                </BarChart>
+                <ChartLegend content={<ChartLegendContent />} />
+              </Fragment>
             </ChartContainer>
           </div>
         </CardContent>
@@ -111,14 +116,16 @@ export const FollowUpAnalytics = ({ compact = false }: FollowUpAnalyticsProps) =
           <CardContent>
             <div className="h-[300px]">
               <ChartContainer config={chartConfig}>
-                <LineChart data={followUpData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="response" stroke="var(--color-response)" strokeWidth={2} />
-                </LineChart>
-                <ChartLegend content={<ChartLegendContent />} />
+                <Fragment>
+                  <LineChart data={followUpData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="response" stroke="var(--color-response)" strokeWidth={2} />
+                  </LineChart>
+                  <ChartLegend content={<ChartLegendContent />} />
+                </Fragment>
               </ChartContainer>
             </div>
           </CardContent>

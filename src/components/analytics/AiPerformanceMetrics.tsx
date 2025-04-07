@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Fragment } from "react";
 
 // Sample data for AI performance metrics
 const accuracyData = [
@@ -148,16 +149,18 @@ export const AiPerformanceMetrics = () => {
           <CardContent>
             <div className="h-[300px]">
               <ChartContainer config={chartConfig}>
-                <LineChart data={accuracyData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} domain={[80, 100]} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="extraction" stroke="var(--color-extraction)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="qualification" stroke="var(--color-qualification)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="sentiment" stroke="var(--color-sentiment)" strokeWidth={2} />
-                </LineChart>
-                <ChartLegend content={<ChartLegendContent />} />
+                <Fragment>
+                  <LineChart data={accuracyData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} domain={[80, 100]} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="extraction" stroke="var(--color-extraction)" strokeWidth={2} />
+                    <Line type="monotone" dataKey="qualification" stroke="var(--color-qualification)" strokeWidth={2} />
+                    <Line type="monotone" dataKey="sentiment" stroke="var(--color-sentiment)" strokeWidth={2} />
+                  </LineChart>
+                  <ChartLegend content={<ChartLegendContent />} />
+                </Fragment>
               </ChartContainer>
             </div>
           </CardContent>
@@ -171,14 +174,16 @@ export const AiPerformanceMetrics = () => {
           <CardContent>
             <div className="h-[300px]">
               <ChartContainer config={chartConfig}>
-                <BarChart data={responseTimeData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="time" fill="var(--color-time)" barSize={30} />
-                </BarChart>
-                <ChartLegend content={<ChartLegendContent />} />
+                <Fragment>
+                  <BarChart data={responseTimeData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="time" fill="var(--color-time)" barSize={30} />
+                  </BarChart>
+                  <ChartLegend content={<ChartLegendContent />} />
+                </Fragment>
               </ChartContainer>
             </div>
           </CardContent>

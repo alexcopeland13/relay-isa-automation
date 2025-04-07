@@ -2,6 +2,7 @@
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from "recharts";
+import { Fragment } from "react";
 
 interface LeadAnalyticsProps {
   compact?: boolean;
@@ -55,15 +56,17 @@ export const LeadAnalytics = ({ compact = false }: LeadAnalyticsProps) => {
         <CardContent>
           <div className="h-[200px]">
             <ChartContainer config={chartConfig}>
-              <LineChart data={leadTimeData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="leads" stroke="var(--color-leads)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="qualified" stroke="var(--color-qualified)" strokeWidth={2} dot={false} />
-              </LineChart>
-              <ChartLegend content={<ChartLegendContent />} />
+              <Fragment>
+                <LineChart data={leadTimeData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="leads" stroke="var(--color-leads)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="qualified" stroke="var(--color-qualified)" strokeWidth={2} dot={false} />
+                </LineChart>
+                <ChartLegend content={<ChartLegendContent />} />
+              </Fragment>
             </ChartContainer>
           </div>
         </CardContent>
@@ -81,15 +84,17 @@ export const LeadAnalytics = ({ compact = false }: LeadAnalyticsProps) => {
         <CardContent>
           <div className="h-[300px]">
             <ChartContainer config={chartConfig}>
-              <LineChart data={leadTimeData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="leads" stroke="var(--color-leads)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="qualified" stroke="var(--color-qualified)" strokeWidth={2} dot={false} />
-              </LineChart>
-              <ChartLegend content={<ChartLegendContent />} />
+              <Fragment>
+                <LineChart data={leadTimeData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="leads" stroke="var(--color-leads)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="qualified" stroke="var(--color-qualified)" strokeWidth={2} dot={false} />
+                </LineChart>
+                <ChartLegend content={<ChartLegendContent />} />
+              </Fragment>
             </ChartContainer>
           </div>
         </CardContent>

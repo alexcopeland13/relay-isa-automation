@@ -2,6 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Funnel, FunnelChart, LabelList } from "recharts";
+import { Fragment } from "react";
 
 interface PipelineAnalyticsProps {
   compact?: boolean;
@@ -120,13 +121,15 @@ export const PipelineAnalytics = ({ compact = false }: PipelineAnalyticsProps) =
           <CardContent>
             <div className="h-[300px]">
               <ChartContainer config={chartConfig}>
-                <BarChart data={stageTimeData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="days" fill="var(--color-days)" barSize={30} />
-                </BarChart>
+                <Fragment>
+                  <BarChart data={stageTimeData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="days" fill="var(--color-days)" barSize={30} />
+                  </BarChart>
+                </Fragment>
               </ChartContainer>
             </div>
           </CardContent>
@@ -140,14 +143,16 @@ export const PipelineAnalytics = ({ compact = false }: PipelineAnalyticsProps) =
           <CardContent>
             <div className="h-[300px]">
               <ChartContainer config={chartConfig}>
-                <LineChart data={conversionTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="rate" stroke="var(--color-rate)" strokeWidth={2} />
-                </LineChart>
-                <ChartLegend content={<ChartLegendContent />} />
+                <Fragment>
+                  <LineChart data={conversionTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="rate" stroke="var(--color-rate)" strokeWidth={2} />
+                  </LineChart>
+                  <ChartLegend content={<ChartLegendContent />} />
+                </Fragment>
               </ChartContainer>
             </div>
           </CardContent>

@@ -178,7 +178,7 @@ const Leads = () => {
       {/* Lead List View */}
       <div className="bg-card rounded-lg border border-border p-6">
         <div className="flex justify-between items-center mb-4">
-          <Tabs defaultValue={activeView} onValueChange={(value) => setActiveView(value as 'list' | 'board')}>
+          <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'list' | 'board')}>
             <TabsList>
               <TabsTrigger value="list">List View</TabsTrigger>
               <TabsTrigger value="board">Board View</TabsTrigger>
@@ -199,19 +199,21 @@ const Leads = () => {
         </div>
         
         <div>
-          <TabsContent value="list" className="mt-0">
-            <LeadsList 
-              leads={leads}
-              onSelectLead={handleSelectLead}
-            />
-          </TabsContent>
-          
-          <TabsContent value="board" className="mt-0">
-            <LeadsBoard
-              leads={leads}
-              onSelectLead={handleSelectLead}
-            />
-          </TabsContent>
+          <Tabs value={activeView}>
+            <TabsContent value="list" className="mt-0">
+              <LeadsList 
+                leads={leads}
+                onSelectLead={handleSelectLead}
+              />
+            </TabsContent>
+            
+            <TabsContent value="board" className="mt-0">
+              <LeadsBoard
+                leads={leads}
+                onSelectLead={handleSelectLead}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </PageLayout>

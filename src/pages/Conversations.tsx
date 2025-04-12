@@ -4,9 +4,11 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { ConversationInterface } from '@/components/conversations/ConversationInterface';
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, List, Filter } from 'lucide-react';
+import { MessageSquare, List, Filter, Phone } from 'lucide-react';
 import { sampleConversation } from '@/data/sampleConversation';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { CallSchedulerModal } from '@/components/conversations/CallSchedulerModal';
 
 const Conversations = () => {
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
@@ -40,10 +42,22 @@ const Conversations = () => {
             </Button>
           )}
           {activeView === 'list' && (
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
+            <>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+              
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Schedule Call
+                  </Button>
+                </DialogTrigger>
+                <CallSchedulerModal />
+              </Dialog>
+            </>
           )}
         </div>
       </div>

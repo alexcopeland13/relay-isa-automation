@@ -1,7 +1,12 @@
 
 import { format, parseISO } from 'date-fns';
-import { Clock, Calendar, Phone, Mail, MessageSquare, BarChart } from 'lucide-react';
+import { Clock, Calendar, Phone, Mail, MessageSquare, BarChart, Download, Play, PhoneIncoming, PhoneOutgoing, PhoneCall } from 'lucide-react';
 import { ExtractedInfo } from '@/data/sampleConversation';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { CallSchedulerModal } from './CallSchedulerModal';
+import { ActiveCallInterface } from './ActiveCallInterface';
+import { useState } from 'react';
 
 interface ConversationHeaderProps {
   leadInfo: {
@@ -34,8 +39,9 @@ const getQualificationBadgeColor = (status: string) => {
 const getConversationTypeIcon = (type: string) => {
   switch (type) {
     case 'Inbound Call':
+      return <PhoneIncoming className="h-4 w-4" />;
     case 'Outbound Call':
-      return <Phone className="h-4 w-4" />;
+      return <PhoneOutgoing className="h-4 w-4" />;
     case 'Email Thread':
       return <Mail className="h-4 w-4" />;
     case 'Text Message':
@@ -52,6 +58,8 @@ export const ConversationHeader = ({
   type,
   qualification
 }: ConversationHeaderProps) => {
+  const [showActiveCall, setShowActiveCall] = useState(false);
+  
   const formattedDate = format(parseISO(timestamp), 'MMMM d, yyyy');
   const formattedTime = format(parseISO(timestamp), 'h:mm a');
   
@@ -63,6 +71,8 @@ export const ConversationHeader = ({
   const confidenceScore = typeof qualification === 'object' 
     ? Math.round(qualification.confidenceScore * 100) 
     : null;
+  
+  const isCallConversation = type.includes('Call');
   
   return (
     <div className="p-6 border-b border-border">
@@ -99,6 +109,37 @@ export const ConversationHeader = ({
           <span>Duration: {duration}</span>
         </div>
       </div>
+      
+      {isCallConversation && (
+        <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowActiveCall(true)}>
+            <PhoneCall className="mr-2 h-4 w-4" />
+            Call Lead
+          </Button>
+          
+          <Button variant="outline" size="sm">
+            <Play className="mr-2 h-4 w-4" />
+            Listen to Recording
+          </Button>
+          
+          <Button variant="outline" size="sm">
+            <Download className="mr-2 h-4 w-4" />
+            Download Transcript
+          </Button>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Phone className="mr-2 h-4 w-4" />
+                Schedule Follow-up
+              </Button>
+            </DialogTrigger>
+            <CallSchedulerModal />
+          </Dialog>
+        </div>
+      )}
+      
+      {showActiveCall && <ActiveCallInterface leadInfo={leadInfo} onClose={() => setShowActiveCall(false)} />}
     </div>
   );
 };

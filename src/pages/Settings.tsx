@@ -12,6 +12,7 @@ import { CommunicationSettings } from '@/components/settings/CommunicationSettin
 import { IntegrationSettings } from '@/components/settings/IntegrationSettings';
 import { ComplianceSettings } from '@/components/settings/ComplianceSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { VoiceSettings } from '@/components/settings/VoiceSettings';
 import { Badge } from '@/components/ui/badge';
 import { 
   Server, 
@@ -24,7 +25,8 @@ import {
   Headphones,
   Link,
   ShieldCheck,
-  Bell
+  Bell,
+  VoiceNetwork
 } from 'lucide-react';
 
 const Settings = () => {
@@ -38,7 +40,7 @@ const Settings = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-11 w-full mb-6">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 w-full mb-6">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />
             <span className="hidden md:inline">General</span>
@@ -73,6 +75,12 @@ const Settings = () => {
           <TabsTrigger value="conversation" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             <span className="hidden md:inline">Conversation</span>
+          </TabsTrigger>
+          
+          <TabsTrigger value="voice-settings" className="flex items-center gap-2">
+            <VoiceNetwork className="h-4 w-4" />
+            <span className="hidden md:inline">Voice</span>
+            <Badge variant="secondary" className="ml-1 hidden lg:inline-flex">New</Badge>
           </TabsTrigger>
           
           <TabsTrigger value="follow-up" className="flex items-center gap-2">
@@ -124,6 +132,10 @@ const Settings = () => {
         
         <TabsContent value="conversation" className="mt-0">
           <ConversationBehaviorConfig />
+        </TabsContent>
+        
+        <TabsContent value="voice-settings" className="mt-0">
+          <VoiceSettings />
         </TabsContent>
         
         <TabsContent value="follow-up" className="mt-0">

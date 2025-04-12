@@ -11,7 +11,8 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  UserSearch
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ export const Sidebar = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Users, label: 'Leads', path: '/leads' },
+    { icon: UserSearch, label: 'Agents', path: '/agents' },
     { icon: MessageSquare, label: 'Conversations', path: '/conversations' },
     { icon: Calendar, label: 'Follow-ups', path: '/follow-ups' },
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },

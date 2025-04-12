@@ -15,6 +15,10 @@ import FollowUps from "./pages/FollowUps";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Agents from "./pages/Agents";
+import AgentDetail from "./pages/AgentDetail";
+import AgentCreate from "./pages/AgentCreate";
+import AgentEdit from "./pages/AgentEdit";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +56,10 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/leads" element={<Leads />} />
+            <Route path="/agents" element={<Agents />} />
+            <Route path="/agents/:id" element={<AgentDetail />} />
+            <Route path="/agents/create" element={<AgentCreate />} />
+            <Route path="/agents/edit/:id" element={<AgentEdit />} />
             <Route path="/conversations" element={<Conversations />} />
             <Route path="/follow-ups" element={<FollowUps />} />
             <Route path="/analytics" element={<Analytics />} />

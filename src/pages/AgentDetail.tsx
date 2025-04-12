@@ -91,8 +91,8 @@ const AgentDetail = () => {
                   )}
                 </div>
                 <Badge
-                  variant={agent.status === "Active" ? "success" : "secondary"}
-                  className="absolute top-3 right-3"
+                  variant={agent.status === "Active" ? "default" : "secondary"}
+                  className={`absolute top-3 right-3 ${agent.status === "Active" ? "bg-green-500 hover:bg-green-600" : ""}`}
                 >
                   {agent.status}
                 </Badge>

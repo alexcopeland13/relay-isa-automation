@@ -219,8 +219,8 @@ const Agents = () => {
                           </TableCell>
                           <TableCell>
                             <Badge 
-                              variant={agent.status === "Active" ? "success" : "secondary"}
-                              className="text-xs"
+                              variant={agent.status === "Active" ? "default" : "secondary"}
+                              className={`${agent.status === "Active" ? "bg-green-500 hover:bg-green-600" : ""}`}
                             >
                               {agent.status}
                             </Badge>

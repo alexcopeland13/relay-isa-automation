@@ -119,8 +119,8 @@ const AgentEdit = () => {
                       <Label htmlFor="status">Active Status</Label>
                     </div>
                     <Badge 
-                      variant={status ? "success" : "secondary"}
-                      className="text-xs"
+                      variant={status ? "default" : "secondary"}
+                      className={`${status ? "bg-green-500 hover:bg-green-600" : ""}`}
                     >
                       {status ? "Active" : "Inactive"}
                     </Badge>

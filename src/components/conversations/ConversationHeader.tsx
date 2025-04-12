@@ -13,7 +13,7 @@ interface ConversationHeaderProps {
   timestamp: string;
   duration: string;
   type: string;
-  qualification: ExtractedInfo['qualification'];
+  qualification: string | ExtractedInfo['qualification'];
 }
 
 const getQualificationBadgeColor = (status: string) => {
@@ -55,6 +55,15 @@ export const ConversationHeader = ({
   const formattedDate = format(parseISO(timestamp), 'MMMM d, yyyy');
   const formattedTime = format(parseISO(timestamp), 'h:mm a');
   
+  // Get the qualification status and confidence score, handling both string and object types
+  const qualificationStatus = typeof qualification === 'string' 
+    ? qualification 
+    : qualification.status;
+    
+  const confidenceScore = typeof qualification === 'object' 
+    ? Math.round(qualification.confidenceScore * 100) 
+    : null;
+  
   return (
     <div className="p-6 border-b border-border">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -67,9 +76,10 @@ export const ConversationHeader = ({
           </div>
         </div>
         
-        <div className={`mt-3 md:mt-0 text-sm font-medium px-3 py-1 rounded-full flex items-center gap-1.5 ${getQualificationBadgeColor(qualification.status)}`}>
+        <div className={`mt-3 md:mt-0 text-sm font-medium px-3 py-1 rounded-full flex items-center gap-1.5 ${getQualificationBadgeColor(qualificationStatus)}`}>
           <BarChart className="h-4 w-4" />
-          {qualification.status} ({Math.round(qualification.confidenceScore * 100)}% confidence)
+          {qualificationStatus}
+          {confidenceScore && ` (${confidenceScore}% confidence)`}
         </div>
       </div>
       

@@ -6,7 +6,8 @@ import {
   Timer, 
   Building2, 
   Check,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 import { CategoryItemDisplay } from './CategoryItem';
 import { Input } from '@/components/ui/input';
@@ -78,9 +79,11 @@ export const LocationPreferencesSection = ({
   };
   
   const handleVerify = (category: string, index: number) => {
-    const items = [...locationPreferences[category as keyof typeof locationPreferences]] as CategoryItem[];
-    items[index] = { ...items[index], verified: true };
-    onEdit(category, items);
+    if (category === 'areasOfInterest' || category === 'neighborhoodType') {
+      const items = [...locationPreferences[category]];
+      items[index] = { ...items[index], verified: true };
+      onEdit(category, items);
+    }
   };
   
   return (
@@ -241,6 +244,3 @@ export const LocationPreferencesSection = ({
     </div>
   );
 };
-
-// Add missing X icon import
-import { X } from 'lucide-react';

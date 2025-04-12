@@ -3,14 +3,15 @@ import React, { useState } from 'react';
 import { 
   Home, 
   DollarSign, 
-  Rulers, 
+  Ruler, // Fixed from Rulers
   Check, 
   X, 
   Edit, 
   Save, 
-  Pool, 
+  Waves, // Using Waves instead of Pool
   Building, 
-  SquareMeter 
+  LayoutDashboard, // Using LayoutDashboard instead of SquareMeter
+  Plus
 } from 'lucide-react';
 import { CategoryItemDisplay } from './CategoryItem';
 import { Slider } from '@/components/ui/slider';
@@ -85,9 +86,11 @@ export const PropertyInterestsSection = ({
   };
   
   const handleVerify = (category: string, index: number) => {
-    const items = [...propertyInterests[category as keyof typeof propertyInterests]] as CategoryItem[];
-    items[index] = { ...items[index], verified: true };
-    onEdit(category, items);
+    if (category === 'propertyType' || category === 'mustHaveFeatures' || category === 'dealBreakers') {
+      const items = [...propertyInterests[category]];
+      items[index] = { ...items[index], verified: true };
+      onEdit(category, items);
+    }
   };
   
   const formatPrice = (price: number) => {
@@ -188,7 +191,7 @@ export const PropertyInterestsSection = ({
         
         <div>
           <div className="flex items-center mb-1">
-            <SquareMeter className="h-4 w-4 text-muted-foreground mr-1" />
+            <LayoutDashboard className="h-4 w-4 text-muted-foreground mr-1" />
             <span className="text-xs text-muted-foreground">Size Requirements</span>
           </div>
           {isEditing ? (
@@ -284,7 +287,7 @@ export const PropertyInterestsSection = ({
         
         <div>
           <div className="flex items-center mb-1">
-            <Pool className="h-4 w-4 text-muted-foreground mr-1" />
+            <Waves className="h-4 w-4 text-muted-foreground mr-1" />
             <span className="text-xs text-muted-foreground">Must-Have Features</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-1">
@@ -346,6 +349,3 @@ export const PropertyInterestsSection = ({
     </div>
   );
 };
-
-// Add missing Plus icon import
-import { Plus } from 'lucide-react';

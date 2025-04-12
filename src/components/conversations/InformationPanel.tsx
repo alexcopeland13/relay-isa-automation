@@ -18,6 +18,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { ExtractedInfo } from '@/data/sampleConversation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -79,9 +79,11 @@ export const MotivationFactorsSection = ({
   };
   
   const handleVerify = (category: string, index: number) => {
-    const items = [...motivationFactors[category as keyof typeof motivationFactors]] as CategoryItem[];
-    items[index] = { ...items[index], verified: true };
-    onEdit(category, items);
+    if (category === 'decisionFactors' || category === 'potentialObstacles') {
+      const items = [...motivationFactors[category]];
+      items[index] = { ...items[index], verified: true };
+      onEdit(category, items);
+    }
   };
   
   const getUrgencyLabel = (value: number) => {

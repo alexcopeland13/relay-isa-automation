@@ -1,4 +1,3 @@
-
 export interface Highlight {
   type: string;
   text: string;
@@ -11,6 +10,13 @@ export interface Message {
   timestamp: string;
   sentiment: 'positive' | 'neutral' | 'negative';
   highlights?: Highlight[];
+}
+
+export interface CategoryItem {
+  value: string;
+  confidence: number;
+  source: 'AI' | 'User' | 'Agent';
+  verified: boolean;
 }
 
 export interface ExtractedInfo {
@@ -41,6 +47,68 @@ export interface ExtractedInfo {
     status: string;
     confidenceScore: number;
     reasoning: string;
+  };
+  propertyInterests: {
+    propertyType: CategoryItem[];
+    priceRange: {
+      min: number;
+      max: number;
+      confidence: number;
+      source: 'AI' | 'User' | 'Agent';
+      verified: boolean;
+    };
+    sizeRequirements: {
+      bedrooms: number;
+      bathrooms: number;
+      squareFootage: {
+        min: number;
+        max: number;
+      };
+      confidence: number;
+      source: 'AI' | 'User' | 'Agent';
+      verified: boolean;
+    };
+    mustHaveFeatures: CategoryItem[];
+    dealBreakers: CategoryItem[];
+    confidence: number;
+  };
+  locationPreferences: {
+    areasOfInterest: CategoryItem[];
+    neighborhoodType: CategoryItem[];
+    commuteConsiderations: {
+      maxCommuteDuration: number;
+      commuteToLocations: string[];
+      confidence: number;
+      source: 'AI' | 'User' | 'Agent';
+      verified: boolean;
+    };
+    confidence: number;
+  };
+  transactionType: {
+    role: CategoryItem;
+    transactionTimeline: CategoryItem;
+    financingStatus: CategoryItem;
+    firstTimeBuyer: CategoryItem;
+    confidence: number;
+  };
+  motivationFactors: {
+    primaryMotivation: CategoryItem;
+    urgencyLevel: {
+      value: number;
+      confidence: number;
+      source: 'AI' | 'User' | 'Agent';
+      verified: boolean;
+    };
+    decisionFactors: CategoryItem[];
+    potentialObstacles: CategoryItem[];
+    confidence: number;
+  };
+  matchingWeights: {
+    propertyType: number;
+    location: number;
+    priceRange: number;
+    timeline: number;
+    financing: number;
   };
 }
 
@@ -331,6 +399,85 @@ export const sampleConversation: Conversation = {
       status: "Qualified",
       confidenceScore: 0.89,
       reasoning: "Good credit, significant equity, clear refinance goals"
+    },
+    propertyInterests: {
+      propertyType: [
+        { value: 'Single Family', confidence: 0.88, source: 'AI', verified: false }
+      ],
+      priceRange: {
+        min: 400000,
+        max: 450000,
+        confidence: 0.85,
+        source: 'AI',
+        verified: false
+      },
+      sizeRequirements: {
+        bedrooms: 3,
+        bathrooms: 2,
+        squareFootage: {
+          min: 1800,
+          max: 2400
+        },
+        confidence: 0.78,
+        source: 'AI',
+        verified: false
+      },
+      mustHaveFeatures: [
+        { value: 'Updated Kitchen', confidence: 0.82, source: 'AI', verified: false },
+        { value: 'Backyard', confidence: 0.76, source: 'AI', verified: false }
+      ],
+      dealBreakers: [
+        { value: 'High Traffic Area', confidence: 0.71, source: 'AI', verified: false }
+      ],
+      confidence: 0.81
+    },
+    locationPreferences: {
+      areasOfInterest: [
+        { value: 'Denver, Southeast', confidence: 0.95, source: 'User', verified: true }
+      ],
+      neighborhoodType: [
+        { value: 'Suburban', confidence: 0.84, source: 'AI', verified: false }
+      ],
+      commuteConsiderations: {
+        maxCommuteDuration: 30,
+        commuteToLocations: ['Downtown Denver'],
+        confidence: 0.73,
+        source: 'AI',
+        verified: false
+      },
+      confidence: 0.88
+    },
+    transactionType: {
+      role: { value: 'Buyer', confidence: 0.93, source: 'User', verified: true },
+      transactionTimeline: { value: '1-3 months', confidence: 0.86, source: 'AI', verified: false },
+      financingStatus: { value: 'Pre-qualified', confidence: 0.82, source: 'AI', verified: false },
+      firstTimeBuyer: { value: 'No', confidence: 0.68, source: 'AI', verified: false },
+      confidence: 0.85
+    },
+    motivationFactors: {
+      primaryMotivation: { value: 'Upgrading', confidence: 0.79, source: 'AI', verified: false },
+      urgencyLevel: {
+        value: 7,
+        confidence: 0.74,
+        source: 'AI',
+        verified: false
+      },
+      decisionFactors: [
+        { value: 'Location', confidence: 0.88, source: 'AI', verified: false },
+        { value: 'Price', confidence: 0.85, source: 'AI', verified: false },
+        { value: 'School District', confidence: 0.73, source: 'AI', verified: false }
+      ],
+      potentialObstacles: [
+        { value: 'Competitive Market', confidence: 0.81, source: 'AI', verified: false }
+      ],
+      confidence: 0.77
+    },
+    matchingWeights: {
+      propertyType: 0.8,
+      location: 0.9,
+      priceRange: 0.7,
+      timeline: 0.6,
+      financing: 0.5
     }
   },
   suggestedActions: [

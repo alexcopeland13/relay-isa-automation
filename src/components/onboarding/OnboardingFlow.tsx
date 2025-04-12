@@ -10,7 +10,7 @@ import {
   CalendarCheck, 
   BrainCircuit,
   Settings,
-  Skip
+  SkipForward
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -169,7 +169,7 @@ export const OnboardingFlow = () => {
                   {currentStep < steps.length - 1 && (
                     <Button variant="ghost" onClick={handleSkip} className="gap-1">
                       Skip
-                      <Skip size={16} />
+                      <SkipForward size={16} />
                     </Button>
                   )}
                 </div>

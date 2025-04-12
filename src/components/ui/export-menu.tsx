@@ -1,9 +1,8 @@
-
 import { useState } from 'react';
 import { 
   Download, 
   FileText, 
-  FilePdf, 
+  File, 
   Mail, 
   Calendar, 
   CheckCircle,
@@ -69,20 +68,16 @@ export function ExportMenu({
     setExportLoading(true);
     
     try {
-      // If custom export handler is provided, use it
       if (onExport) {
         await onExport(exportFormat, date);
       } else {
-        // Default export handling
         if (exportFormat === 'csv') {
-          // Basic CSV export implementation
           const headers = exportableCols || Object.keys(data[0] || {});
           let csvContent = headers.join(',') + '\n';
           
           data.forEach(item => {
             const row = headers.map(header => {
               let cell = item[header] || '';
-              // Handle cells with commas by wrapping in quotes
               if (cell && cell.toString().includes(',')) {
                 return `"${cell}"`;
               }
@@ -159,7 +154,7 @@ export function ExportMenu({
           
           {supportedFormats.includes('pdf') && (
             <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              <FilePdf className="mr-2 h-4 w-4 text-red-600" />
+              <File className="mr-2 h-4 w-4 text-red-600" />
               Export as PDF
             </DropdownMenuItem>
           )}

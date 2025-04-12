@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { SaveIcon, Play, PhoneCall, CheckIcon, VoiceNetwork } from 'lucide-react';
+import { SaveIcon, Play, PhoneCall, CheckIcon, Mic } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const VoiceSettings = () => {
@@ -337,7 +336,7 @@ export const VoiceSettings = () => {
                 <Label>Voice Call Testing</Label>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1">
-                    <VoiceNetwork className="mr-2 h-4 w-4" />
+                    <Mic className="mr-2 h-4 w-4" />
                     Test Voice Connection
                   </Button>
                   <Button variant="outline" className="flex-1">

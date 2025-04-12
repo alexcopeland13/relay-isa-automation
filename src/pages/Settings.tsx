@@ -26,7 +26,7 @@ import {
   Link,
   ShieldCheck,
   Bell,
-  VoiceNetwork
+  Mic
 } from 'lucide-react';
 
 const Settings = () => {
@@ -78,7 +78,7 @@ const Settings = () => {
           </TabsTrigger>
           
           <TabsTrigger value="voice-settings" className="flex items-center gap-2">
-            <VoiceNetwork className="h-4 w-4" />
+            <Mic className="h-4 w-4" />
             <span className="hidden md:inline">Voice</span>
             <Badge variant="secondary" className="ml-1 hidden lg:inline-flex">New</Badge>
           </TabsTrigger>

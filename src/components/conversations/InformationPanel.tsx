@@ -70,7 +70,7 @@ export const InformationPanel = ({ extractedInfo }: InformationPanelProps) => {
   return (
     <div className="h-full border-l border-border">
       <div className="p-4 border-b border-border flex items-center justify-between">
-        <Tabs value={activeTab} onValueChange={setActiveTab as any} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'raw' | 'categorized')} className="w-full">
           <TabsList className="w-full">
             <TabsTrigger value="raw" className="flex-1">Raw Extracted Data</TabsTrigger>
             <TabsTrigger value="categorized" className="flex-1">Lead Categories</TabsTrigger>
@@ -121,390 +121,392 @@ export const InformationPanel = ({ extractedInfo }: InformationPanelProps) => {
       </div>
       
       <ScrollArea className="h-[calc(600px-113px)]">
-        <TabsContent value="raw" className="m-0">
-          <div className="p-4">
-            <Accordion type="multiple" defaultValue={["property", "refinance", "timeline", "financial", "qualification"]}>
-              <AccordionItem value="property">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center text-left">
-                    <Home className="mr-2 h-4 w-4 text-blue-500" />
-                    <span>Property Information</span>
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 rounded px-1.5 py-0.5">
-                      {Math.round(editedInfo.propertyInfo.confidence * 100)}%
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Current Mortgage</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.propertyInfo.currentMortgage} 
-                          onChange={(e) => setEditedInfo({
+        <Tabs value={activeTab} className="w-full">
+          <TabsContent value="raw" className="m-0">
+            <div className="p-4">
+              <Accordion type="multiple" defaultValue={["property", "refinance", "timeline", "financial", "qualification"]}>
+                <AccordionItem value="property">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center text-left">
+                      <Home className="mr-2 h-4 w-4 text-blue-500" />
+                      <span>Property Information</span>
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 rounded px-1.5 py-0.5">
+                        {Math.round(editedInfo.propertyInfo.confidence * 100)}%
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Current Mortgage</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.propertyInfo.currentMortgage} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              propertyInfo: {
+                                ...editedInfo.propertyInfo,
+                                currentMortgage: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.propertyInfo.currentMortgage}</div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Current Term</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.propertyInfo.currentTerm} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              propertyInfo: {
+                                ...editedInfo.propertyInfo,
+                                currentTerm: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.propertyInfo.currentTerm}</div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Estimated Value</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.propertyInfo.estimatedValue} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              propertyInfo: {
+                                ...editedInfo.propertyInfo,
+                                estimatedValue: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.propertyInfo.estimatedValue}</div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Location</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.propertyInfo.location} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              propertyInfo: {
+                                ...editedInfo.propertyInfo,
+                                location: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.propertyInfo.location}</div>
+                        )}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="refinance">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center text-left">
+                      <DollarSign className="mr-2 h-4 w-4 text-green-500" />
+                      <span>Refinance Goals</span>
+                      <span className="ml-2 text-xs bg-green-100 text-green-800 rounded px-1.5 py-0.5">
+                        {Math.round(editedInfo.refinanceGoals.confidence * 100)}%
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Lower Rate</label>
+                        <Switch 
+                          checked={editedInfo.refinanceGoals.lowerRate} 
+                          onCheckedChange={isEditing ? (checked) => setEditedInfo({
                             ...editedInfo,
-                            propertyInfo: {
-                              ...editedInfo.propertyInfo,
-                              currentMortgage: e.target.value
+                            refinanceGoals: {
+                              ...editedInfo.refinanceGoals,
+                              lowerRate: checked
                             }
-                          })}
-                          className="h-8"
+                          }) : undefined}
+                          disabled={!isEditing}
                         />
-                      ) : (
-                        <div className="text-sm">{editedInfo.propertyInfo.currentMortgage}</div>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Current Term</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.propertyInfo.currentTerm} 
-                          onChange={(e) => setEditedInfo({
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Cash Out</label>
+                        <Switch 
+                          checked={editedInfo.refinanceGoals.cashOut} 
+                          onCheckedChange={isEditing ? (checked) => setEditedInfo({
                             ...editedInfo,
-                            propertyInfo: {
-                              ...editedInfo.propertyInfo,
-                              currentTerm: e.target.value
+                            refinanceGoals: {
+                              ...editedInfo.refinanceGoals,
+                              cashOut: checked
                             }
-                          })}
-                          className="h-8"
+                          }) : undefined}
+                          disabled={!isEditing}
                         />
-                      ) : (
-                        <div className="text-sm">{editedInfo.propertyInfo.currentTerm}</div>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Estimated Value</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.propertyInfo.estimatedValue} 
-                          onChange={(e) => setEditedInfo({
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Shorten Term</label>
+                        <Switch 
+                          checked={editedInfo.refinanceGoals.shortenTerm} 
+                          onCheckedChange={isEditing ? (checked) => setEditedInfo({
                             ...editedInfo,
-                            propertyInfo: {
-                              ...editedInfo.propertyInfo,
-                              estimatedValue: e.target.value
+                            refinanceGoals: {
+                              ...editedInfo.refinanceGoals,
+                              shortenTerm: checked
                             }
-                          })}
-                          className="h-8"
+                          }) : undefined}
+                          disabled={!isEditing}
                         />
-                      ) : (
-                        <div className="text-sm">{editedInfo.propertyInfo.estimatedValue}</div>
-                      )}
+                      </div>
                     </div>
-                    
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Location</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.propertyInfo.location} 
-                          onChange={(e) => setEditedInfo({
-                            ...editedInfo,
-                            propertyInfo: {
-                              ...editedInfo.propertyInfo,
-                              location: e.target.value
-                            }
-                          })}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm">{editedInfo.propertyInfo.location}</div>
-                      )}
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="timeline">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center text-left">
+                      <Calendar className="mr-2 h-4 w-4 text-purple-500" />
+                      <span>Timeline</span>
+                      <span className="ml-2 text-xs bg-purple-100 text-purple-800 rounded px-1.5 py-0.5">
+                        {Math.round(editedInfo.timeline.confidence * 100)}%
+                      </span>
                     </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              
-              <AccordionItem value="refinance">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center text-left">
-                    <DollarSign className="mr-2 h-4 w-4 text-green-500" />
-                    <span>Refinance Goals</span>
-                    <span className="ml-2 text-xs bg-green-100 text-green-800 rounded px-1.5 py-0.5">
-                      {Math.round(editedInfo.refinanceGoals.confidence * 100)}%
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Lower Rate</label>
-                      <Switch 
-                        checked={editedInfo.refinanceGoals.lowerRate} 
-                        onCheckedChange={isEditing ? (checked) => setEditedInfo({
-                          ...editedInfo,
-                          refinanceGoals: {
-                            ...editedInfo.refinanceGoals,
-                            lowerRate: checked
-                          }
-                        }) : undefined}
-                        disabled={!isEditing}
-                      />
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Urgency</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.timeline.urgency} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              timeline: {
+                                ...editedInfo.timeline,
+                                urgency: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.timeline.urgency}</div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Looking to Decide</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.timeline.lookingToDecide} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              timeline: {
+                                ...editedInfo.timeline,
+                                lookingToDecide: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.timeline.lookingToDecide}</div>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Cash Out</label>
-                      <Switch 
-                        checked={editedInfo.refinanceGoals.cashOut} 
-                        onCheckedChange={isEditing ? (checked) => setEditedInfo({
-                          ...editedInfo,
-                          refinanceGoals: {
-                            ...editedInfo.refinanceGoals,
-                            cashOut: checked
-                          }
-                        }) : undefined}
-                        disabled={!isEditing}
-                      />
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="financial">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center text-left">
+                      <DollarSign className="mr-2 h-4 w-4 text-amber-500" />
+                      <span>Financial Information</span>
+                      <span className="ml-2 text-xs bg-amber-100 text-amber-800 rounded px-1.5 py-0.5">
+                        {Math.round(editedInfo.financialInfo.confidence * 100)}%
+                      </span>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Shorten Term</label>
-                      <Switch 
-                        checked={editedInfo.refinanceGoals.shortenTerm} 
-                        onCheckedChange={isEditing ? (checked) => setEditedInfo({
-                          ...editedInfo,
-                          refinanceGoals: {
-                            ...editedInfo.refinanceGoals,
-                            shortenTerm: checked
-                          }
-                        }) : undefined}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              
-              <AccordionItem value="timeline">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center text-left">
-                    <Calendar className="mr-2 h-4 w-4 text-purple-500" />
-                    <span>Timeline</span>
-                    <span className="ml-2 text-xs bg-purple-100 text-purple-800 rounded px-1.5 py-0.5">
-                      {Math.round(editedInfo.timeline.confidence * 100)}%
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Urgency</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.timeline.urgency} 
-                          onChange={(e) => setEditedInfo({
-                            ...editedInfo,
-                            timeline: {
-                              ...editedInfo.timeline,
-                              urgency: e.target.value
-                            }
-                          })}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm">{editedInfo.timeline.urgency}</div>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Looking to Decide</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.timeline.lookingToDecide} 
-                          onChange={(e) => setEditedInfo({
-                            ...editedInfo,
-                            timeline: {
-                              ...editedInfo.timeline,
-                              lookingToDecide: e.target.value
-                            }
-                          })}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm">{editedInfo.timeline.lookingToDecide}</div>
-                      )}
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              
-              <AccordionItem value="financial">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center text-left">
-                    <DollarSign className="mr-2 h-4 w-4 text-amber-500" />
-                    <span>Financial Information</span>
-                    <span className="ml-2 text-xs bg-amber-100 text-amber-800 rounded px-1.5 py-0.5">
-                      {Math.round(editedInfo.financialInfo.confidence * 100)}%
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Estimated Credit</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.financialInfo.estimatedCredit} 
-                          onChange={(e) => setEditedInfo({
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Estimated Credit</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.financialInfo.estimatedCredit} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              financialInfo: {
+                                ...editedInfo.financialInfo,
+                                estimatedCredit: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.financialInfo.estimatedCredit}</div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm">Has Other Debts</label>
+                        <Switch 
+                          checked={editedInfo.financialInfo.hasOtherDebts} 
+                          onCheckedChange={isEditing ? (checked) => setEditedInfo({
                             ...editedInfo,
                             financialInfo: {
                               ...editedInfo.financialInfo,
-                              estimatedCredit: e.target.value
+                              hasOtherDebts: checked
                             }
-                          })}
-                          className="h-8"
+                          }) : undefined}
+                          disabled={!isEditing}
                         />
-                      ) : (
-                        <div className="text-sm">{editedInfo.financialInfo.estimatedCredit}</div>
-                      )}
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm">Has Other Debts</label>
-                      <Switch 
-                        checked={editedInfo.financialInfo.hasOtherDebts} 
-                        onCheckedChange={isEditing ? (checked) => setEditedInfo({
-                          ...editedInfo,
-                          financialInfo: {
-                            ...editedInfo.financialInfo,
-                            hasOtherDebts: checked
-                          }
-                        }) : undefined}
-                        disabled={!isEditing}
-                      />
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="qualification">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center text-left">
+                      <CheckCircle className="mr-2 h-4 w-4 text-primary" />
+                      <span>Qualification</span>
+                      <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">
+                        {Math.round(editedInfo.qualification.confidenceScore * 100)}%
+                      </span>
                     </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Status</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.qualification.status} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              qualification: {
+                                ...editedInfo.qualification,
+                                status: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm font-medium">
+                            <span className={`inline-block px-2 py-1 rounded ${
+                              editedInfo.qualification.status === 'Qualified' ? 'bg-blue-100 text-blue-800' :
+                              editedInfo.qualification.status === 'Highly Qualified' ? 'bg-green-100 text-green-800' :
+                              editedInfo.qualification.status === 'Not Qualified' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {editedInfo.qualification.status}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Reasoning</label>
+                        {isEditing ? (
+                          <Input 
+                            value={editedInfo.qualification.reasoning} 
+                            onChange={(e) => setEditedInfo({
+                              ...editedInfo,
+                              qualification: {
+                                ...editedInfo.qualification,
+                                reasoning: e.target.value
+                              }
+                            })}
+                            className="h-8"
+                          />
+                        ) : (
+                          <div className="text-sm">{editedInfo.qualification.reasoning}</div>
+                        )}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
               
-              <AccordionItem value="qualification">
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center text-left">
-                    <CheckCircle className="mr-2 h-4 w-4 text-primary" />
-                    <span>Qualification</span>
-                    <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">
-                      {Math.round(editedInfo.qualification.confidenceScore * 100)}%
-                    </span>
+              {(editedInfo.propertyInfo.confidence < 0.85 || 
+                editedInfo.refinanceGoals.confidence < 0.85 || 
+                editedInfo.timeline.confidence < 0.85 || 
+                editedInfo.financialInfo.confidence < 0.85) && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start">
+                  <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium">Low confidence in some extracted information</p>
+                    <p className="mt-1">Please review and verify the highlighted sections above.</p>
                   </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Status</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.qualification.status} 
-                          onChange={(e) => setEditedInfo({
-                            ...editedInfo,
-                            qualification: {
-                              ...editedInfo.qualification,
-                              status: e.target.value
-                            }
-                          })}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm font-medium">
-                          <span className={`inline-block px-2 py-1 rounded ${
-                            editedInfo.qualification.status === 'Qualified' ? 'bg-blue-100 text-blue-800' :
-                            editedInfo.qualification.status === 'Highly Qualified' ? 'bg-green-100 text-green-800' :
-                            editedInfo.qualification.status === 'Not Qualified' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {editedInfo.qualification.status}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Reasoning</label>
-                      {isEditing ? (
-                        <Input 
-                          value={editedInfo.qualification.reasoning} 
-                          onChange={(e) => setEditedInfo({
-                            ...editedInfo,
-                            qualification: {
-                              ...editedInfo.qualification,
-                              reasoning: e.target.value
-                            }
-                          })}
-                          className="h-8"
-                        />
-                      ) : (
-                        <div className="text-sm">{editedInfo.qualification.reasoning}</div>
-                      )}
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-            
-            {(editedInfo.propertyInfo.confidence < 0.85 || 
-              editedInfo.refinanceGoals.confidence < 0.85 || 
-              editedInfo.timeline.confidence < 0.85 || 
-              editedInfo.financialInfo.confidence < 0.85) && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start">
-                <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium">Low confidence in some extracted information</p>
-                  <p className="mt-1">Please review and verify the highlighted sections above.</p>
                 </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="categorized" className="m-0">
-          <div className="p-4 space-y-6">
-            <PropertyInterestsSection 
-              propertyInterests={editedInfo.propertyInterests} 
-              isEditing={isEditing}
-              onEdit={(key, value) => handleEdit('propertyInterests', key, value)} 
-            />
-            
-            <div className="border-t border-border pt-4 mt-4">
-              <LocationPreferencesSection 
-                locationPreferences={editedInfo.locationPreferences} 
-                isEditing={isEditing}
-                onEdit={(key, value) => handleEdit('locationPreferences', key, value)}
-              />
+              )}
             </div>
-            
-            <div className="border-t border-border pt-4 mt-4">
-              <TransactionTypeSection 
-                transactionType={editedInfo.transactionType} 
+          </TabsContent>
+          
+          <TabsContent value="categorized" className="m-0">
+            <div className="p-4 space-y-6">
+              <PropertyInterestsSection 
+                propertyInterests={editedInfo.propertyInterests} 
                 isEditing={isEditing}
-                onEdit={(key, value) => handleEdit('transactionType', key, value)}
+                onEdit={(key, value) => handleEdit('propertyInterests', key, value)} 
               />
-            </div>
-            
-            <div className="border-t border-border pt-4 mt-4">
-              <MotivationFactorsSection 
-                motivationFactors={editedInfo.motivationFactors} 
-                isEditing={isEditing}
-                onEdit={(key, value) => handleEdit('motivationFactors', key, value)}
-              />
-            </div>
-            
-            <div className="border-t border-border pt-4 mt-4">
-              <MatchingWeightsSection 
-                matchingWeights={editedInfo.matchingWeights}
-                isEditing={isEditing}
-                onEdit={(key, value) => handleEdit('matchingWeights', key, value)}
-              />
-            </div>
-            
-            {isEditing && (
+              
               <div className="border-t border-border pt-4 mt-4">
-                <Button className="w-full" onClick={handleSaveChanges}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Verify All Categorizations
-                </Button>
+                <LocationPreferencesSection 
+                  locationPreferences={editedInfo.locationPreferences} 
+                  isEditing={isEditing}
+                  onEdit={(key, value) => handleEdit('locationPreferences', key, value)}
+                />
               </div>
-            )}
-          </div>
-        </TabsContent>
+              
+              <div className="border-t border-border pt-4 mt-4">
+                <TransactionTypeSection 
+                  transactionType={editedInfo.transactionType} 
+                  isEditing={isEditing}
+                  onEdit={(key, value) => handleEdit('transactionType', key, value)}
+                />
+              </div>
+              
+              <div className="border-t border-border pt-4 mt-4">
+                <MotivationFactorsSection 
+                  motivationFactors={editedInfo.motivationFactors} 
+                  isEditing={isEditing}
+                  onEdit={(key, value) => handleEdit('motivationFactors', key, value)}
+                />
+              </div>
+              
+              <div className="border-t border-border pt-4 mt-4">
+                <MatchingWeightsSection 
+                  matchingWeights={editedInfo.matchingWeights}
+                  isEditing={isEditing}
+                  onEdit={(key, value) => handleEdit('matchingWeights', key, value)}
+                />
+              </div>
+              
+              {isEditing && (
+                <div className="border-t border-border pt-4 mt-4">
+                  <Button className="w-full" onClick={handleSaveChanges}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Verify All Categorizations
+                  </Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </ScrollArea>
     </div>
   );

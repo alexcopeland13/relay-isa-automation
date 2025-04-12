@@ -31,13 +31,26 @@ export const HandoffProtocol = ({ conversation }: HandoffProtocolProps) => {
   const { toast } = useToast();
   const [step, setStep] = useState<'agents' | 'summary' | 'appointment' | 'preview'>('agents');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [qualification, setQualification] = useState(conversation.extractedInfo.qualification || 'Qualified');
-  const [priority, setPriority] = useState('Medium');
-  const [summaryText, setSummaryText] = useState(
-    `${conversation.leadInfo.name} is looking for ${conversation.extractedInfo.propertyType || 'a property'} in ${conversation.extractedInfo.location || 'the area'}. ` +
-    `They have a budget of ${conversation.extractedInfo.budget || '$300,000-$450,000'} and are hoping to move in ${conversation.extractedInfo.timeframe || 'within 3 months'}. ` +
-    `Key requirements include ${conversation.extractedInfo.requirements?.join(', ') || '3 bedrooms, 2 bathrooms, and a garage'}.`
+  const [qualification, setQualification] = useState(
+    typeof conversation.extractedInfo.qualification === 'object' 
+      ? conversation.extractedInfo.qualification.status 
+      : 'Qualified'
   );
+  const [priority, setPriority] = useState('Medium');
+  
+  // Get property information from propertyInfo
+  const propertyType = conversation.extractedInfo.propertyInfo?.location || 'a property';
+  const location = conversation.extractedInfo.propertyInfo?.location || 'the area';
+  const budget = '$300,000-$450,000';
+  const timeframe = 'within 3 months';
+  const requirements = ['3 bedrooms', '2 bathrooms', 'garage'];
+  
+  const [summaryText, setSummaryText] = useState(
+    `${conversation.leadInfo.name} is looking for ${propertyType} in ${location}. ` +
+    `They have a budget of ${budget} and are hoping to move in ${timeframe}. ` +
+    `Key requirements include ${requirements.join(', ')}.`
+  );
+  
   const [contactPreference, setContactPreference] = useState('');
   const [meetingType, setMeetingType] = useState<string>('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);

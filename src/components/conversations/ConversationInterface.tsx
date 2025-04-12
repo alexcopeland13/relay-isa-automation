@@ -22,6 +22,10 @@ interface ConversationInterfaceProps {
 export const ConversationInterface = ({ conversation }: ConversationInterfaceProps) => {
   const [activeTab, setActiveTab] = useState('transcript');
   
+  const qualification = typeof conversation.extractedInfo.qualification === 'object' 
+    ? conversation.extractedInfo.qualification.status 
+    : conversation.extractedInfo.qualification;
+  
   return (
     <div className="rounded-lg border border-border bg-card">
       <ConversationHeader 
@@ -29,7 +33,7 @@ export const ConversationInterface = ({ conversation }: ConversationInterfacePro
         timestamp={conversation.timestamp}
         duration={conversation.duration}
         type={conversation.type}
-        qualification={conversation.extractedInfo.qualification}
+        qualification={qualification}
       />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">

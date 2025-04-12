@@ -13,6 +13,7 @@ import { InformationPanel } from './InformationPanel';
 import { SentimentGraph } from './SentimentGraph';
 import { ActionReview } from './ActionReview';
 import { FeedbackModule } from './FeedbackModule';
+import { HandoffProtocol } from './HandoffProtocol';
 
 interface ConversationInterfaceProps {
   conversation: Conversation;
@@ -48,6 +49,9 @@ export const ConversationInterface = ({ conversation }: ConversationInterfacePro
                 <TabsTrigger value="feedback" className="data-[state=active]:bg-secondary">
                   AI Feedback
                 </TabsTrigger>
+                <TabsTrigger value="handoffs" className="data-[state=active]:bg-secondary">
+                  Handoffs
+                </TabsTrigger>
               </TabsList>
             </div>
             
@@ -65,6 +69,10 @@ export const ConversationInterface = ({ conversation }: ConversationInterfacePro
             
             <TabsContent value="feedback" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
               <FeedbackModule aiPerformance={conversation.aiPerformance} />
+            </TabsContent>
+            
+            <TabsContent value="handoffs" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+              <HandoffProtocol conversation={conversation} />
             </TabsContent>
           </Tabs>
         </div>

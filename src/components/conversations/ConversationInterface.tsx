@@ -27,14 +27,14 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
     extractedUpdates, 
     updateLeadProfile, 
     hasPendingUpdates 
-  } = useConversationData(conversation.id);
+  } = useConversationData(conversation?.id);
   
   const {
     recommendations,
     isLoading: isLoadingRecommendations,
     createFollowUp,
     dismissRecommendation
-  } = useFollowUpRecommendations(conversation.leadInfo.id);
+  } = useFollowUpRecommendations(conversation?.leadInfo?.id);
 
   // Map extracted entities to the format expected by ProfileUpdateNotification
   const formatExtractedUpdates = () => {
@@ -61,15 +61,18 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
     return success;
   };
 
+  // Safely check if we have recommendations before rendering
+  const safeRecommendations = recommendations || [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-15rem)]">
       <div className="lg:col-span-2 flex flex-col h-full">
         <ConversationHeader 
-          timestamp={conversation.timestamp}
-          duration={conversation.duration}
-          type={conversation.type}
-          qualification={conversation.qualification}
-          leadInfo={conversation.leadInfo} 
+          timestamp={conversation?.timestamp}
+          duration={conversation?.duration}
+          type={conversation?.type}
+          qualification={conversation?.qualification}
+          leadInfo={conversation?.leadInfo} 
         />
         
         {hasPendingUpdates && showNotification && (
@@ -107,13 +110,13 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           </div>
           
           <div className="p-4 h-[calc(100%-3.5rem)]">
-            {activeTab === 'transcript' && (
+            {activeTab === 'transcript' && conversation?.transcript && (
               <TranscriptViewer messages={conversation.transcript} />
             )}
-            {activeTab === 'sentiment' && (
+            {activeTab === 'sentiment' && conversation?.sentimentData && (
               <SentimentGraph messages={conversation.sentimentData} />
             )}
-            {activeTab === 'feedback' && (
+            {activeTab === 'feedback' && conversation?.aiPerformance && (
               <FeedbackModule aiPerformance={conversation.aiPerformance} />
             )}
           </div>
@@ -122,20 +125,24 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
       
       <div className="space-y-4 h-full overflow-y-auto">
         <ScrollArea className="h-full">
-          <InformationPanel extractedInfo={conversation.extractedInfo} />
+          {conversation?.extractedInfo && (
+            <InformationPanel extractedInfo={conversation.extractedInfo} />
+          )}
           
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Categories</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {conversation.categories.map((category: string, index: number) => (
-                <CategoryItem key={index} category={category} />
-              ))}
+          {conversation?.categories && conversation.categories.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold mb-2">Categories</h3>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {conversation.categories.map((category: string, index: number) => (
+                  <CategoryItem key={index} category={category} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           
           <div className="mt-4">
             <FollowUpRecommendations
-              recommendations={recommendations}
+              recommendations={safeRecommendations}
               isLoading={isLoadingRecommendations}
               onCreateFollowUp={createFollowUp}
               onDismiss={dismissRecommendation}

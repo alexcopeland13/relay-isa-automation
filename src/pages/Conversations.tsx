@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { CallSchedulerModal } from '@/components/conversations/CallSchedulerModal';
 import { HandoffProtocol } from '@/components/conversations/HandoffProtocol';
 import { ConversationContextBar } from '@/components/conversations/ConversationContextBar';
+import { ActiveCallInterface } from '@/components/conversations/ActiveCallInterface';
 
 const Conversations = () => {
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
@@ -20,6 +21,7 @@ const Conversations = () => {
     { id: '2', title: 'Review qualification data for Sarah Martinez', due: '4h' }
   ]);
   const [isHandoffDialogOpen, setIsHandoffDialogOpen] = useState(false);
+  const [isCallActive, setIsCallActive] = useState(false);
 
   const handleSelectConversation = () => {
     setSelectedConversation(sampleConversation);
@@ -28,6 +30,14 @@ const Conversations = () => {
 
   const handleBackToList = () => {
     setActiveView('list');
+  };
+  
+  const handleStartCall = () => {
+    setIsCallActive(true);
+  };
+  
+  const handleEndCall = () => {
+    setIsCallActive(false);
   };
 
   return (
@@ -80,6 +90,11 @@ const Conversations = () => {
                 </DialogTrigger>
                 <CallSchedulerModal />
               </Dialog>
+              
+              <Button onClick={handleStartCall}>
+                <Phone className="mr-2 h-4 w-4" />
+                Start Live Call
+              </Button>
             </>
           )}
         </div>
@@ -100,6 +115,13 @@ const Conversations = () => {
           <ConversationInterface conversation={selectedConversation} />
         )}
       </div>
+      
+      {isCallActive && (
+        <ActiveCallInterface 
+          leadInfo={selectedConversation.leadInfo} 
+          onClose={handleEndCall} 
+        />
+      )}
     </PageLayout>
   );
 };

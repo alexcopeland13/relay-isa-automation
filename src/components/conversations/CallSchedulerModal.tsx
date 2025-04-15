@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, PhoneOutgoing, PhoneIncoming, CalendarCheck2, Plus, Minus } from 'lucide-react';
+import { Calendar as CalendarIcon, PhoneOutgoing, PhoneIncoming, CalendarCheck2, Plus, Minus, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -38,20 +38,55 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 
-interface CallScheduleFormValues {
-  date: Date | undefined;
-  time: string;
-  purpose: string;
-  direction: 'inbound' | 'outbound';
-  notes: string;
-  addToCalendar: boolean;
-}
+// Mock function to check for scheduling conflicts
+const checkForConflicts = (date: Date, time: string): { hasConflict: boolean, conflictDetails?: string } => {
+  // In a real implementation, this would check the user's calendar
+  // For demo purposes, let's create a specific conflict scenario
+  const isConflict = date && 
+    format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && 
+    time === '2:00 PM';
+  
+  return isConflict 
+    ? { 
+        hasConflict: true, 
+        conflictDetails: 'You already have a call with Jennifer Martinez at this time.' 
+      } 
+    : { hasConflict: false };
+};
+
+// Form validation schema
+const callScheduleSchema = z.object({
+  date: z.date({
+    required_error: "Please select a date",
+  }),
+  time: z.string({
+    required_error: "Please select a time",
+  }),
+  purpose: z.string({
+    required_error: "Please select a purpose",
+  }),
+  direction: z.enum(['inbound', 'outbound'], {
+    required_error: "Please select a call direction",
+  }),
+  notes: z.string().optional(),
+  addToCalendar: z.boolean().default(true),
+  sendReminder: z.boolean().default(true),
+  reminderTime: z.string().optional(),
+});
+
+type CallScheduleFormValues = z.infer<typeof callScheduleSchema>;
 
 export const CallSchedulerModal = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [conflict, setConflict] = useState<{ hasConflict: boolean, conflictDetails?: string }>({ hasConflict: false });
   
   const form = useForm<CallScheduleFormValues>({
+    resolver: zodResolver(callScheduleSchema),
     defaultValues: {
       date: undefined,
       time: '',
@@ -59,20 +94,63 @@ export const CallSchedulerModal = () => {
       direction: 'outbound',
       notes: '',
       addToCalendar: true,
+      sendReminder: true,
+      reminderTime: '15min',
     },
   });
 
-  const onSubmit = (data: CallScheduleFormValues) => {
-    // In a real implementation, this would save the scheduled call
-    toast.success('Call scheduled successfully', {
-      description: `${data.direction} call scheduled for ${format(data.date!, 'PPP')} at ${data.time}`,
-    });
+  // Check for conflicts when date or time changes
+  const watchDate = form.watch('date');
+  const watchTime = form.watch('time');
+  
+  const checkConflicts = () => {
+    if (watchDate && watchTime) {
+      const conflictResult = checkForConflicts(watchDate, watchTime);
+      setConflict(conflictResult);
+    } else {
+      setConflict({ hasConflict: false });
+    }
+  };
+  
+  // Reset conflict when date or time changes
+  React.useEffect(() => {
+    if (watchDate && watchTime) {
+      checkConflicts();
+    }
+  }, [watchDate, watchTime]);
+
+  const onSubmit = async (data: CallScheduleFormValues) => {
+    // First check for conflicts
+    const conflictResult = checkForConflicts(data.date, data.time);
+    if (conflictResult.hasConflict) {
+      setConflict(conflictResult);
+      return;
+    }
     
-    console.log('Scheduled call:', data);
-    // Close the dialog
-    document.querySelector('[data-radix-dialog-close]')?.dispatchEvent(
-      new MouseEvent('click', { bubbles: true })
-    );
+    setIsSubmitting(true);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // In a real implementation, this would save the scheduled call
+      console.log('Scheduled call:', data);
+      
+      toast.success('Call scheduled successfully', {
+        description: `${data.direction} call scheduled for ${format(data.date, 'PPP')} at ${data.time}`,
+      });
+      
+      // Close the dialog
+      document.querySelector('[data-radix-dialog-close]')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true })
+      );
+    } catch (error) {
+      toast.error('Failed to schedule call', {
+        description: 'There was a problem scheduling your call. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
@@ -93,6 +171,14 @@ export const CallSchedulerModal = () => {
     'Closing details',
     'Other',
   ];
+  
+  const reminderOptions = [
+    { value: '5min', label: '5 minutes before' },
+    { value: '15min', label: '15 minutes before' },
+    { value: '30min', label: '30 minutes before' },
+    { value: '1hour', label: '1 hour before' },
+    { value: '1day', label: '1 day before' },
+  ];
 
   return (
     <DialogContent className="sm:max-w-[500px]">
@@ -105,13 +191,23 @@ export const CallSchedulerModal = () => {
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {conflict.hasConflict && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Scheduling Conflict</AlertTitle>
+              <AlertDescription>
+                {conflict.conflictDetails}
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Date</FormLabel>
+                  <FormLabel>Date <span className="text-destructive">*</span></FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -154,7 +250,7 @@ export const CallSchedulerModal = () => {
               name="time"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Time</FormLabel>
+                  <FormLabel>Time <span className="text-destructive">*</span></FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -180,7 +276,7 @@ export const CallSchedulerModal = () => {
             name="purpose"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Call Purpose</FormLabel>
+                <FormLabel>Call Purpose <span className="text-destructive">*</span></FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -205,7 +301,7 @@ export const CallSchedulerModal = () => {
             name="direction"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Call Direction</FormLabel>
+                <FormLabel>Call Direction <span className="text-destructive">*</span></FormLabel>
                 <div className="flex space-x-4">
                   <div 
                     className={cn(
@@ -254,31 +350,90 @@ export const CallSchedulerModal = () => {
             )}
           />
           
-          <FormField
-            control={form.control}
-            name="addToCalendar"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">Add to Calendar</FormLabel>
-                  <FormDescription>
-                    Automatically add this call to your work calendar
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
+          <div className="space-y-2">
+            <FormField
+              control={form.control}
+              name="addToCalendar"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Add to Calendar</FormLabel>
+                    <FormDescription>
+                      Automatically add this call to your work calendar
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="sendReminder"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Send Reminder</FormLabel>
+                    <FormDescription>
+                      Get notified before the scheduled call
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            
+            {form.watch('sendReminder') && (
+              <FormField
+                control={form.control}
+                name="reminderTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reminder Time</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="When to send the reminder" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {reminderOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-          />
+          </div>
           
           <DialogFooter>
-            <Button type="submit">
-              <CalendarCheck2 className="mr-2 h-4 w-4" />
-              Schedule Call
+            <Button type="submit" disabled={isSubmitting || conflict.hasConflict}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Scheduling...
+                </>
+              ) : (
+                <>
+                  <CalendarCheck2 className="mr-2 h-4 w-4" />
+                  Schedule Call
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

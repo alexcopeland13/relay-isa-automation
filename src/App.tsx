@@ -4,8 +4,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { FormToastProvider } from "@/components/ui/form-toast";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -55,26 +56,37 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          {showOnboarding && <OnboardingFlow />}
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/leads" element={<Leads />} />
-            <Route path="/agents" element={<Agents />} />
-            <Route path="/agents/:id" element={<AgentDetail />} />
-            <Route path="/agents/create" element={<AgentCreate />} />
-            <Route path="/agents/edit/:id" element={<AgentEdit />} />
-            <Route path="/conversations" element={<Conversations />} />
-            <Route path="/follow-ups" element={<FollowUps />} />
-            <Route path="/upcoming-calls" element={<UpcomingCalls />} />
-            <Route path="/pending-followups" element={<PendingFollowups />} />
-            <Route path="/completed-tasks" element={<CompletedTasks />} />
-            <Route path="/conversion-outcomes" element={<ConversionOutcomes />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <FormToastProvider>
+          <BrowserRouter>
+            {showOnboarding && <OnboardingFlow />}
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/leads" element={<Leads />} />
+              <Route path="/agents" element={<Agents />} />
+              <Route path="/agents/create" element={<AgentCreate />} />
+              <Route path="/agents/edit/:id" element={<AgentEdit />} />
+              <Route path="/agents/:id" element={<AgentDetail />} />
+              <Route path="/conversations" element={<Conversations />} />
+              <Route path="/follow-ups" element={<FollowUps />} />
+              <Route path="/upcoming-calls" element={<UpcomingCalls />} />
+              <Route path="/pending-followups" element={<PendingFollowups />} />
+              <Route path="/completed-tasks" element={<CompletedTasks />} />
+              <Route path="/conversion-outcomes" element={<ConversionOutcomes />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/settings" element={<Settings />} />
+              
+              {/* Catch old or incorrect routes and redirect them */}
+              <Route path="/agent/:id" element={<Navigate to="/agents/:id" replace />} />
+              <Route path="/pending-follow-ups" element={<Navigate to="/pending-followups" replace />} />
+              <Route path="/upcoming-call" element={<Navigate to="/upcoming-calls" replace />} />
+              <Route path="/completed-task" element={<Navigate to="/completed-tasks" replace />} />
+              <Route path="/conversion-outcome" element={<Navigate to="/conversion-outcomes" replace />} />
+              
+              {/* Catch-all for 404s */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </FormToastProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

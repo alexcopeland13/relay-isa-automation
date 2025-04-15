@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { 
-  Bell, 
   Search, 
   User,
   ChevronDown,
@@ -18,10 +17,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { NotificationsPanel } from './NotificationsPanel';
 
 export const Header = () => {
-  const [unreadNotifications] = useState(5);
-  
   return (
     <header className="bg-white border-b border-border h-16 flex items-center justify-between px-6">
       <div className="flex-1 max-w-xl">
@@ -35,16 +33,7 @@ export const Header = () => {
       </div>
       
       <div className="flex items-center gap-4">
-        <div className="relative">
-          <button className="p-2 rounded-full hover:bg-secondary transition-colors">
-            <Bell size={20} />
-            {unreadNotifications > 0 && (
-              <span className="absolute top-0 right-0 bg-emmaccent text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {unreadNotifications}
-              </span>
-            )}
-          </button>
-        </div>
+        <NotificationsPanel />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

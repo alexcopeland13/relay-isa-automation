@@ -46,8 +46,10 @@ const NavItem = ({ icon: Icon, label, path, isCollapsed, badgeCount }: NavItemPr
         isActive && "active"
       )}
       title={isCollapsed ? label : undefined}
+      role="menuitem"
+      aria-current={isActive ? "page" : undefined}
     >
-      <Icon size={20} />
+      <Icon size={20} aria-hidden="true" />
       {!isCollapsed && <span>{label}</span>}
       
       {badgeCount !== undefined && badgeCount > 0 && (
@@ -104,21 +106,25 @@ export const Sidebar = () => {
           "flex flex-col bg-sidebar h-screen bg-emmblue transition-all duration-300",
           isCollapsed ? "w-[70px]" : "w-[250px]"
         )}
+        role="navigation"
+        aria-label="Main Navigation"
       >
         <div className="flex items-center p-4 border-b border-sidebar-border">
-          {!isCollapsed ? (
-            <div className="flex items-center gap-2 text-white">
-              <Home size={24} className="text-emmaccent" />
-              <span className="font-bold text-lg">Relay</span>
-            </div>
-          ) : (
-            <Home size={24} className="mx-auto text-emmaccent" />
-          )}
+          <Link to="/" className="flex items-center gap-2 text-white" aria-label="Home">
+            {!isCollapsed ? (
+              <>
+                <Home size={24} className="text-emmaccent" aria-hidden="true" />
+                <span className="font-bold text-lg">Relay</span>
+              </>
+            ) : (
+              <Home size={24} className="mx-auto text-emmaccent" aria-hidden="true" />
+            )}
+          </Link>
         </div>
         
-        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto" role="menubar">
           {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-2 pb-1">
+            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-2 pb-1" role="presentation">
               Engage
             </div>
           )}
@@ -131,7 +137,7 @@ export const Sidebar = () => {
           ))}
           
           {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3">
+            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3" role="presentation">
               Plan
             </div>
           )}
@@ -144,7 +150,7 @@ export const Sidebar = () => {
           ))}
           
           {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3">
+            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3" role="presentation">
               Review
             </div>
           )}
@@ -157,7 +163,7 @@ export const Sidebar = () => {
           ))}
           
           {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3">
+            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3" role="presentation">
               Manage
             </div>
           )}
@@ -178,8 +184,9 @@ export const Sidebar = () => {
               isCollapsed && "px-0 justify-center"
             )}
             onClick={handleHelpClick}
+            aria-label="Help and Guide"
           >
-            <HelpCircle size={20} />
+            <HelpCircle size={20} aria-hidden="true" />
             {!isCollapsed && <span className="ml-2">Help & Guide</span>}
           </Button>
         </div>
@@ -187,8 +194,10 @@ export const Sidebar = () => {
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-2 mx-auto mb-4 rounded-full bg-sidebar-accent hover:bg-sidebar-accent/80 text-white transition-colors"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          {isCollapsed ? <ChevronRight size={20} aria-hidden="true" /> : <ChevronLeft size={20} aria-hidden="true" />}
         </button>
       </div>
     </>

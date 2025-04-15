@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { MessageSquare, List, Filter, Phone, BellRing, Clock } from 'lucide-react';
 import { sampleConversation } from '@/data/sampleConversation';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { CallSchedulerModal } from '@/components/conversations/CallSchedulerModal';
+import { HandoffProtocol } from '@/components/conversations/HandoffProtocol';
 import { ConversationContextBar } from '@/components/conversations/ConversationContextBar';
 
 const Conversations = () => {
@@ -18,6 +19,7 @@ const Conversations = () => {
     { id: '1', title: 'Follow up with Michael Brown', due: '2h' },
     { id: '2', title: 'Review qualification data for Sarah Martinez', due: '4h' }
   ]);
+  const [isHandoffDialogOpen, setIsHandoffDialogOpen] = useState(false);
 
   const handleSelectConversation = () => {
     setSelectedConversation(sampleConversation);
@@ -44,10 +46,23 @@ const Conversations = () => {
         </div>
         <div className="flex gap-2">
           {activeView === 'detail' && (
-            <Button variant="outline" onClick={handleBackToList}>
-              <List className="mr-2 h-4 w-4" />
-              Back to List
-            </Button>
+            <>
+              <Button variant="outline" onClick={handleBackToList}>
+                <List className="mr-2 h-4 w-4" />
+                Back to List
+              </Button>
+              <Dialog open={isHandoffDialogOpen} onOpenChange={setIsHandoffDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Agent Handoff
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
+                  <HandoffProtocol conversation={selectedConversation} />
+                </DialogContent>
+              </Dialog>
+            </>
           )}
           {activeView === 'list' && (
             <>

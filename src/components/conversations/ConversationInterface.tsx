@@ -6,6 +6,11 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Conversation } from '@/data/sampleConversation';
 import { ConversationHeader } from './ConversationHeader';
 import { TranscriptViewer } from './TranscriptViewer';
@@ -37,6 +42,7 @@ export const ConversationInterface = ({ conversation }: ConversationInterfacePro
   const [activeTab, setActiveTab] = useState('transcript');
   const [activePanel, setActivePanel] = useState('lead-info');
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const [isHandoffDialogOpen, setIsHandoffDialogOpen] = useState(false);
   
   const qualification = typeof conversation.extractedInfo.qualification === 'object' 
     ? conversation.extractedInfo.qualification.status 
@@ -116,10 +122,17 @@ export const ConversationInterface = ({ conversation }: ConversationInterfacePro
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Send Text
               </Button>
-              <Button size="sm">
-                <Calendar className="mr-2 h-4 w-4" />
-                Agent Handoff
-              </Button>
+              <Dialog open={isHandoffDialogOpen} onOpenChange={setIsHandoffDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Agent Handoff
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
+                  <HandoffProtocol conversation={conversation} />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
           

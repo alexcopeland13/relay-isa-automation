@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,7 @@ import {
 import { sampleLeads } from '@/data/sampleLeadsData';
 import { useAsyncData } from '@/hooks/use-async-data';
 import { ErrorContainer } from '@/components/ui/error-container';
-import { ExportMenu } from '@/components/ui/export-menu';
+import { ExportMenu, ExportOptions } from '@/components/ui/export-menu';
 import { 
   TableSkeleton, 
   StatCardSkeleton, 

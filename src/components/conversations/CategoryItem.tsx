@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { CategoryItem as CategoryItemType } from '@/data/sampleConversation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-interface CategoryItemProps {
+export interface CategoryItemProps {
   item: CategoryItemType;
   onVerify?: (item: CategoryItemType) => void;
   onEdit?: (item: CategoryItemType) => void;

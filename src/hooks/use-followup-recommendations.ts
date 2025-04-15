@@ -116,7 +116,6 @@ export function useFollowUpRecommendations(leadId?: string) {
           phone: '(555) 123-4567',
           status: 'Qualified',
           source: 'Website Inquiry',
-          date: new Date().toISOString(),
           lastContact: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
           notes: 'Interested in investment properties',
           tags: ['investor', 'premium'],

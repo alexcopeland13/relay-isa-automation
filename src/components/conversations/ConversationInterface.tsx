@@ -9,7 +9,7 @@ import { AgentMatchingPanel } from './AgentMatchingPanel';
 import { SentimentGraph } from './SentimentGraph';
 import { FollowUpPanel } from './FollowUpPanel';
 import { FeedbackModule } from './FeedbackModule';
-import { CategoryItemDisplay } from './CategoryItem';
+import { CategoryItem } from './CategoryItem';
 import { ProfileUpdateNotification } from './ProfileUpdateNotification';
 import { FollowUpRecommendations } from '../follow-ups/FollowUpRecommendations'; 
 import { useConversationData } from '@/hooks/use-conversation-data';
@@ -111,7 +111,7 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
               <TranscriptViewer messages={conversation.transcript} />
             )}
             {activeTab === 'sentiment' && (
-              <SentimentGraph sentimentData={conversation.sentimentData} />
+              <SentimentGraph messages={conversation.sentimentData} />
             )}
             {activeTab === 'feedback' && (
               <FeedbackModule aiPerformance={conversation.aiPerformance} />
@@ -122,13 +122,13 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
       
       <div className="space-y-4 h-full overflow-y-auto">
         <ScrollArea className="h-full">
-          <InformationPanel lead={conversation.leadInfo} />
+          <InformationPanel extractedInfo={conversation.extractedInfo} />
           
           <div className="mt-4">
             <h3 className="text-lg font-semibold mb-2">Categories</h3>
             <div className="flex flex-wrap gap-2 mb-4">
               {conversation.categories.map((category: string, index: number) => (
-                <CategoryItemDisplay key={index} category={category} />
+                <CategoryItem key={index} category={category} />
               ))}
             </div>
           </div>
@@ -143,7 +143,7 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           </div>
           
           <div className="mt-4">
-            <AgentMatchingPanel lead={conversation.leadInfo} />
+            <AgentMatchingPanel conversation={conversation} />
           </div>
           
           <div className="mt-4 mb-8">

@@ -30,19 +30,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 
+export interface ExportOptions {
+  dateRange: {from: Date, to: Date} | null;
+  fields: string[];
+  format: string;
+  recipient?: string;
+}
+
 export interface ExportMenuProps {
   data: any[];
   filename?: string;
   exportableCols?: string[];
   supportedFormats?: ('csv' | 'pdf' | 'email')[];
   onExport?: (format: string, options: ExportOptions) => Promise<void>;
-}
-
-export interface ExportOptions {
-  dateRange: {from: Date, to: Date} | null;
-  fields: string[];
-  format: string;
-  recipient?: string;
 }
 
 export function ExportMenu({

@@ -28,6 +28,7 @@ import { PropertyInterestsSection } from './PropertyInterestsSection';
 import { MotivationFactorsSection } from './MotivationFactorsSection';
 import { MatchingWeightsSection } from './MatchingWeightsSection';
 import { RecommendedAgentsList } from './RecommendedAgentsList';
+import { Agent } from '@/types/agent'; 
 
 interface AgentMatchingPanelProps {
   conversation: Conversation;
@@ -43,6 +44,68 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
     conversation.extractedInfo.qualification.status === 'Highly Qualified' ? 90 :
     conversation.extractedInfo.qualification.status === 'Qualified' ? 70 :
     conversation.extractedInfo.qualification.status === 'Needs More Information' ? 40 : 20;
+  
+  // Default matching weights for agent matching
+  const [matchingWeights, setMatchingWeights] = useState({
+    propertyType: 0.3,
+    location: 0.3,
+    priceRange: 0.2,
+    timeline: 0.1,
+    financing: 0.1,
+  });
+  
+  const [isEditingWeights, setIsEditingWeights] = useState(false);
+  
+  // Sample agents for demonstration
+  const sampleAgents: Agent[] = [
+    {
+      id: 'agent-1',
+      name: 'Sarah Johnson',
+      agency: 'Prestige Real Estate',
+      email: 'sarah.j@prestigere.com',
+      phone: '555-123-4567',
+      areas: ['Downtown', 'Metro West', 'Suburbia'],
+      specializations: ['Luxury Homes', 'Condos', 'First-time Buyers'],
+      yearsOfExperience: 8,
+      successRate: 94,
+      activeListings: 12,
+      status: 'Active',
+      rating: 4.9,
+      photoUrl: 'https://randomuser.me/api/portraits/women/32.jpg'
+    },
+    {
+      id: 'agent-2',
+      name: 'Michael Patel',
+      agency: 'Horizon Properties',
+      email: 'michael.p@horizonprop.com',
+      phone: '555-987-6543',
+      areas: ['Metro East', 'Lakeside', 'University District'],
+      specializations: ['Investment Properties', 'Single Family Homes', 'Relocation'],
+      yearsOfExperience: 5,
+      successRate: 89,
+      activeListings: 8,
+      status: 'Active',
+      rating: 4.7,
+      photoUrl: 'https://randomuser.me/api/portraits/men/45.jpg'
+    }
+  ];
+  
+  // Handle weight editing
+  const handleEditWeight = (key: string, value: number) => {
+    setMatchingWeights(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+  
+  // Create transaction type object from extracted info
+  const transactionType = {
+    role: conversation.extractedInfo.preferences?.buyerOrSeller || { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
+    transactionTimeline: conversation.extractedInfo.timeline?.urgency ? { value: conversation.extractedInfo.timeline.urgency, confidence: conversation.extractedInfo.timeline.confidence, source: "AI", verified: false } : { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
+    financingStatus: conversation.extractedInfo.financialInfo?.estimatedCredit ? { value: "Pre-approved", confidence: conversation.extractedInfo.financialInfo.confidence, source: "AI", verified: false } : { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
+    firstTimeBuyer: conversation.extractedInfo.preferences?.firstTimeBuyer || { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
+    confidence: conversation.extractedInfo.preferences?.confidence || 0.7
+  };
   
   return (
     <div className="p-4 space-y-6">
@@ -78,19 +141,19 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Property Interests
                 </Badge>
-                {conversation.extractedInfo.financialInfo.preApproved && (
+                {conversation.extractedInfo.financialInfo && (
                   <Badge variant="outline" className="bg-green-100 text-green-800">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Pre-Approved
                   </Badge>
                 )}
-                {conversation.extractedInfo.timeline.timeframe !== 'Unknown' && (
+                {conversation.extractedInfo.timeline && (
                   <Badge variant="outline" className="bg-green-100 text-green-800">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Timeline
                   </Badge>
                 )}
-                {!conversation.extractedInfo.financialInfo.preApproved && (
+                {!conversation.extractedInfo.financialInfo && (
                   <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
                     Financial Status
                   </Badge>
@@ -104,20 +167,46 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
       <div>
         <h4 className="text-sm font-medium mb-3">Matching Criteria</h4>
         <div className="space-y-4">
-          <TransactionTypeSection preferences={conversation.extractedInfo.preferences} />
-          <LocationPreferencesSection location={conversation.extractedInfo.location} />
-          <PropertyInterestsSection preferences={conversation.extractedInfo.preferences} />
-          <MotivationFactorsSection motivation={conversation.extractedInfo.motivation} />
-          <MatchingWeightsSection />
+          <TransactionTypeSection 
+            transactionType={transactionType} 
+            isEditing={false} 
+            onEdit={() => {}}
+          />
+          <LocationPreferencesSection 
+            locationPreferences={conversation.extractedInfo.preferences?.location || {}} 
+            isEditing={false} 
+            onEdit={() => {}}
+          />
+          <PropertyInterestsSection 
+            propertyInterests={conversation.extractedInfo.preferences?.propertyType || {}} 
+            isEditing={false} 
+            onEdit={() => {}}
+          />
+          <MotivationFactorsSection 
+            motivationFactors={conversation.extractedInfo.preferences?.motivations || {}} 
+            isEditing={false} 
+            onEdit={() => {}}
+          />
+          <MatchingWeightsSection 
+            matchingWeights={matchingWeights}
+            isEditing={isEditingWeights}
+            onEdit={handleEditWeight}
+          />
         </div>
       </div>
       
       <div>
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-medium">Recommended Agents</h4>
-          <Button size="sm" variant="outline">Adjust Matching</Button>
+          <Button size="sm" variant="outline" onClick={() => setIsEditingWeights(!isEditingWeights)}>
+            {isEditingWeights ? 'Save Matching' : 'Adjust Matching'}
+          </Button>
         </div>
-        <RecommendedAgentsList />
+        <RecommendedAgentsList 
+          agents={sampleAgents}
+          leadInfo={conversation.leadInfo}
+          onSelectAgent={(agent) => console.log('Selected agent:', agent)}
+        />
       </div>
       
       <div className="pt-4 border-t border-border">

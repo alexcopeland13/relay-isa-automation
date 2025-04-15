@@ -23,12 +23,15 @@ import { Button } from '@/components/ui/button';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 import { Badge } from '@/components/ui/badge';
 
-type NavItemProps = {
+type NavItem = {
   icon: React.ElementType;
   label: string;
   path: string;
-  isCollapsed: boolean;
   badgeCount?: number;
+};
+
+type NavItemProps = NavItem & {
+  isCollapsed: boolean;
 };
 
 const NavItem = ({ icon: Icon, label, path, isCollapsed, badgeCount }: NavItemProps) => {
@@ -66,25 +69,25 @@ export const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const engageItems = [
+  const engageItems: NavItem[] = [
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
     { icon: Users, label: 'New Leads', path: '/leads', badgeCount: 2 },
     { icon: PhoneCall, label: 'Priority Follow-ups', path: '/follow-ups', badgeCount: 3 },
   ];
   
-  const planItems = [
+  const planItems: NavItem[] = [
     { icon: Calendar, label: 'Upcoming Calls', path: '/upcoming-calls' },
     { icon: Clock, label: 'Pending Follow-ups', path: '/pending-followups' },
     { icon: UserSearch, label: 'Agent Availability', path: '/agents', badgeCount: 1 },
   ];
   
-  const reviewItems = [
+  const reviewItems: NavItem[] = [
     { icon: CheckSquare, label: 'Completed Tasks', path: '/completed-tasks' },
     { icon: FileText, label: 'Conversion Outcomes', path: '/conversion-outcomes' },
     { icon: BarChart3, label: 'Performance Metrics', path: '/analytics' },
   ];
   
-  const manageItems = [
+  const manageItems: NavItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
@@ -122,11 +125,8 @@ export const Sidebar = () => {
           {engageItems.map((item) => (
             <NavItem 
               key={item.path}
-              icon={item.icon}
-              label={item.label}
-              path={item.path}
+              {...item}
               isCollapsed={isCollapsed}
-              badgeCount={item.badgeCount}
             />
           ))}
           
@@ -138,11 +138,8 @@ export const Sidebar = () => {
           {planItems.map((item) => (
             <NavItem 
               key={item.path}
-              icon={item.icon}
-              label={item.label}
-              path={item.path}
+              {...item}
               isCollapsed={isCollapsed}
-              badgeCount={item.badgeCount}
             />
           ))}
           
@@ -154,11 +151,8 @@ export const Sidebar = () => {
           {reviewItems.map((item) => (
             <NavItem 
               key={item.path}
-              icon={item.icon}
-              label={item.label}
-              path={item.path}
+              {...item}
               isCollapsed={isCollapsed}
-              badgeCount={item.badgeCount}
             />
           ))}
           
@@ -170,11 +164,8 @@ export const Sidebar = () => {
           {manageItems.map((item) => (
             <NavItem 
               key={item.path}
-              icon={item.icon}
-              label={item.label}
-              path={item.path}
+              {...item}
               isCollapsed={isCollapsed}
-              badgeCount={item.badgeCount}
             />
           ))}
         </nav>

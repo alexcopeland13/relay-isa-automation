@@ -315,7 +315,7 @@ const Dashboard = () => {
           <StatCard 
             title="AI Conversations" 
             value={data?.stats.aiConversations.toString() || "—"} 
-            icon={<MessageSquareCheck size={20} />}
+            icon={<MessageSquareCheck className="h-5 w-5" />}
             trend={{
               value: 23,
               label: "vs last month",

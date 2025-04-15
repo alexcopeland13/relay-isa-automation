@@ -87,70 +87,46 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
         },
   });
 
-  const handleSubmit = async (values: LeadFormValues) => {
+  const handleSubmit = async (values: z.infer<typeof leadFormSchema>) => {
     setIsSubmitting(true);
 
     try {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // If editing, merge with existing lead data, otherwise create new lead
-      const savedLead: Lead = isEditMode
-        ? {
-            ...lead!,
-            ...values,
-            // Ensure status is properly typed
-            status: values.status as "New" | "Contacted" | "Qualified" | "Proposal" | "Converted" | "Lost",
-            lastContact: new Date().toISOString(),
-          }
-        : {
-            id: `ld-${Math.floor(Math.random() * 10000)}`,
-            createdAt: new Date().toISOString(),
-            lastContact: new Date().toISOString(),
-            assignedTo: 'unassigned',
-            score: Math.floor(Math.random() * 50) + 30,
-            name: values.name,
-            email: values.email,
-            phone: values.phone,
-            // Ensure status is properly typed
-            status: values.status as "New" | "Contacted" | "Qualified" | "Proposal" | "Converted" | "Lost",
-            source: values.source,
-            type: values.type,
-            interestType: values.interestType,
-            location: values.location,
-            notes: values.notes || '',
-          };
+      // Create the lead object
+      const newLead = {
+        id: lead?.id || `lead-${Date.now()}`,
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        interestType: values.interestType,
+        status: values.status as "New" | "Contacted" | "Qualified" | "Proposal" | "Converted" | "Lost",
+        type: values.type as "Mortgage" | "Realtor",
+        location: values.location,
+        source: values.source,
+        notes: values.notes,
+        score: values.score,
+        lastContact: values.lastContact,
+        createdAt: lead?.createdAt || new Date().toISOString(),
+        assignedTo: values.assignedTo,
+      };
 
-      // Get existing leads from localStorage or use empty array
-      const existingLeadsJSON = localStorage.getItem('relayLeads');
-      let existingLeads: Lead[] = existingLeadsJSON ? JSON.parse(existingLeadsJSON) : [];
-
-      if (isEditMode) {
-        // Update existing lead
-        existingLeads = existingLeads.map(l => (l.id === savedLead.id ? savedLead : l));
-      } else {
-        // Add new lead
-        existingLeads.push(savedLead);
-      }
-
-      // Save to localStorage
-      localStorage.setItem('relayLeads', JSON.stringify(existingLeads));
-
-      // Call the onSave callback
-      onSave(savedLead);
+      // Call onSave callback with the new/updated lead
+      onSave(newLead);
 
       // Show success toast
       toast({
         title: isEditMode ? 'Lead updated' : 'Lead created',
         description: isEditMode
-          ? `${savedLead.name}'s information has been updated`
-          : `${savedLead.name} has been added to your leads`,
+          ? `${newLead.name}'s information has been updated`
+          : `${newLead.name} has been added to your leads`,
       });
 
       // Close the modal
       onClose();
     } catch (error) {
-      console.error('Error saving lead:', error);
+      console.error("Error saving lead:", error);
       toast({
         title: 'Error',
         description: 'There was a problem saving the lead. Please try again.',

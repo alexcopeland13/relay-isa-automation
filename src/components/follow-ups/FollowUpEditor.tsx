@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { FollowUp, Template, sampleTemplates } from '@/data/sampleFollowUpData';
+import { FollowUp, MessageTemplate, sampleTemplates } from '@/data/sampleFollowUpData';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +34,7 @@ interface FollowUpEditorProps {
 
 export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorProps) => {
   const [updatedFollowUp, setUpdatedFollowUp] = useState<FollowUp>({ ...followUp });
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(
     sampleTemplates.find(t => t.id === followUp.suggestedTemplate) || null
   );
   
@@ -55,7 +54,6 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
   
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
-      // Preserve the time from the existing date
       const existingDate = parseISO(updatedFollowUp.scheduledFor);
       const newDate = new Date(date);
       
@@ -69,7 +67,6 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
   const handleTimeChange = (timeString: string) => {
     const [hours, minutes] = timeString.split(':').map(Number);
     
-    // Preserve the date but update the time
     const existingDate = parseISO(updatedFollowUp.scheduledFor);
     const newDate = new Date(existingDate);
     
@@ -113,7 +110,6 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
       
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Lead Information */}
           <div className="space-y-4 col-span-1">
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Lead Information</h3>
@@ -288,7 +284,6 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
             </div>
           </div>
           
-          {/* Content Editor */}
           <div className="col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">
@@ -313,7 +308,7 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
                   <SelectContent>
                     {getTemplatesByChannel().map((template) => (
                       <SelectItem key={template.id} value={template.id}>
-                        {template.name}
+                        {template.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -323,7 +318,7 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
             
             {selectedTemplate && (
               <div className="text-xs text-muted-foreground mb-1">
-                <span className="font-medium">Template:</span> {selectedTemplate.name}
+                <span className="font-medium">Template:</span> {selectedTemplate.title}
                 <span className="mx-2">•</span>
                 <span>{selectedTemplate.description}</span>
               </div>
@@ -388,7 +383,7 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
             <div className="border rounded-md p-4">
               <h4 className="text-sm font-medium mb-2">Available Personalization Variables</h4>
               <div className="flex flex-wrap gap-2">
-                {selectedTemplate && selectedTemplate.variables.map((variable) => (
+                {selectedTemplate && selectedTemplate.variables && selectedTemplate.variables.map((variable) => (
                   <Button 
                     key={variable} 
                     variant="outline" 
@@ -403,7 +398,7 @@ export const FollowUpEditor = ({ followUp, onSave, onCancel }: FollowUpEditorPro
                   </Button>
                 ))}
                 
-                {(!selectedTemplate || selectedTemplate.variables.length === 0) && (
+                {(!selectedTemplate || !selectedTemplate.variables || selectedTemplate.variables.length === 0) && (
                   <span className="text-sm text-muted-foreground">
                     No variables available for this template
                   </span>

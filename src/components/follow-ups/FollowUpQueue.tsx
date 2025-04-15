@@ -1,52 +1,61 @@
-import { useState, useEffect } from 'react';
-import { format, parseISO, isPast } from 'date-fns';
-import { FollowUp, sampleTemplates } from '@/data/sampleFollowUpData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import { useState } from 'react';
+import { format, parseISO, isAfter, isBefore, startOfToday, startOfTomorrow, addDays } from 'date-fns';
+import { FollowUp } from '@/data/sampleFollowUpData';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Input } from '@/components/ui/input';
+import { 
+  Mail, 
+  Phone, 
+  MessageSquare, 
+  Search, 
+  UserPlus, 
+  Check, 
+  X, 
+  Edit, 
+  Trash2, 
+  Clock, 
+  Filter, 
+  ChevronDown,
+  Calendar,
+  ArrowUpDown
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Calendar as CalendarIcon,
-  Clock,
-  Mail,
-  Phone,
-  MessageSquare,
-  User,
-  MoreHorizontal,
-  CheckCircle,
-  XCircle,
-  ArrowRight,
-  RefreshCw,
-  AlertTriangle
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { FollowUpEditor } from '@/components/follow-ups/FollowUpEditor';
+} from '@/components/ui/select';
 
 interface FollowUpQueueProps {
   followUps: FollowUp[];
@@ -55,398 +64,385 @@ interface FollowUpQueueProps {
   onDeleteFollowUp: (followUpId: string) => void;
 }
 
-export const FollowUpQueue = ({
-  followUps,
-  onStatusChange,
-  onEditFollowUp,
-  onDeleteFollowUp
+export const FollowUpQueue = ({ 
+  followUps, 
+  onStatusChange, 
+  onEditFollowUp, 
+  onDeleteFollowUp 
 }: FollowUpQueueProps) => {
-  const { toast } = useToast();
-  const [selectedStatus, setSelectedStatus] = useState<FollowUp['status']>('pending');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [isApprovingAll, setIsApprovingAll] = useState(false);
-  const [isRejectingAll, setIsRejectingAll] = useState(false);
-  const [editingFollowUp, setEditingFollowUp] = useState<FollowUp | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FollowUp['status'] | 'all'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<FollowUp['priority'] | 'all'>('all');
+  const [channelFilter, setChannelFilter] = useState<FollowUp['channel'] | 'all'>('all');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'scheduledFor',
+    direction: 'asc'
+  });
 
+  // Filter follow-ups based on search term and filters
   const filteredFollowUps = followUps.filter(followUp => {
-    const searchTerm = searchQuery.toLowerCase();
-    const leadName = followUp.leadInfo.name.toLowerCase();
-    const leadEmail = followUp.leadInfo.email.toLowerCase();
+    const matchesSearch = 
+      followUp.leadInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      followUp.leadInfo.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      followUp.leadInfo.interestType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      followUp.suggestedContent.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return (
-      (selectedStatus === 'all' || followUp.status === selectedStatus) &&
-      (searchTerm === '' || leadName.includes(searchTerm) || leadEmail.includes(searchTerm))
-    );
+    const matchesStatus = statusFilter === 'all' || followUp.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || followUp.priority === priorityFilter;
+    const matchesChannel = channelFilter === 'all' || followUp.channel === channelFilter;
+    
+    return matchesSearch && matchesStatus && matchesPriority && matchesChannel;
   });
 
+  // Sort follow-ups
   const sortedFollowUps = [...filteredFollowUps].sort((a, b) => {
-    const dateA = parseISO(a.scheduledFor);
-    const dateB = parseISO(b.scheduledFor);
+    if (sortConfig.key === 'scheduledFor') {
+      const dateA = new Date(a.scheduledFor).getTime();
+      const dateB = new Date(b.scheduledFor).getTime();
+      return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+    }
     
-    return sortOrder === 'asc' ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+    if (sortConfig.key === 'priority') {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const orderA = priorityOrder[a.priority as keyof typeof priorityOrder];
+      const orderB = priorityOrder[b.priority as keyof typeof priorityOrder];
+      return sortConfig.direction === 'asc' ? orderA - orderB : orderB - orderA;
+    }
+    
+    if (sortConfig.key === 'leadName') {
+      const nameA = a.leadInfo.name.toLowerCase();
+      const nameB = b.leadInfo.name.toLowerCase();
+      if (nameA < nameB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (nameA > nameB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    }
+    
+    return 0;
   });
 
-  const handleApproveAll = async () => {
-    setIsApprovingAll(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Approve all follow-ups with the selected status
-      filteredFollowUps.forEach(followUp => {
-        onStatusChange(followUp.id, 'approved');
-      });
-      
-      toast({
-        title: "Follow-ups Approved",
-        description: "All follow-ups have been approved successfully.",
-      });
-    } catch (error) {
-      console.error("Error approving follow-ups:", error);
-      toast({
-        title: "Approval Failed",
-        description: "There was a problem approving the follow-ups. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsApprovingAll(false);
-    }
+  const handleSort = (key: string) => {
+    setSortConfig({
+      key,
+      direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc'
+    });
   };
 
-  const handleRejectAll = async () => {
-    setIsRejectingAll(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Reject all follow-ups with the selected status
-      filteredFollowUps.forEach(followUp => {
-        onStatusChange(followUp.id, 'declined');
-      });
-      
-      toast({
-        title: "Follow-ups Rejected",
-        description: "All follow-ups have been rejected successfully.",
-      });
-    } catch (error) {
-      console.error("Error rejecting follow-ups:", error);
-      toast({
-        title: "Rejection Failed",
-        description: "There was a problem rejecting the follow-ups. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRejectingAll(false);
-    }
-  };
-
-  const handleStatusChange = (followUpId: string, newStatus: FollowUp['status']) => {
-    onStatusChange(followUpId, newStatus);
-  };
-
-  const handleEdit = (followUp: FollowUp) => {
-    setEditingFollowUp(followUp);
-  };
-
-  const handleSave = (updatedFollowUp: FollowUp) => {
-    // Simulate API call delay
-    setTimeout(() => {
-      // Update the follow-up in the list
-      onEditFollowUp(updatedFollowUp);
-      
-      toast({
-        title: "Follow-up Updated",
-        description: "The follow-up has been updated successfully.",
-      });
-    }, 500);
-    
-    setEditingFollowUp(null);
-  };
-
-  const handleCancel = () => {
-    setEditingFollowUp(null);
-  };
-
-  const handleDelete = (followUpId: string) => {
-    onDeleteFollowUp(followUpId);
-  };
-
-  const getChannelIcon = (channel: string) => {
+  const getChannelIcon = (channel: FollowUp['channel']) => {
     switch (channel) {
       case 'email':
-        return <Mail className="h-4 w-4" />;
+        return <Mail className="h-4 w-4 text-blue-500" />;
       case 'phone':
-        return <Phone className="h-4 w-4" />;
+        return <Phone className="h-4 w-4 text-green-500" />;
       case 'sms':
-        return <MessageSquare className="h-4 w-4" />;
+        return <MessageSquare className="h-4 w-4 text-purple-500" />;
+    }
+  };
+
+  const getStatusBadge = (status: FollowUp['status']) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">Approved</Badge>;
+      case 'scheduled':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">Scheduled</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">Completed</Badge>;
+      case 'declined':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Declined</Badge>;
       default:
         return null;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'approved':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'declined':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'completed':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'scheduled':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
+  const getPriorityBadge = (priority: FollowUp['priority']) => {
     switch (priority) {
       case 'high':
-        return 'text-red-500';
+        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">High</Badge>;
       case 'medium':
-        return 'text-amber-500';
+        return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">Medium</Badge>;
       case 'low':
-        return 'text-blue-500';
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">Low</Badge>;
       default:
-        return 'text-gray-500';
+        return null;
     }
   };
 
-  const getTemplatePerformance = (templateId: string) => {
-    const template = sampleTemplates.find(t => t.id === templateId);
+  const getRelativeTimeLabel = (dateStr: string) => {
+    const today = startOfToday();
+    const tomorrow = startOfTomorrow();
+    const date = parseISO(dateStr);
     
-    if (template && template.performanceMetrics) {
-      const { openRate, clickRate, responseRate } = template.performanceMetrics;
-      return { openRate, clickRate, responseRate };
+    if (isBefore(date, today)) {
+      return <Badge variant="destructive">Overdue</Badge>;
+    } else if (isBefore(date, tomorrow)) {
+      return <Badge>Today</Badge>;
+    } else if (isBefore(date, addDays(today, 2))) {
+      return <Badge>Tomorrow</Badge>;
+    } else if (isBefore(date, addDays(today, 7))) {
+      return <Badge variant="outline">This Week</Badge>;
+    } else {
+      return <Badge variant="secondary">{format(date, 'MMM d')}</Badge>;
     }
-    
-    return { openRate: 0, clickRate: 0, responseRate: 0 };
   };
 
   return (
-    <div className="space-y-4">
-      {editingFollowUp ? (
-        <FollowUpEditor
-          followUp={editingFollowUp}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
-      ) : (
-        <>
-          <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:items-center md:justify-between">
-            <div className="relative w-full md:max-w-md">
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-2 lg:space-y-0">
+          <CardTitle className="text-xl">Follow-up Queue</CardTitle>
+          
+          <div className="flex items-center space-x-2">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search leads by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                placeholder="Search follow-ups..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             </div>
             
-            <div className="flex flex-wrap gap-2">
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="declined">Declined</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              >
-                Sort by Date ({sortOrder === 'asc' ? 'Asc' : 'Desc'})
-              </Button>
-              
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={handleRejectAll}
-                disabled={isRejectingAll || filteredFollowUps.length === 0}
-              >
-                {isRejectingAll ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Rejecting All...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Reject All
-                  </>
-                )}
-              </Button>
-              
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={handleApproveAll}
-                disabled={isApprovingAll || filteredFollowUps.length === 0}
-              >
-                {isApprovingAll ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Approving All...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Approve All
-                  </>
-                )}
-              </Button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <Filter className="h-4 w-4 mr-1" />
+                  Filter
+                  <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Filter By</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <div className="p-2">
+                  <p className="text-xs font-medium mb-1">Status</p>
+                  <Select 
+                    value={statusFilter} 
+                    onValueChange={(value: typeof statusFilter) => setStatusFilter(value)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="declined">Declined</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="p-2">
+                  <p className="text-xs font-medium mb-1">Priority</p>
+                  <Select 
+                    value={priorityFilter} 
+                    onValueChange={(value: typeof priorityFilter) => setPriorityFilter(value)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Priorities</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="p-2">
+                  <p className="text-xs font-medium mb-1">Channel</p>
+                  <Select 
+                    value={channelFilter} 
+                    onValueChange={(value: typeof channelFilter) => setChannelFilter(value)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select channel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Channels</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="phone">Phone</SelectItem>
+                      <SelectItem value="sms">SMS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-[250px]">
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => handleSort('leadName')}
+                  >
+                    Lead
+                    <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+                  </div>
+                </TableHead>
+                <TableHead>Details</TableHead>
+                <TableHead>
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => handleSort('scheduledFor')}
+                  >
+                    Scheduled For
+                    <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => handleSort('priority')}
+                  >
+                    Priority
+                    <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+                  </div>
+                </TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedFollowUps.length === 0 ? (
                 <TableRow>
-                  <TableHead className="w-[20%]">Lead</TableHead>
-                  <TableHead className="w-[20%]">Details</TableHead>
-                  <TableHead className="w-[15%]">Schedule</TableHead>
-                  <TableHead className="w-[15%]">Template Performance</TableHead>
-                  <TableHead className="w-[15%]">Actions</TableHead>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No follow-ups match your filters
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedFollowUps.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No follow-ups found matching your filters. Try adjusting your search criteria.
+              ) : (
+                sortedFollowUps.map((followUp) => (
+                  <TableRow key={followUp.id}>
+                    <TableCell className="w-12">
+                      <div className="flex justify-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                {getChannelIcon(followUp.channel)}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{followUp.channel === 'email' ? 'Email' : 
+                                  followUp.channel === 'phone' ? 'Phone Call' : 
+                                  'SMS Message'}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{followUp.leadInfo.name}</div>
+                      <div className="text-sm text-muted-foreground">{followUp.leadInfo.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <span className="font-medium">{followUp.leadInfo.interestType}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        {followUp.suggestedContent.substring(0, 60)}...
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <div className="text-sm mb-1">
+                          {format(parseISO(followUp.scheduledFor), 'MMM d, yyyy')}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {format(parseISO(followUp.scheduledFor), 'h:mm a')}
+                          </span>
+                          <div className="ml-auto">
+                            {getRelativeTimeLabel(followUp.scheduledFor)}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getPriorityBadge(followUp.priority)}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(followUp.status)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center space-x-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => onEditFollowUp(followUp)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            
+                            {followUp.status === 'pending' && (
+                              <DropdownMenuItem onClick={() => onStatusChange(followUp.id, 'approved')}>
+                                <Check className="h-4 w-4 mr-2 text-green-500" />
+                                Approve
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {(followUp.status === 'pending' || followUp.status === 'approved') && (
+                              <DropdownMenuItem onClick={() => onStatusChange(followUp.id, 'scheduled')}>
+                                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                                Mark as Scheduled
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {followUp.status !== 'completed' && (
+                              <DropdownMenuItem onClick={() => onStatusChange(followUp.id, 'completed')}>
+                                <Check className="h-4 w-4 mr-2 text-green-500" />
+                                Mark as Completed
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {followUp.status === 'pending' && (
+                              <DropdownMenuItem onClick={() => onStatusChange(followUp.id, 'declined')}>
+                                <X className="h-4 w-4 mr-2 text-red-500" />
+                                Decline
+                              </DropdownMenuItem>
+                            )}
+                            
+                            <DropdownMenuItem 
+                              className="text-red-600" 
+                              onClick={() => onDeleteFollowUp(followUp.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  sortedFollowUps.map((followUp) => {
-                    const { openRate, clickRate, responseRate } = getTemplatePerformance(followUp.suggestedTemplate);
-                    
-                    // Ensure mail.opened and mail.sent are numbers before division
-                    const openRateDisplay = openRate !== 0 ? Number(openRate) : 0;
-                    const clickRateDisplay = clickRate !== 0 ? Number(clickRate) : 0;
-                    const responseRateDisplay = responseRate !== 0 ? Number(responseRate) : 0;
-                    
-                    return (
-                      <TableRow key={followUp.id}>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Avatar>
-                              <AvatarImage src="https://github.com/shadcn.png" alt={followUp.leadInfo.name} />
-                              <AvatarFallback>{followUp.leadInfo.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{followUp.leadInfo.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {followUp.leadInfo.email}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              {getChannelIcon(followUp.channel)}
-                              <span className="font-medium">{followUp.channel}</span>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              <span className="font-medium">Priority:</span>
-                              <span className={`ml-1 ${getPriorityColor(followUp.priority)}`}>
-                                {followUp.priority}
-                              </span>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              <span className="font-medium">Status:</span>
-                              <Badge variant="outline" className={getStatusColor(followUp.status)}>
-                                {followUp.status}
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground flex items-start gap-1.5">
-                              <AlertTriangle className="h-3.5 w-3.5 mt-0.5" />
-                              {followUp.aiReasoning}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                              <span>{format(parseISO(followUp.scheduledFor), 'MMMM d, yyyy')}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span>{format(parseISO(followUp.scheduledFor), 'h:mm a')}</span>
-                            </div>
-                            {isPast(parseISO(followUp.scheduledFor)) && followUp.status === 'pending' && (
-                              <Badge variant="destructive" className="text-xs">
-                                Overdue
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="text-sm">
-                              <span className="font-medium">Open Rate:</span> {openRateDisplay}%
-                            </div>
-                            <div className="text-sm">
-                              <span className="font-medium">Click Rate:</span> {clickRateDisplay}%
-                            </div>
-                            <div className="text-sm">
-                              <span className="font-medium">Response Rate:</span> {responseRateDisplay}%
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleStatusChange(followUp.id, 'approved')}>
-                                  <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                                  Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusChange(followUp.id, 'declined')}>
-                                  <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                                  Reject
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(followUp)}>
-                                  <User className="h-4 w-4 mr-2" />
-                                  Edit Follow-up
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDelete(followUp.id)}>
-                                  <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </>
-      )}
-    </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

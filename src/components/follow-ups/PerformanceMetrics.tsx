@@ -1,430 +1,332 @@
 
 import { useState } from 'react';
-import { FollowUp, Template, Sequence } from '@/data/sampleFollowUpData';
+import { FollowUp, MessageTemplate, Sequence } from '@/data/sampleFollowUpData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Calendar, 
-  ChevronDown,
-  ChevronUp, 
-  Download, 
-  Mail, 
-  Phone, 
-  MessageSquare, 
-  ArrowRight,
-  ArrowUp,
-  ArrowDown,
-  BarChart3
-} from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  BarChart as RechartsBarChart, 
+  BarChart, 
   Bar, 
-  LineChart, 
-  Line,
   XAxis, 
   YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  CartesianGrid,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
 } from 'recharts';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface PerformanceMetricsProps {
   followUps: FollowUp[];
-  templates: Template[];
+  templates: MessageTemplate[];
   sequences: Sequence[];
 }
 
 export const PerformanceMetrics = ({ followUps, templates, sequences }: PerformanceMetricsProps) => {
-  const [dateRange, setDateRange] = useState('30days');
+  const [activeTab, setActiveTab] = useState('overview');
   
-  // Dummy conversion rate data by channel
-  const conversionRateData = [
-    { name: 'Email', value: 42, previousValue: 38, change: 10.5 },
-    { name: 'Phone', value: 65, previousValue: 58, change: 12.1 },
-    { name: 'SMS', value: 38, previousValue: 35, change: 8.6 },
-    { name: 'Overall', value: 48, previousValue: 44, change: 9.1 }
+  // Overview metrics
+  const totalFollowUps = followUps.length;
+  const completedFollowUps = followUps.filter(f => f.status === 'completed').length;
+  const completionRate = totalFollowUps > 0 ? Math.round((completedFollowUps / totalFollowUps) * 100) : 0;
+  
+  const overviewData = [
+    { name: 'Email', value: followUps.filter(f => f.channel === 'email').length },
+    { name: 'Phone', value: followUps.filter(f => f.channel === 'phone').length },
+    { name: 'SMS', value: followUps.filter(f => f.channel === 'sms').length },
   ];
   
-  // Dummy response time data
-  const responseTimeData = [
-    { name: 'Email', value: 8.2, unit: 'hours', previousValue: 9.5, change: -13.7 },
-    { name: 'Phone', value: 82, unit: '%', previousValue: 78, change: 5.1 },
-    { name: 'SMS', value: 12, unit: 'minutes', previousValue: 18, change: -33.3 },
+  const statusData = [
+    { name: 'Pending', value: followUps.filter(f => f.status === 'pending').length },
+    { name: 'Approved', value: followUps.filter(f => f.status === 'approved').length },
+    { name: 'Scheduled', value: followUps.filter(f => f.status === 'scheduled').length },
+    { name: 'Completed', value: completedFollowUps },
+    { name: 'Declined', value: followUps.filter(f => f.status === 'declined').length },
   ];
   
-  // Dummy template performance data
-  const templatePerformanceData = templates.map(template => ({
-    name: template.name,
-    responseRate: template.performanceMetrics.responseRate,
-    conversionRate: template.performanceMetrics.conversionRate,
-    usageCount: template.performanceMetrics.usageCount
-  })).sort((a, b) => b.conversionRate - a.conversionRate).slice(0, 5);
+  // Template performance data
+  const templateData = templates.map(template => {
+    // Safely access performanceMetrics which might be undefined
+    const metrics = template.performanceMetrics || { openRate: 0, clickRate: 0, responseRate: 0 };
+    return {
+      name: template.title,
+      openRate: metrics.openRate || 0,
+      clickRate: metrics.clickRate || 0,
+      responseRate: metrics.responseRate || 0,
+      conversionRate: metrics.conversionRate || 0,
+      usageCount: metrics.usageCount || 0,
+      channel: template.channel
+    };
+  });
   
-  // Dummy sequence performance data
-  const sequencePerformanceData = sequences.map(sequence => ({
+  // Sequence performance data
+  const sequenceData = sequences.map(sequence => ({
     name: sequence.name,
     completionRate: sequence.performanceMetrics.completionRate,
     conversionRate: sequence.performanceMetrics.conversionRate,
-    leadsInSequence: sequence.performanceMetrics.avgLeadsInSequence
-  })).sort((a, b) => b.conversionRate - a.conversionRate);
+    leadsInSequence: sequence.performanceMetrics.avgLeadsInSequence,
+    steps: sequence.steps.length
+  }));
   
-  // Dummy response data by time of day
-  const responseByTimeData = [
-    { name: '8am', email: 35, phone: 42, sms: 28 },
-    { name: '10am', email: 58, phone: 65, sms: 40 },
-    { name: '12pm', email: 42, phone: 52, sms: 36 },
-    { name: '2pm', email: 48, phone: 58, sms: 42 },
-    { name: '4pm', email: 52, phone: 48, sms: 38 },
-    { name: '6pm', email: 38, phone: 32, sms: 48 },
-    { name: '8pm', email: 28, phone: 15, sms: 45 },
+  // Priority distribution for radar chart
+  const priorityData = [
+    { subject: 'High Priority', A: followUps.filter(f => f.priority === 'high').length, fullMark: totalFollowUps },
+    { subject: 'Medium Priority', A: followUps.filter(f => f.priority === 'medium').length, fullMark: totalFollowUps },
+    { subject: 'Low Priority', A: followUps.filter(f => f.priority === 'low').length, fullMark: totalFollowUps },
   ];
   
-  // Dummy response data by day of week
-  const responseByDayData = [
-    { name: 'Mon', email: 45, phone: 52, sms: 40 },
-    { name: 'Tue', email: 48, phone: 58, sms: 42 },
-    { name: 'Wed', email: 52, phone: 62, sms: 44 },
-    { name: 'Thu', email: 49, phone: 60, sms: 45 },
-    { name: 'Fri', email: 42, phone: 55, sms: 38 },
-    { name: 'Sat', email: 35, phone: 30, sms: 48 },
-    { name: 'Sun', email: 32, phone: 25, sms: 50 },
-  ];
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
   
-  // Dummy follow-up effectiveness trend data
-  const followUpTrendData = [
-    { name: 'Week 1', conversion: 35, response: 58 },
-    { name: 'Week 2', conversion: 38, response: 62 },
-    { name: 'Week 3', conversion: 42, response: 65 },
-    { name: 'Week 4', conversion: 45, response: 68 },
-    { name: 'Week 5', conversion: 48, response: 72 },
-    { name: 'Week 6', conversion: 46, response: 70 },
-    { name: 'Week 7', conversion: 50, response: 75 },
-    { name: 'Week 8', conversion: 52, response: 78 },
-  ];
-  
-  // Helper function to generate trend indicator
-  const getTrendIndicator = (change: number) => {
-    if (change > 0) {
-      return (
-        <div className="flex items-center text-green-600">
-          <ArrowUp className="h-3 w-3 mr-1" />
-          <span>{change.toFixed(1)}%</span>
-        </div>
-      );
-    } else if (change < 0) {
-      return (
-        <div className="flex items-center text-red-600">
-          <ArrowDown className="h-3 w-3 mr-1" />
-          <span>{Math.abs(change).toFixed(1)}%</span>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex items-center text-muted-foreground">
-          <ArrowRight className="h-3 w-3 mr-1" />
-          <span>0%</span>
-        </div>
-      );
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-0">
-        <div className="flex items-center gap-3">
-          <Tabs value={dateRange} onValueChange={setDateRange}>
-            <TabsList>
-              <TabsTrigger value="7days">7 Days</TabsTrigger>
-              <TabsTrigger value="30days">30 Days</TabsTrigger>
-              <TabsTrigger value="90days">90 Days</TabsTrigger>
-              <TabsTrigger value="year">Year</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Calendar className="h-4 w-4 mr-1" />
-                Custom Range
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent>
-              <div className="p-2">
-                <div className="text-sm text-muted-foreground mb-4">
-                  Custom date range selector (placeholder)
-                </div>
-                <Button className="w-full" size="sm">Apply Range</Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+            <CardTitle className="text-xl">Performance Metrics</CardTitle>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full min-w-[400px] grid-cols-3">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="templates">Templates</TabsTrigger>
+                <TabsTrigger value="sequences">Sequences</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </CardHeader>
         
-        <div>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-1" />
-            Export Report
-          </Button>
-        </div>
-      </div>
-      
-      {/* Conversion Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {conversionRateData.map((data) => (
-          <Card key={data.name}>
-            <CardContent className="p-6">
-              <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground mb-1">
-                  {data.name === 'Email' ? (
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-1 text-blue-500" />
-                      <span>Email Conversion</span>
+        <CardContent>
+          <Tabs value={activeTab} className="w-full">
+            <TabsContent value="overview" className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <div className="border rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Follow-up Channel Distribution</h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={overviewData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Bar dataKey="value" name="Follow-ups" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  ) : data.name === 'Phone' ? (
-                    <div className="flex items-center">
-                      <Phone className="h-4 w-4 mr-1 text-green-500" />
-                      <span>Call Conversion</span>
-                    </div>
-                  ) : data.name === 'SMS' ? (
-                    <div className="flex items-center">
-                      <MessageSquare className="h-4 w-4 mr-1 text-purple-500" />
-                      <span>SMS Conversion</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <BarChart3 className="h-4 w-4 mr-1 text-primary" />
-                      <span>Overall Conversion</span>
-                    </div>
-                  )}
-                </span>
-                
-                <div className="flex items-end justify-between">
-                  <div className="text-2xl font-bold">{data.value}%</div>
-                  <div className="text-xs">{getTrendIndicator(data.change)}</div>
-                </div>
-                
-                <div className="text-xs text-muted-foreground mt-1">
-                  vs. {data.previousValue}% last period
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      {/* Channel Response Time Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {responseTimeData.map((data) => (
-          <Card key={data.name}>
-            <CardContent className="p-6">
-              <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground mb-1">
-                  {data.name === 'Email' ? (
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-1 text-blue-500" />
-                      <span>Email Response Time</span>
-                    </div>
-                  ) : data.name === 'Phone' ? (
-                    <div className="flex items-center">
-                      <Phone className="h-4 w-4 mr-1 text-green-500" />
-                      <span>Call Answer Rate</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <MessageSquare className="h-4 w-4 mr-1 text-purple-500" />
-                      <span>SMS Response Time</span>
-                    </div>
-                  )}
-                </span>
-                
-                <div className="flex items-end justify-between">
-                  <div className="text-2xl font-bold">
-                    {data.value} {data.unit}
                   </div>
-                  <div className="text-xs">{getTrendIndicator(data.change)}</div>
                 </div>
                 
-                <div className="text-xs text-muted-foreground mt-1">
-                  vs. {data.previousValue} {data.unit} last period
+                <div>
+                  <div className="border rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Status Distribution</h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={statusData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {statusData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <div className="border rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Follow-up Priority Distribution</h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart outerRadius={90} width={730} height={250} data={priorityData}>
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="subject" />
+                          <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
+                          <Radar name="Follow-ups" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                          <Legend />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="border rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Completion Rate</h3>
+                    <div className="flex flex-col items-center justify-center h-80">
+                      <div className="text-5xl font-bold text-blue-600">{completionRate}%</div>
+                      <div className="text-sm text-muted-foreground mt-2">of follow-ups completed</div>
+                      <div className="mt-4 text-center">
+                        <div className="text-sm"><span className="font-medium">{completedFollowUps}</span> completed</div>
+                        <div className="text-sm"><span className="font-medium">{totalFollowUps - completedFollowUps}</span> pending or declined</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      {/* Follow-up Trend Chart */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Follow-up Effectiveness Trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={followUpTrendData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="response" 
-                  name="Response Rate"
-                  stroke="#4ade80" 
-                  activeDot={{ r: 8 }} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="conversion" 
-                  name="Conversion Rate"
-                  stroke="#3b82f6" 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Template Performance Chart */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Top Performing Templates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart data={templatePerformanceData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar 
-                  dataKey="responseRate" 
-                  name="Response Rate"
-                  fill="#4ade80" 
-                />
-                <Bar 
-                  dataKey="conversionRate" 
-                  name="Conversion Rate"
-                  fill="#3b82f6" 
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Response by Time & Day Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Response by Time of Day</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={responseByTimeData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="email" 
-                    name="Email"
-                    stroke="#3b82f6" 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="phone" 
-                    name="Phone"
-                    stroke="#4ade80" 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="sms" 
-                    name="SMS"
-                    stroke="#a855f7" 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Response by Day of Week</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={responseByDayData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="email" 
-                    name="Email"
-                    stroke="#3b82f6" 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="phone" 
-                    name="Phone"
-                    stroke="#4ade80" 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="sms" 
-                    name="SMS"
-                    stroke="#a855f7" 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Sequence Performance Chart */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Sequence Performance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart data={sequencePerformanceData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="name" />
-                <Tooltip />
-                <Legend />
-                <Bar 
-                  dataKey="completionRate" 
-                  name="Completion Rate"
-                  fill="#a855f7" 
-                />
-                <Bar 
-                  dataKey="conversionRate" 
-                  name="Conversion Rate"
-                  fill="#3b82f6" 
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
+            </TabsContent>
+            
+            <TabsContent value="templates" className="mt-0">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <div className="border rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Template Performance Metrics</h3>
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={templateData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Legend />
+                          <Bar dataKey="openRate" name="Open Rate %" fill="#8884d8" />
+                          <Bar dataKey="clickRate" name="Click Rate %" fill="#82ca9d" />
+                          <Bar dataKey="responseRate" name="Response Rate %" fill="#ffc658" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-sm font-medium mb-3">Template Conversion Rates</h3>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={templateData.filter(t => t.conversionRate > 0)}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                            <YAxis />
+                            <RechartsTooltip />
+                            <Line type="monotone" dataKey="conversionRate" name="Conversion Rate %" stroke="#8884d8" activeDot={{ r: 8 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-sm font-medium mb-3">Template Usage Count</h3>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={templateData.filter(t => t.usageCount > 0)}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                            <YAxis />
+                            <RechartsTooltip />
+                            <Bar dataKey="usageCount" name="Usage Count" fill="#82ca9d" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="sequences" className="mt-0">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <div className="border rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Sequence Performance Comparison</h3>
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={sequenceData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Legend />
+                          <Bar dataKey="completionRate" name="Completion Rate %" fill="#8884d8" />
+                          <Bar dataKey="conversionRate" name="Conversion Rate %" fill="#82ca9d" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-sm font-medium mb-3">Average Leads in Sequence</h3>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={sequenceData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                            <YAxis />
+                            <RechartsTooltip />
+                            <Bar dataKey="leadsInSequence" name="Average Leads" fill="#ffc658" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="border rounded-md p-4">
+                      <h3 className="text-sm font-medium mb-3">Sequence Steps vs. Conversion Rate</h3>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={sequenceData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                            <YAxis yAxisId="left" />
+                            <YAxis yAxisId="right" orientation="right" />
+                            <RechartsTooltip />
+                            <Legend />
+                            <Line yAxisId="left" type="monotone" dataKey="steps" name="Number of Steps" stroke="#8884d8" />
+                            <Line yAxisId="right" type="monotone" dataKey="conversionRate" name="Conversion Rate %" stroke="#82ca9d" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

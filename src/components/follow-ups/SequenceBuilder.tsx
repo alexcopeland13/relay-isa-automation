@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Sequence } from '@/data/sampleFollowUpData';
+import { Sequence, SequenceStep } from '@/data/sampleFollowUpData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -84,6 +84,24 @@ export const SequenceBuilder = ({ sequences }: SequenceBuilderProps) => {
   });
 
   const leadTypes = Array.from(new Set(sequences.map(sequence => sequence.leadType)));
+
+  const formatDelay = (delay: { value: number; unit: 'hours' | 'days' | 'weeks' }) => {
+    return `${delay.value} ${delay.value === 1 ? delay.unit.slice(0, -1) : delay.unit}`;
+  };
+
+  const renderCondition = (condition: { type: 'if_no_response' | 'if_clicked' | 'if_opened' | 'always'; value?: any }) => {
+    if (condition.type === 'if_no_response') {
+      return `Execute if no response to step ${condition.value?.replace('step-', '')}`;
+    } else if (condition.type === 'if_clicked') {
+      return `Execute if clicked in step ${condition.value?.replace('step-', '')}`;
+    } else if (condition.type === 'if_opened') {
+      return `Execute if opened in step ${condition.value?.replace('step-', '')}`;
+    } else if (condition.type === 'always') {
+      return `Always execute`;
+    }
+    
+    return '';
+  };
 
   return (
     <>
@@ -257,7 +275,7 @@ export const SequenceBuilder = ({ sequences }: SequenceBuilderProps) => {
                                     <span className="ml-1 capitalize font-medium">{step.channel}</span>
                                   </div>
                                   <div className="text-sm text-muted-foreground">
-                                    Delay: {step.delay}
+                                    Delay: {formatDelay(step.delay)}
                                   </div>
                                 </div>
                                 
@@ -267,14 +285,7 @@ export const SequenceBuilder = ({ sequences }: SequenceBuilderProps) => {
                                     <ul className="list-disc list-inside text-muted-foreground space-y-1">
                                       {step.conditions.map((condition, i) => (
                                         <li key={i}>
-                                          {condition.type === 'no_response' && 
-                                            `Execute if no response to step ${condition.value.replace('step-', '')}`}
-                                          {condition.type === 'no_application' && 
-                                            'Execute if no application submitted'}
-                                          {condition.type === 'contacted' && 
-                                            `Execute if successfully contacted in step ${condition.value.replace('step-', '')}`}
-                                          {condition.type === 'not_contacted' && 
-                                            `Execute if failed to contact in step ${condition.value.replace('step-', '')}`}
+                                          {renderCondition(condition)}
                                         </li>
                                       ))}
                                     </ul>
@@ -445,7 +456,7 @@ export const SequenceBuilder = ({ sequences }: SequenceBuilderProps) => {
                                 variant="outline" 
                                 className="bg-muted/50 text-xs"
                               >
-                                {step.delay}
+                                {formatDelay(step.delay)}
                               </Badge>
                               
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -474,14 +485,7 @@ export const SequenceBuilder = ({ sequences }: SequenceBuilderProps) => {
                                   <ul className="list-disc list-inside space-y-1">
                                     {step.conditions.map((condition, i) => (
                                       <li key={i}>
-                                        {condition.type === 'no_response' && 
-                                          `Execute if no response to step ${condition.value.replace('step-', '')}`}
-                                        {condition.type === 'no_application' && 
-                                          'Execute if no application submitted'}
-                                        {condition.type === 'contacted' && 
-                                          `Execute if successfully contacted in step ${condition.value.replace('step-', '')}`}
-                                        {condition.type === 'not_contacted' && 
-                                          `Execute if failed to contact in step ${condition.value.replace('step-', '')}`}
+                                        {renderCondition(condition)}
                                       </li>
                                     ))}
                                   </ul>

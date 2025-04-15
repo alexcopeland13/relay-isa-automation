@@ -21,6 +21,8 @@ import AgentCreate from "./pages/AgentCreate";
 import AgentEdit from "./pages/AgentEdit";
 import UpcomingCalls from "./pages/UpcomingCalls";
 import PendingFollowups from "./pages/PendingFollowups";
+import CompletedTasks from "./pages/CompletedTasks";
+import ConversionOutcomes from "./pages/ConversionOutcomes";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +68,8 @@ const App = () => {
             <Route path="/follow-ups" element={<FollowUps />} />
             <Route path="/upcoming-calls" element={<UpcomingCalls />} />
             <Route path="/pending-followups" element={<PendingFollowups />} />
+            <Route path="/completed-tasks" element={<CompletedTasks />} />
+            <Route path="/conversion-outcomes" element={<ConversionOutcomes />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

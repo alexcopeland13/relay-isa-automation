@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format as formatDate } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -56,14 +56,13 @@ export function ExportMenu({
   const [exportProgress, setExportProgress] = useState(0);
   const [showDateDialog, setShowDateDialog] = useState(false);
   const [date, setDate] = useState<{from: Date, to: Date}>({
-    from: new Date(new Date().setDate(new Date().getDate() - 30)), // Last 30 days
+    from: new Date(new Date().setDate(new Date().getDate() - 30)),
     to: new Date(),
   });
   const [emailAddress, setEmailAddress] = useState('');
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Initialize selected fields with all available fields
   useState(() => {
     if (exportableCols) {
       setSelectedFields(exportableCols);
@@ -100,7 +99,6 @@ export function ExportMenu({
       };
 
       if (onExport) {
-        // Simulate progress updates
         const progressInterval = setInterval(() => {
           setExportProgress(prev => {
             if (prev >= 95) {
@@ -161,7 +159,7 @@ export function ExportMenu({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       
-      const dateStr = format(new Date(), 'yyyy-MM-dd');
+      const dateStr = formatDate(new Date(), 'yyyy-MM-dd');
       
       link.setAttribute('href', url);
       link.setAttribute('download', `${filename}_${dateStr}.csv`);
@@ -228,11 +226,11 @@ export function ExportMenu({
                       {date?.from ? (
                         date.to ? (
                           <>
-                            {format(date.from, "LLL dd, y")} -{" "}
-                            {format(date.to, "LLL dd, y")}
+                            {formatDate(date.from, "LLL dd, y")} -{" "}
+                            {formatDate(date.to, "LLL dd, y")}
                           </>
                         ) : (
-                          format(date.from, "LLL dd, y")
+                          formatDate(date.from, "LLL dd, y")
                         )
                       ) : (
                         <span>Pick a date</span>

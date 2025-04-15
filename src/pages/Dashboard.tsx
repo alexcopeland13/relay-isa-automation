@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   BarChart3, 
@@ -7,7 +6,11 @@ import {
   CalendarCheck, 
   UserCheck, 
   PhoneCall,
-  RefreshCw 
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -23,18 +26,26 @@ import {
   DashboardSkeleton, 
   StatCardSkeleton 
 } from '@/components/ui/loading-skeleton';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Link } from 'react-router-dom';
+import { MessageSquareCheck } from '@/components/ui/icons/MessageSquareCheck';
 
-// Mock function to simulate API data fetch with occasional errors
 const fetchDashboardData = async () => {
-  // Simulate network latency
   await new Promise(resolve => setTimeout(resolve, 1500));
   
-  // Occasionally simulate an error (10% chance)
   if (Math.random() < 0.1) {
     throw new Error("Failed to fetch dashboard data. Network error.");
   }
   
-  // Return mock data
   return {
     stats: {
       totalLeads: 342,
@@ -43,6 +54,36 @@ const fetchDashboardData = async () => {
       todayFollowUps: 28,
       conversionRate: 24.8,
       scheduledFollowUps: 47
+    },
+    priorityTasks: [
+      { 
+        id: 'task1', 
+        title: 'Follow up with Michael Brown', 
+        type: 'followup', 
+        dueTime: '2 hours', 
+        path: '/follow-ups'
+      },
+      { 
+        id: 'task2', 
+        title: 'Review conversation with Sarah Martinez', 
+        type: 'conversation', 
+        status: 'Needs Approval', 
+        path: '/conversations'
+      },
+      { 
+        id: 'task3', 
+        title: 'Assign Thomas Wilson to an agent', 
+        type: 'handoff', 
+        status: 'Qualified Lead', 
+        path: '/leads'
+      },
+    ],
+    activeAgents: {
+      available: 5,
+      busy: 3,
+      offline: 2,
+      totalCapacity: 15,
+      usedCapacity: 8
     }
   };
 };
@@ -55,7 +96,6 @@ const Dashboard = () => {
     retry 
   } = useAsyncData(fetchDashboardData, null, []);
 
-  // Export data - this would be structured data from your dashboard
   const exportData = [
     { metric: 'Total Leads', value: data?.stats.totalLeads || 0 },
     { metric: 'Qualified Leads', value: data?.stats.qualifiedLeads || 0 },
@@ -105,6 +145,15 @@ const Dashboard = () => {
     );
   }
 
+  const getTaskIcon = (type: string) => {
+    switch(type) {
+      case 'followup': return <Clock className="h-5 w-5 text-blue-500" />;
+      case 'conversation': return <MessageSquare className="h-5 w-5 text-purple-500" />;
+      case 'handoff': return <UserCheck className="h-5 w-5 text-green-500" />;
+      default: return <AlertCircle className="h-5 w-5 text-orange-500" />;
+    }
+  };
+
   return (
     <PageLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-start">
@@ -122,46 +171,126 @@ const Dashboard = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard 
-          title="Total Leads" 
-          value={data?.stats.totalLeads.toString() || "—"} 
-          icon={<Users size={20} />}
-          trend={{
-            value: 12,
-            label: "vs last month",
-            positive: true
-          }}
-        />
-        <StatCard 
-          title="Qualified Leads" 
-          value={data?.stats.qualifiedLeads.toString() || "—"} 
-          icon={<UserCheck size={20} />}
-          trend={{
-            value: 8,
-            label: "vs last month",
-            positive: true
-          }}
-        />
-        <StatCard 
-          title="AI Conversations" 
-          value={data?.stats.aiConversations.toString() || "—"} 
-          icon={<MessageSquare size={20} />}
-          trend={{
-            value: 23,
-            label: "vs last month",
-            positive: true
-          }}
-        />
-        <StatCard 
-          title="Today's Follow-ups" 
-          value={data?.stats.todayFollowUps.toString() || "—"} 
-          icon={<PhoneCall size={20} />}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Today's Priority Tasks</CardTitle>
+            <CardDescription>Tasks requiring immediate attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data?.priorityTasks.map((task) => (
+                <div key={task.id} className="flex items-center border rounded-lg p-4 bg-card hover:bg-accent/10 transition-colors">
+                  <div className="mr-4">
+                    {getTaskIcon(task.type)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{task.title}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {task.dueTime && (
+                        <span className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Due in {task.dueTime}
+                        </span>
+                      )}
+                      {task.status && <span>{task.status}</span>}
+                    </div>
+                  </div>
+                  <Link to={task.path}>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <span>View</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="link" size="sm" className="gap-1">
+              <span>Show all tasks</span>
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle className="text-lg">Available Resources</CardTitle>
+            <CardDescription>Current capacity and availability</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium">Agent Availability</h4>
+                <Link to="/agents">
+                  <Button variant="ghost" size="sm" className="h-auto py-1 px-2">
+                    <span className="text-xs">View All</span>
+                  </Button>
+                </Link>
+              </div>
+              <div className="flex justify-between mb-2">
+                <div className="flex items-center">
+                  <Badge variant="outline" className="bg-green-100 text-green-800">Available</Badge>
+                  <span className="ml-2 font-medium">{data?.activeAgents.available}</span>
+                </div>
+                <div className="flex items-center">
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Busy</Badge>
+                  <span className="ml-2 font-medium">{data?.activeAgents.busy}</span>
+                </div>
+                <div className="flex items-center">
+                  <Badge variant="outline" className="bg-gray-100 text-gray-800">Offline</Badge>
+                  <span className="ml-2 font-medium">{data?.activeAgents.offline}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium">Conversation Capacity</h4>
+                <span className="text-sm font-medium">{data?.activeAgents.usedCapacity}/{data?.activeAgents.totalCapacity}</span>
+              </div>
+              <Progress 
+                value={(data?.activeAgents.usedCapacity / data?.activeAgents.totalCapacity) * 100} 
+                className="h-2" 
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                {data?.activeAgents.totalCapacity - data?.activeAgents.usedCapacity} slots available for new conversations
+              </p>
+            </div>
+            
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-medium mb-3">Quick Actions</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <Link to="/conversations">
+                  <Button variant="outline" size="sm" className="w-full">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>Start Conversation</span>
+                  </Button>
+                </Link>
+                <Link to="/follow-ups">
+                  <Button variant="outline" size="sm" className="w-full">
+                    <CalendarCheck className="mr-2 h-4 w-4" />
+                    <span>Schedule Follow-up</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <LeadActivityChart />
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Real-Time Activity</CardTitle>
+            <CardDescription>Live conversation and lead status updates</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LeadActivityChart />
+          </CardContent>
+        </Card>
+        
         <div className="space-y-6">
           <StatCard 
             title="Conversion Rate" 
@@ -174,13 +303,23 @@ const Dashboard = () => {
             }}
           />
           <StatCard 
-            title="Scheduled Follow-ups" 
-            value={data?.stats.scheduledFollowUps.toString() || "—"} 
-            icon={<CalendarCheck size={20} />}
+            title="Qualified Leads" 
+            value={data?.stats.qualifiedLeads.toString() || "—"} 
+            icon={<UserCheck size={20} />}
             trend={{
-              value: 5,
-              label: "vs last week",
-              positive: false
+              value: 8,
+              label: "vs last month",
+              positive: true
+            }}
+          />
+          <StatCard 
+            title="AI Conversations" 
+            value={data?.stats.aiConversations.toString() || "—"} 
+            icon={<MessageSquareCheck size={20} />}
+            trend={{
+              value: 23,
+              label: "vs last month",
+              positive: true
             }}
           />
         </div>

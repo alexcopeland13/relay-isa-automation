@@ -4,15 +4,20 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { ConversationInterface } from '@/components/conversations/ConversationInterface';
 import { ConversationList } from '@/components/conversations/ConversationList';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, List, Filter, Phone } from 'lucide-react';
+import { MessageSquare, List, Filter, Phone, BellRing, Clock } from 'lucide-react';
 import { sampleConversation } from '@/data/sampleConversation';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { CallSchedulerModal } from '@/components/conversations/CallSchedulerModal';
+import { ConversationContextBar } from '@/components/conversations/ConversationContextBar';
 
 const Conversations = () => {
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
   const [selectedConversation, setSelectedConversation] = useState(sampleConversation);
+  const [activeTasks] = useState([
+    { id: '1', title: 'Follow up with Michael Brown', due: '2h' },
+    { id: '2', title: 'Review qualification data for Sarah Martinez', due: '4h' }
+  ]);
 
   const handleSelectConversation = () => {
     setSelectedConversation(sampleConversation);
@@ -25,6 +30,9 @@ const Conversations = () => {
 
   return (
     <PageLayout>
+      {/* Persistent Context Bar */}
+      <ConversationContextBar activeTasks={activeTasks} />
+      
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">AI Conversations</h1>

@@ -1,19 +1,13 @@
-
 import React from 'react';
 import { 
   Link,
   SlidersHorizontal
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { MatchingWeights } from './MatchingCriteria';
 
 interface MatchingWeightsSectionProps {
-  matchingWeights: {
-    propertyType: number;
-    location: number;
-    priceRange: number;
-    timeline: number;
-    financing: number;
-  };
+  matchingWeights: MatchingWeights;
   isEditing: boolean;
   onEdit: (key: string, value: number) => void;
 }
@@ -151,4 +145,4 @@ export const MatchingWeightsSection = ({
       </div>
     </div>
   );
-};
+}

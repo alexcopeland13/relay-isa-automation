@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Agent } from '@/types/agent';
 import { AgentMatchCard } from './AgentMatchCard';
-import { MatchingCriteria } from './MatchingCriteria';
+import { MatchingCriteria, MatchingWeights } from './MatchingCriteria';
 import { 
   emptyLocationPreferences, 
   emptyPropertyInterests, 
@@ -40,8 +40,8 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
     conversation.extractedInfo.qualification.status === 'Qualified' ? 70 :
     conversation.extractedInfo.qualification.status === 'Needs More Information' ? 40 : 20;
   
-  // Default matching weights for agent matching
-  const [matchingWeights, setMatchingWeights] = useState({
+  // Default matching weights for agent matching with the proper type
+  const [matchingWeights, setMatchingWeights] = useState<MatchingWeights>({
     propertyType: 0.3,
     location: 0.3,
     priceRange: 0.2,

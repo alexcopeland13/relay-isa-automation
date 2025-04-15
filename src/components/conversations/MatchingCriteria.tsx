@@ -11,12 +11,21 @@ import { PropertyInterestsSection } from './PropertyInterestsSection';
 import { MotivationFactorsSection } from './MotivationFactorsSection';
 import { MatchingWeightsSection } from './MatchingWeightsSection';
 
+// Define a specific type for the matching weights
+export interface MatchingWeights {
+  propertyType: number;
+  location: number;
+  priceRange: number;
+  timeline: number;
+  financing: number;
+}
+
 interface MatchingCriteriaProps {
   transactionType: TransactionType;
   locationPreferences: LocationPreferences;
   propertyInterests: PropertyInterests;
   motivationFactors: MotivationFactors;
-  matchingWeights: Record<string, number>;
+  matchingWeights: MatchingWeights;
   isEditingWeights: boolean;
   onEditWeight: (key: string, value: number) => void;
 }

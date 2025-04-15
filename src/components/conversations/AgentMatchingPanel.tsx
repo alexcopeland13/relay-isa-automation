@@ -112,6 +112,63 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
     confidence: conversation.extractedInfo.transactionType?.confidence || 0.7
   };
   
+  // Create empty objects with required structure for conditional props to avoid TypeScript errors
+  const emptyLocationPreferences = {
+    areasOfInterest: [],
+    neighborhoodType: [],
+    commuteConsiderations: {
+      maxCommuteDuration: 0,
+      commuteToLocations: [],
+      confidence: 0,
+      source: "AI" as "AI" | "User" | "Agent",
+      verified: false
+    },
+    confidence: 0
+  };
+  
+  const emptyPropertyInterests = {
+    propertyType: [],
+    priceRange: {
+      min: 0,
+      max: 0,
+      confidence: 0,
+      source: "AI" as "AI" | "User" | "Agent",
+      verified: false
+    },
+    sizeRequirements: {
+      bedrooms: 0,
+      bathrooms: 0,
+      squareFootage: {
+        min: 0,
+        max: 0
+      },
+      confidence: 0,
+      source: "AI" as "AI" | "User" | "Agent",
+      verified: false
+    },
+    mustHaveFeatures: [],
+    dealBreakers: [],
+    confidence: 0
+  };
+  
+  const emptyMotivationFactors = {
+    primaryMotivation: { 
+      value: "", 
+      confidence: 0, 
+      source: "AI" as "AI" | "User" | "Agent", 
+      verified: false 
+    },
+    urgencyLevel: {
+      value: 0,
+      confidence: 0,
+      source: "AI" as "AI" | "User" | "Agent",
+      verified: false
+    },
+    decisionFactors: [],
+    potentialObstacles: [],
+    confidence: 0
+  };
+  
   return (
     <div className="p-4 space-y-6">
       <div className="space-y-4">
@@ -178,17 +235,17 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
             onEdit={() => {}}
           />
           <LocationPreferencesSection 
-            locationPreferences={conversation.extractedInfo.locationPreferences || {}} 
+            locationPreferences={conversation.extractedInfo.locationPreferences || emptyLocationPreferences} 
             isEditing={false} 
             onEdit={() => {}}
           />
           <PropertyInterestsSection 
-            propertyInterests={conversation.extractedInfo.propertyInterests || {}} 
+            propertyInterests={conversation.extractedInfo.propertyInterests || emptyPropertyInterests} 
             isEditing={false} 
             onEdit={() => {}}
           />
           <MotivationFactorsSection 
-            motivationFactors={conversation.extractedInfo.motivationFactors || {}} 
+            motivationFactors={conversation.extractedInfo.motivationFactors || emptyMotivationFactors} 
             isEditing={false} 
             onEdit={() => {}}
           />

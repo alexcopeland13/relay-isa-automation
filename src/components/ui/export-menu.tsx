@@ -142,12 +142,6 @@ export function ExportMenu({
   };
 
   const simulateExport = async (format: string, options: ExportOptions) => {
-    // Simulate an export operation with progress
-    for (let i = 0; i <= 100; i += 10) {
-      setExportProgress(i);
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
     if (format === 'csv') {
       const headers = options.fields;
       let csvContent = headers.join(',') + '\n';
@@ -167,7 +161,6 @@ export function ExportMenu({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       
-      // Corrected date formatting using date-fns format function
       const dateStr = format(new Date(), 'yyyy-MM-dd');
       
       link.setAttribute('href', url);

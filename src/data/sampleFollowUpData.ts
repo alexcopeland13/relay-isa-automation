@@ -12,7 +12,7 @@ export interface MessageTemplate {
   tags?: string[];
   createdAt: string;
   updatedAt: string;
-  author: string;
+  author: string; // Added to match the mock data
   usage: number;
   variables?: string[];
   performanceMetrics?: {

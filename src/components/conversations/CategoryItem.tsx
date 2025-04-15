@@ -12,6 +12,12 @@ interface CategoryItemProps {
   className?: string;
 }
 
+// For direct usage with string categories
+interface SimpleCategoryProps {
+  category: string;
+  className?: string;
+}
+
 export const CategoryItemDisplay = ({ item, onVerify, onEdit, className }: CategoryItemProps) => {
   const getConfidenceIcon = () => {
     if (item.confidence > 0.85) {
@@ -79,5 +85,17 @@ export const CategoryItemDisplay = ({ item, onVerify, onEdit, className }: Categ
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+};
+
+// Simple category display for string-based categories
+export const CategoryItem = ({ category, className }: SimpleCategoryProps) => {
+  return (
+    <Badge 
+      variant="outline" 
+      className={`px-2 py-1 ${className}`}
+    >
+      {category}
+    </Badge>
   );
 };

@@ -43,6 +43,7 @@ const Leads = () => {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
   
   const { 
@@ -113,20 +114,36 @@ const Leads = () => {
     });
   };
   
-  const handleExportData = async (format: string, dateRange?: { from: Date; to: Date }) => {
-    toast({
-      title: `Export initiated`,
-      description: `Your leads are being exported to ${format.toUpperCase()}. You'll be notified when it's ready.`,
-    });
+  const exportData = async (format: string, options: ExportOptions) => {
+    setExporting(true);
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast({
-      title: `Export complete`,
-      description: `Your leads have been exported to ${format.toUpperCase()}. Check your downloads folder.`,
-    });
-    
-    return Promise.resolve();
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      if (format === 'csv') {
+        console.log(`Exporting ${format} data with options:`, options);
+      } else if (format === 'pdf') {
+        console.log(`Exporting ${format} data with options:`, options);
+      } else if (format === 'email') {
+        console.log(`Sending export via email to ${options.recipient} with options:`, options);
+      }
+      
+      toast({
+        title: format === 'email' ? 'Export Sent' : 'Export Complete',
+        description: format === 'email'
+          ? `Export has been sent to ${options.recipient}`
+          : `Leads exported successfully as ${format.toUpperCase()}`,
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'There was a problem exporting your data.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const renderLoading = () => (
@@ -223,7 +240,7 @@ const Leads = () => {
               filename="relay_leads"
               exportableCols={['name', 'email', 'phone', 'status', 'source', 'date']}
               supportedFormats={['csv', 'email']}
-              onExport={handleExportData}
+              onExport={exportData}
             />
             
             <Button className="gap-1" onClick={() => {

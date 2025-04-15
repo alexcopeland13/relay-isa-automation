@@ -9,7 +9,7 @@ import { AgentMatchingPanel } from './AgentMatchingPanel';
 import { SentimentGraph } from './SentimentGraph';
 import { FollowUpPanel } from './FollowUpPanel';
 import { FeedbackModule } from './FeedbackModule';
-import { CategoryItem } from './CategoryItem';
+import { CategoryItemDisplay } from './CategoryItem';
 import { ProfileUpdateNotification } from './ProfileUpdateNotification';
 import { FollowUpRecommendations } from '../follow-ups/FollowUpRecommendations'; 
 import { useConversationData } from '@/hooks/use-conversation-data';
@@ -64,7 +64,13 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-15rem)]">
       <div className="lg:col-span-2 flex flex-col h-full">
-        <ConversationHeader conversation={conversation} leadInfo={conversation.leadInfo} />
+        <ConversationHeader 
+          timestamp={conversation.timestamp}
+          duration={conversation.duration}
+          type={conversation.type}
+          qualification={conversation.qualification}
+          leadInfo={conversation.leadInfo} 
+        />
         
         {hasPendingUpdates && showNotification && (
           <ProfileUpdateNotification 
@@ -102,13 +108,13 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           
           <div className="p-4 h-[calc(100%-3.5rem)]">
             {activeTab === 'transcript' && (
-              <TranscriptViewer transcript={conversation.transcript} />
+              <TranscriptViewer messages={conversation.transcript} />
             )}
             {activeTab === 'sentiment' && (
-              <SentimentGraph data={conversation.sentimentData} />
+              <SentimentGraph sentimentData={conversation.sentimentData} />
             )}
             {activeTab === 'feedback' && (
-              <FeedbackModule conversationId={conversation.id} />
+              <FeedbackModule aiPerformance={conversation.aiPerformance} />
             )}
           </div>
         </div>
@@ -116,13 +122,13 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
       
       <div className="space-y-4 h-full overflow-y-auto">
         <ScrollArea className="h-full">
-          <InformationPanel leadInfo={conversation.leadInfo} />
+          <InformationPanel lead={conversation.leadInfo} />
           
           <div className="mt-4">
             <h3 className="text-lg font-semibold mb-2">Categories</h3>
             <div className="flex flex-wrap gap-2 mb-4">
               {conversation.categories.map((category: string, index: number) => (
-                <CategoryItem key={index} category={category} />
+                <CategoryItemDisplay key={index} category={category} />
               ))}
             </div>
           </div>
@@ -137,11 +143,11 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           </div>
           
           <div className="mt-4">
-            <AgentMatchingPanel leadInfo={conversation.leadInfo} />
+            <AgentMatchingPanel lead={conversation.leadInfo} />
           </div>
           
           <div className="mt-4 mb-8">
-            <FollowUpPanel conversationId={conversation.id} />
+            <FollowUpPanel conversation={conversation} />
           </div>
         </ScrollArea>
       </div>

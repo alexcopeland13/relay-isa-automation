@@ -156,7 +156,7 @@ export function ExportMenu({
       data.forEach(item => {
         const row = headers.map(header => {
           let cell = item[header] || '';
-          if (cell && cell.toString().includes(',')) {
+          if (cell && typeof cell === 'string' && cell.includes(',')) {
             return `"${cell}"`;
           }
           return cell;

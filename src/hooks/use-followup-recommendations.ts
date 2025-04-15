@@ -48,7 +48,7 @@ export function useFollowUpRecommendations(leadId?: string) {
             tags: ['viewing', 'follow-up'],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            createdBy: 'System',
+            author: 'System',
             usage: 28
           },
           {
@@ -61,7 +61,7 @@ export function useFollowUpRecommendations(leadId?: string) {
             tags: ['mortgage', 'rates', 'financing'],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            createdBy: 'System',
+            author: 'System',
             usage: 15
           }
         ];
@@ -114,7 +114,7 @@ export function useFollowUpRecommendations(leadId?: string) {
           name: 'Michael Brown',
           email: 'michael.brown@example.com',
           phone: '(555) 123-4567',
-          status: 'Hot Lead',
+          status: 'Qualified',
           source: 'Website Inquiry',
           date: new Date().toISOString(),
           lastContact: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),

@@ -5,18 +5,18 @@ export interface Agent {
   email: string;
   phone?: string;
   specializations: string[];
-  availability: 'High' | 'Medium' | 'Low';
+  areas?: string[];
+  yearsOfExperience?: number;
+  successRate?: number;
+  activeListings?: number;
+  status?: 'Active' | 'Inactive';
+  agency?: string;
+  availability?: 'High' | 'Medium' | 'Low';
   photoUrl?: string;
   title?: string;
   matchScore?: number;
   activeLeads?: number;
   location?: string;
-  status?: 'Active' | 'Inactive';
-  agency?: string;
-  areas?: string[];
-  successRate?: number;
-  yearsOfExperience?: number;
-  activeListings?: number;
   clientTypes?: string[];
   languages?: string[];
   certifications?: string[];
@@ -28,4 +28,5 @@ export interface Agent {
   showingsThisMonth?: number;
   licenseNumber?: string;
   bio?: string;
+  rating?: number;
 }

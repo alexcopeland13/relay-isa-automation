@@ -29,6 +29,7 @@ import { MotivationFactorsSection } from './MotivationFactorsSection';
 import { MatchingWeightsSection } from './MatchingWeightsSection';
 import { RecommendedAgentsList } from './RecommendedAgentsList';
 import { Agent } from '@/types/agent'; 
+import { CategoryItem } from '@/data/sampleConversation';
 
 interface AgentMatchingPanelProps {
   conversation: Conversation;
@@ -100,11 +101,15 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
   
   // Create transaction type object from extracted info
   const transactionType = {
-    role: conversation.extractedInfo.preferences?.buyerOrSeller || { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
-    transactionTimeline: conversation.extractedInfo.timeline?.urgency ? { value: conversation.extractedInfo.timeline.urgency, confidence: conversation.extractedInfo.timeline.confidence, source: "AI", verified: false } : { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
-    financingStatus: conversation.extractedInfo.financialInfo?.estimatedCredit ? { value: "Pre-approved", confidence: conversation.extractedInfo.financialInfo.confidence, source: "AI", verified: false } : { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
-    firstTimeBuyer: conversation.extractedInfo.preferences?.firstTimeBuyer || { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
-    confidence: conversation.extractedInfo.preferences?.confidence || 0.7
+    role: conversation.extractedInfo.transactionType?.role || { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+    transactionTimeline: conversation.extractedInfo.timeline?.urgency 
+      ? { value: conversation.extractedInfo.timeline.urgency, confidence: conversation.extractedInfo.timeline.confidence, source: "AI" as "AI" | "User" | "Agent", verified: false } 
+      : { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+    financingStatus: conversation.extractedInfo.financialInfo?.estimatedCredit 
+      ? { value: "Pre-approved", confidence: conversation.extractedInfo.financialInfo.confidence, source: "AI" as "AI" | "User" | "Agent", verified: false } 
+      : { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+    firstTimeBuyer: conversation.extractedInfo.transactionType?.firstTimeBuyer || { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+    confidence: conversation.extractedInfo.transactionType?.confidence || 0.7
   };
   
   return (
@@ -173,17 +178,17 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
             onEdit={() => {}}
           />
           <LocationPreferencesSection 
-            locationPreferences={conversation.extractedInfo.preferences?.location || {}} 
+            locationPreferences={conversation.extractedInfo.locationPreferences || {}} 
             isEditing={false} 
             onEdit={() => {}}
           />
           <PropertyInterestsSection 
-            propertyInterests={conversation.extractedInfo.preferences?.propertyType || {}} 
+            propertyInterests={conversation.extractedInfo.propertyInterests || {}} 
             isEditing={false} 
             onEdit={() => {}}
           />
           <MotivationFactorsSection 
-            motivationFactors={conversation.extractedInfo.preferences?.motivations || {}} 
+            motivationFactors={conversation.extractedInfo.motivationFactors || {}} 
             isEditing={false} 
             onEdit={() => {}}
           />

@@ -5,31 +5,25 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Calendar, 
-  User, 
-  MessageSquare, 
-  MapPin, 
-  Clock,
-  Star,
   CheckCircle,
   UserCheck
 } from 'lucide-react';
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { TransactionTypeSection } from './TransactionTypeSection';
-import { LocationPreferencesSection } from './LocationPreferencesSection';
-import { PropertyInterestsSection } from './PropertyInterestsSection';
-import { MotivationFactorsSection } from './MotivationFactorsSection';
-import { MatchingWeightsSection } from './MatchingWeightsSection';
-import { RecommendedAgentsList } from './RecommendedAgentsList';
-import { Agent } from '@/types/agent'; 
-import { CategoryItem } from '@/data/sampleConversation';
+import { Agent } from '@/types/agent';
+import { AgentMatchCard } from './AgentMatchCard';
+import { MatchingCriteria } from './MatchingCriteria';
+import { 
+  emptyLocationPreferences, 
+  emptyPropertyInterests, 
+  emptyMotivationFactors,
+  emptyTransactionType,
+  TransactionType
+} from '@/types/conversation';
 
 interface AgentMatchingPanelProps {
   conversation: Conversation;
@@ -99,74 +93,51 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
     }));
   };
   
-  // Create transaction type object from extracted info
-  const transactionType = {
-    role: conversation.extractedInfo.transactionType?.role || { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+  // Create transaction type object from extracted info with proper type casting
+  const transactionType: TransactionType = {
+    role: conversation.extractedInfo.transactionType?.role || { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
     transactionTimeline: conversation.extractedInfo.timeline?.urgency 
-      ? { value: conversation.extractedInfo.timeline.urgency, confidence: conversation.extractedInfo.timeline.confidence, source: "AI" as "AI" | "User" | "Agent", verified: false } 
-      : { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+      ? { 
+          value: conversation.extractedInfo.timeline.urgency, 
+          confidence: conversation.extractedInfo.timeline.confidence, 
+          source: "AI" as "AI" | "User" | "Agent", 
+          verified: false 
+        } 
+      : { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
     financingStatus: conversation.extractedInfo.financialInfo?.estimatedCredit 
-      ? { value: "Pre-approved", confidence: conversation.extractedInfo.financialInfo.confidence, source: "AI" as "AI" | "User" | "Agent", verified: false } 
-      : { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
-    firstTimeBuyer: conversation.extractedInfo.transactionType?.firstTimeBuyer || { value: "Unknown", confidence: 0.5, source: "AI" as "AI" | "User" | "Agent", verified: false },
+      ? { 
+          value: "Pre-approved", 
+          confidence: conversation.extractedInfo.financialInfo.confidence, 
+          source: "AI" as "AI" | "User" | "Agent", 
+          verified: false 
+        } 
+      : { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
+    firstTimeBuyer: conversation.extractedInfo.transactionType?.firstTimeBuyer || { value: "Unknown", confidence: 0.5, source: "AI", verified: false },
     confidence: conversation.extractedInfo.transactionType?.confidence || 0.7
   };
   
-  // Create empty objects with required structure for conditional props to avoid TypeScript errors
-  const emptyLocationPreferences = {
-    areasOfInterest: [],
-    neighborhoodType: [],
-    commuteConsiderations: {
-      maxCommuteDuration: 0,
-      commuteToLocations: [],
-      confidence: 0,
-      source: "AI" as "AI" | "User" | "Agent",
-      verified: false
-    },
-    confidence: 0
+  // Calculate match scores (this would be more sophisticated in a real implementation)
+  const calculateMatchScore = (agent: Agent) => {
+    // Simple implementation for demo purposes
+    const scores = {
+      'agent-1': 92,
+      'agent-2': 87,
+      'agent-3': 78,
+      'agent-4': 71,
+      'agent-5': 65,
+    };
+    return scores[agent.id as keyof typeof scores] || Math.floor(Math.random() * 30) + 70;
   };
-  
-  const emptyPropertyInterests = {
-    propertyType: [],
-    priceRange: {
-      min: 0,
-      max: 0,
-      confidence: 0,
-      source: "AI" as "AI" | "User" | "Agent",
-      verified: false
-    },
-    sizeRequirements: {
-      bedrooms: 0,
-      bathrooms: 0,
-      squareFootage: {
-        min: 0,
-        max: 0
-      },
-      confidence: 0,
-      source: "AI" as "AI" | "User" | "Agent",
-      verified: false
-    },
-    mustHaveFeatures: [],
-    dealBreakers: [],
-    confidence: 0
-  };
-  
-  const emptyMotivationFactors = {
-    primaryMotivation: { 
-      value: "", 
-      confidence: 0, 
-      source: "AI" as "AI" | "User" | "Agent", 
-      verified: false 
-    },
-    urgencyLevel: {
-      value: 0,
-      confidence: 0,
-      source: "AI" as "AI" | "User" | "Agent",
-      verified: false
-    },
-    decisionFactors: [],
-    potentialObstacles: [],
-    confidence: 0
+
+  // Get matching specializations (simplified implementation)
+  const getMatchingSpecializations = (agent: Agent) => {
+    const propertyType = conversation.extractedInfo.propertyInterests?.propertyType?.[0]?.value || '';
+    const location = conversation.extractedInfo.locationPreferences?.areasOfInterest?.[0]?.value || '';
+    
+    return agent.specializations.filter(spec => 
+      spec.toLowerCase().includes(propertyType.toLowerCase()) ||
+      agent.areas?.some(area => area.toLowerCase().includes(location.toLowerCase())) || false
+    ).slice(0, 3);
   };
   
   return (
@@ -228,33 +199,15 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
       
       <div>
         <h4 className="text-sm font-medium mb-3">Matching Criteria</h4>
-        <div className="space-y-4">
-          <TransactionTypeSection 
-            transactionType={transactionType} 
-            isEditing={false} 
-            onEdit={() => {}}
-          />
-          <LocationPreferencesSection 
-            locationPreferences={conversation.extractedInfo.locationPreferences || emptyLocationPreferences} 
-            isEditing={false} 
-            onEdit={() => {}}
-          />
-          <PropertyInterestsSection 
-            propertyInterests={conversation.extractedInfo.propertyInterests || emptyPropertyInterests} 
-            isEditing={false} 
-            onEdit={() => {}}
-          />
-          <MotivationFactorsSection 
-            motivationFactors={conversation.extractedInfo.motivationFactors || emptyMotivationFactors} 
-            isEditing={false} 
-            onEdit={() => {}}
-          />
-          <MatchingWeightsSection 
-            matchingWeights={matchingWeights}
-            isEditing={isEditingWeights}
-            onEdit={handleEditWeight}
-          />
-        </div>
+        <MatchingCriteria 
+          transactionType={transactionType}
+          locationPreferences={conversation.extractedInfo.locationPreferences || emptyLocationPreferences}
+          propertyInterests={conversation.extractedInfo.propertyInterests || emptyPropertyInterests}
+          motivationFactors={conversation.extractedInfo.motivationFactors || emptyMotivationFactors}
+          matchingWeights={matchingWeights}
+          isEditingWeights={isEditingWeights}
+          onEditWeight={handleEditWeight}
+        />
       </div>
       
       <div>
@@ -264,11 +217,17 @@ export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {
             {isEditingWeights ? 'Save Matching' : 'Adjust Matching'}
           </Button>
         </div>
-        <RecommendedAgentsList 
-          agents={sampleAgents}
-          leadInfo={conversation.leadInfo}
-          onSelectAgent={(agent) => console.log('Selected agent:', agent)}
-        />
+        <div className="space-y-4">
+          {sampleAgents.map((agent) => (
+            <AgentMatchCard
+              key={agent.id}
+              agent={agent}
+              matchScore={calculateMatchScore(agent)}
+              matchingSpecializations={getMatchingSpecializations(agent)}
+              onSelect={(agent) => console.log('Selected agent:', agent)}
+            />
+          ))}
+        </div>
       </div>
       
       <div className="pt-4 border-t border-border">

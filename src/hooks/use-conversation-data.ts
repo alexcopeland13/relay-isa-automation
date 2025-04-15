@@ -2,39 +2,21 @@
 import { useState, useEffect } from 'react';
 import { ConversationMessage } from '@/lib/ai-integration/apiGateway';
 import { useToast } from '@/hooks/use-toast';
+import { useEntityExtraction } from './conversation/use-entity-extraction';
+import { useProfileUpdates } from './conversation/use-profile-updates';
+import { ConversationData, EntityMap } from './conversation/types';
 
-interface EntityMap {
-  [key: string]: {
-    value: string;
-    confidence: number;
-    source: 'conversation' | 'user-input' | 'system';
-    timestamp: string;
-  };
-}
-
-export interface ConversationData {
-  conversationId: string;
-  leadInfo: {
-    id?: string;
-    name?: string;
-    email?: string;
-    phone?: string;
-    source?: string;
-    interests?: string[];
-    budget?: string;
-    timeline?: string;
-    locationPreferences?: string[];
-  };
-  extractedEntities: EntityMap;
-  lastUpdate: string;
-}
+export { type ConversationData, type EntityMap } from './conversation/types';
 
 export function useConversationData(conversationId?: string) {
   const [conversationData, setConversationData] = useState<ConversationData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [extractedUpdates, setExtractedUpdates] = useState<EntityMap>({});
   const { toast } = useToast();
+  
+  // Use our extracted hooks
+  const { processMessage, isProcessing } = useEntityExtraction();
+  const { updateLeadProfile: updateProfile, isUpdating } = useProfileUpdates();
 
   useEffect(() => {
     if (!conversationId) return;
@@ -97,122 +79,54 @@ export function useConversationData(conversationId?: string) {
     loadConversationData();
   }, [conversationId, toast]);
 
-  // Simulated function to extract entities from a message
-  const processMessage = async (message: ConversationMessage) => {
-    setIsUpdating(true);
+  // Process a message and extract entities
+  const handleProcessMessage = async (message: ConversationMessage) => {
+    const newEntities = await processMessage(message);
     
-    try {
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 1200));
+    if (newEntities) {
+      setExtractedUpdates(prev => ({...prev, ...newEntities}));
       
-      // Mock entity extraction based on message content
-      const newEntities: EntityMap = {};
-      
-      // Simple keyword-based extraction for demonstration
-      if (message.content.toLowerCase().includes('bedroom')) {
-        newEntities['preferred_bedroom_count'] = {
-          value: message.content.includes('4') ? '4' : '3',
-          confidence: 0.89,
-          source: 'conversation',
-          timestamp: new Date().toISOString()
-        };
-      }
-      
-      if (message.content.toLowerCase().includes('school')) {
-        newEntities['preferred_school_district'] = {
-          value: 'Parkview District',
-          confidence: 0.92,
-          source: 'conversation',
-          timestamp: new Date().toISOString()
-        };
-      }
-      
-      if (message.content.toLowerCase().includes('down payment') || message.content.toLowerCase().includes('mortgage')) {
-        newEntities['down_payment_amount'] = {
-          value: '$50,000',
-          confidence: 0.85,
-          source: 'conversation',
-          timestamp: new Date().toISOString()
-        };
-      }
-      
-      // Only set updates if entities were found
-      if (Object.keys(newEntities).length > 0) {
-        setExtractedUpdates(prev => ({...prev, ...newEntities}));
+      // Update conversation data with new entities
+      setConversationData(prev => {
+        if (!prev) return null;
         
-        // Update conversation data with new entities
-        setConversationData(prev => {
-          if (!prev) return null;
-          
-          return {
-            ...prev,
-            extractedEntities: {
-              ...prev.extractedEntities,
-              ...newEntities
-            },
-            lastUpdate: new Date().toISOString()
-          };
-        });
-        
-        return newEntities;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error processing message:', error);
-      toast({
-        title: 'Error processing message',
-        description: 'Could not process the message for entity extraction.',
-        variant: 'destructive',
+        return {
+          ...prev,
+          extractedEntities: {
+            ...prev.extractedEntities,
+            ...newEntities
+          },
+          lastUpdate: new Date().toISOString()
+        };
       });
-      return null;
-    } finally {
-      setIsUpdating(false);
+      
+      return newEntities;
     }
+    
+    return null;
   };
 
-  // Function to update lead profile with extracted data
-  const updateLeadProfile = async (entities?: EntityMap) => {
+  // Wrapper for profile updates
+  const handleUpdateLeadProfile = async () => {
     if (!conversationData) return false;
     
-    const entitiesToUpdate = entities || extractedUpdates;
-    if (Object.keys(entitiesToUpdate).length === 0) return false;
+    const success = await updateProfile(extractedUpdates);
     
-    setIsUpdating(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+    if (success) {
       // Clear pending updates
       setExtractedUpdates({});
-      
-      toast({
-        title: 'Lead profile updated',
-        description: 'New information extracted from conversation has been added to the lead profile.',
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Error updating lead profile:', error);
-      toast({
-        title: 'Error updating lead profile',
-        description: 'Could not update the lead profile with extracted information.',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setIsUpdating(false);
     }
+    
+    return success;
   };
 
   return {
     conversationData,
     isLoading,
-    isUpdating,
+    isUpdating: isProcessing || isUpdating,
     extractedUpdates,
-    processMessage,
-    updateLeadProfile,
+    processMessage: handleProcessMessage,
+    updateLeadProfile: handleUpdateLeadProfile,
     hasPendingUpdates: Object.keys(extractedUpdates).length > 0
   };
 }

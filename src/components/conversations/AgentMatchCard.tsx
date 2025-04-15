@@ -2,7 +2,7 @@
 import { Agent } from '@/types/agent';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MapPin, Calendar, Award } from 'lucide-react';
+import { CheckCircle, MapPin, Calendar, Award, Star } from 'lucide-react';
 
 interface AgentMatchCardProps {
   agent: Agent;
@@ -17,11 +17,15 @@ export const AgentMatchCard = ({
   matchingSpecializations,
   onSelect 
 }: AgentMatchCardProps) => {
+  // Determine score color based on match percentage
+  const getScoreColorClass = () => {
+    if (matchScore >= 90) return "bg-green-500 text-primary-foreground";
+    if (matchScore >= 75) return "bg-blue-500 text-primary-foreground";
+    return "bg-primary text-primary-foreground";
+  };
+
   return (
-    <div 
-      key={agent.id} 
-      className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
-    >
+    <div className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
       <div className="flex gap-4">
         <div className="relative">
           <div className="w-16 h-16 rounded-full overflow-hidden">
@@ -38,7 +42,7 @@ export const AgentMatchCard = ({
             )}
           </div>
           <div 
-            className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground text-xs font-semibold rounded-full w-8 h-8 flex items-center justify-center"
+            className={`absolute -bottom-2 -right-2 text-xs font-semibold rounded-full w-8 h-8 flex items-center justify-center ${getScoreColorClass()}`}
           >
             {matchScore}%
           </div>
@@ -75,6 +79,13 @@ export const AgentMatchCard = ({
               <span>{agent.activeListings} listings</span>
             </div>
           </div>
+          
+          {agent.rating && (
+            <div className="flex items-center mt-1 text-xs">
+              <Star className="h-3 w-3 text-yellow-500 mr-1" />
+              <span>{agent.rating.toFixed(1)}</span>
+            </div>
+          )}
         </div>
       </div>
       

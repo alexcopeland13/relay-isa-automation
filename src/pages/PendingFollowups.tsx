@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +15,9 @@ const sampleFollowUps = [
     leadName: 'Sarah Martinez',
     email: 'sarah.martinez@example.com',
     dueDate: addHours(new Date(), 2),
-    type: 'email',
-    priority: 'high',
-    status: 'pending',
+    type: 'email' as const,
+    priority: 'high' as const,
+    status: 'pending' as const,
     description: 'Send information about new listings in Westwood area',
     lastContact: addDays(new Date(), -3),
     assignedAgent: 'David Wilson'
@@ -28,9 +27,9 @@ const sampleFollowUps = [
     leadName: 'Robert Johnson',
     email: 'robert.j@example.com',
     dueDate: addHours(new Date(), 5),
-    type: 'call',
-    priority: 'medium',
-    status: 'pending',
+    type: 'call' as const,
+    priority: 'medium' as const,
+    status: 'pending' as const,
     description: 'Follow up on mortgage pre-approval status',
     lastContact: addDays(new Date(), -2),
     assignedAgent: 'Emily Taylor'
@@ -40,9 +39,9 @@ const sampleFollowUps = [
     leadName: 'Melissa Chang',
     email: 'melissa.c@example.com',
     dueDate: addHours(new Date(), 8),
-    type: 'text',
-    priority: 'low',
-    status: 'pending',
+    type: 'text' as const,
+    priority: 'low' as const,
+    status: 'pending' as const,
     description: 'Check if they want to schedule second viewing of the property',
     lastContact: addDays(new Date(), -1),
     assignedAgent: 'Sarah Johnson'
@@ -52,9 +51,9 @@ const sampleFollowUps = [
     leadName: 'Thomas Anderson',
     email: 'tanderson@example.com',
     dueDate: addDays(new Date(), 1),
-    type: 'email',
-    priority: 'medium',
-    status: 'pending',
+    type: 'email' as const,
+    priority: 'medium' as const,
+    status: 'pending' as const,
     description: 'Send additional photos of the backyard and garage',
     lastContact: addDays(new Date(), -4),
     assignedAgent: 'Michael Scott'
@@ -64,9 +63,9 @@ const sampleFollowUps = [
     leadName: 'Jennifer Lewis',
     email: 'jlewis@example.com',
     dueDate: addDays(new Date(), 1),
-    type: 'call',
-    priority: 'high',
-    status: 'pending',
+    type: 'call' as const,
+    priority: 'high' as const,
+    status: 'pending' as const,
     description: 'Discuss offer terms and pricing strategy',
     lastContact: addDays(new Date(), -1),
     assignedAgent: 'David Wilson'
@@ -76,9 +75,9 @@ const sampleFollowUps = [
     leadName: 'Christopher Martin',
     email: 'c.martin@example.com',
     dueDate: addDays(new Date(), 2),
-    type: 'email',
-    priority: 'medium',
-    status: 'pending',
+    type: 'email' as const,
+    priority: 'medium' as const,
+    status: 'pending' as const,
     description: 'Send market analysis report for downtown properties',
     lastContact: addDays(new Date(), -5),
     assignedAgent: 'Emily Taylor'

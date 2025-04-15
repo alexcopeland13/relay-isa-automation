@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, PhoneOutgoing, PhoneIncoming, CalendarCheck2, Plus, Minus, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,10 +41,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
-// Mock function to check for scheduling conflicts
 const checkForConflicts = (date: Date, time: string): { hasConflict: boolean, conflictDetails?: string } => {
-  // In a real implementation, this would check the user's calendar
-  // For demo purposes, let's create a specific conflict scenario
   const isConflict = date && 
     format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && 
     time === '2:00 PM';
@@ -58,7 +54,6 @@ const checkForConflicts = (date: Date, time: string): { hasConflict: boolean, co
     : { hasConflict: false };
 };
 
-// Form validation schema
 const callScheduleSchema = z.object({
   date: z.date({
     required_error: "Please select a date",
@@ -99,7 +94,6 @@ export const CallSchedulerModal = () => {
     },
   });
 
-  // Check for conflicts when date or time changes
   const watchDate = form.watch('date');
   const watchTime = form.watch('time');
   
@@ -112,15 +106,13 @@ export const CallSchedulerModal = () => {
     }
   };
   
-  // Reset conflict when date or time changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (watchDate && watchTime) {
       checkConflicts();
     }
   }, [watchDate, watchTime]);
 
   const onSubmit = async (data: CallScheduleFormValues) => {
-    // First check for conflicts
     const conflictResult = checkForConflicts(data.date, data.time);
     if (conflictResult.hasConflict) {
       setConflict(conflictResult);
@@ -130,17 +122,14 @@ export const CallSchedulerModal = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // In a real implementation, this would save the scheduled call
       console.log('Scheduled call:', data);
       
       toast.success('Call scheduled successfully', {
         description: `${data.direction} call scheduled for ${format(data.date, 'PPP')} at ${data.time}`,
       });
       
-      // Close the dialog
       document.querySelector('[data-radix-dialog-close]')?.dispatchEvent(
         new MouseEvent('click', { bubbles: true })
       );

@@ -15,11 +15,15 @@ export const AccessibleImage: React.FC<AccessibleImageProps> = ({
 }) => {
   const [hasError, setHasError] = useState(false);
   
+  // Convert width and height to numbers if they are strings
+  const width = props.width ? Number(props.width) : 100;
+  const height = props.height ? Number(props.height) : 100;
+  
   // Generate alt text if not provided
   const generatedAlt = alt || (
     src ? 
       generateAltText(src, contextDescription) : 
-      generatePlaceholderAltText(props.width || 100, props.height || 100, contextDescription)
+      generatePlaceholderAltText(width, height, contextDescription)
   );
   
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {

@@ -72,7 +72,7 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
           type: lead.type,
           interestType: lead.interestType,
           location: lead.location,
-          notes: '',
+          notes: lead.notes || '',
         }
       : {
           name: '',
@@ -95,7 +95,7 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Create the lead object
-      const newLead = {
+      const newLead: Lead = {
         id: lead?.id || `lead-${Date.now()}`,
         name: values.name,
         email: values.email,
@@ -106,10 +106,10 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
         location: values.location,
         source: values.source,
         notes: values.notes,
-        score: values.score,
-        lastContact: values.lastContact,
+        score: lead?.score || 50, // Default score if creating new lead
+        lastContact: lead?.lastContact || new Date().toISOString(),
         createdAt: lead?.createdAt || new Date().toISOString(),
-        assignedTo: values.assignedTo,
+        assignedTo: lead?.assignedTo || 'unassigned',
       };
 
       // Call onSave callback with the new/updated lead

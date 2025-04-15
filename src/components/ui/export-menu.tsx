@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Download, 
@@ -167,6 +166,8 @@ export function ExportMenu({
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
+      
+      // Corrected date formatting using date-fns format function
       const dateStr = format(new Date(), 'yyyy-MM-dd');
       
       link.setAttribute('href', url);

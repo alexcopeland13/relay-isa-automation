@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Lead } from '@/components/leads/LeadsList';
 import { MessageTemplate } from '@/data/sampleFollowUpData';
@@ -118,7 +117,6 @@ export function useFollowUpRecommendations(leadId?: string) {
           source: 'Website Inquiry',
           lastContact: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
           notes: 'Interested in investment properties',
-          tags: ['investor', 'premium'],
           assignedTo: 'Sarah Johnson'
         };
 

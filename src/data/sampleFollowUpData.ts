@@ -3,6 +3,7 @@
 export interface MessageTemplate {
   id: string;
   title: string;
+  name?: string; // For backward compatibility
   description: string;
   channel: 'email' | 'sms' | 'phone';
   subject?: string;
@@ -14,7 +15,13 @@ export interface MessageTemplate {
   author: string;
   usage: number;
   variables?: string[];
-  name?: string; // For backward compatibility
+  performanceMetrics?: {
+    openRate: number;
+    clickRate: number;
+    responseRate: number;
+    conversionRate?: number;
+    usageCount?: number;
+  };
 }
 
 // Define the Sequence type
@@ -25,13 +32,22 @@ export interface Sequence {
   steps: SequenceStep[];
   createdAt: string;
   updatedAt: string;
+  lastModified: string;
   isActive: boolean;
+  status: 'active' | 'inactive' | 'draft';
   targetAudience?: string;
+  leadType: string;
+  tags: string[];
   performance?: {
     opened: number;
     clicked: number;
     responded: number;
     converted: number;
+  };
+  performanceMetrics: {
+    completionRate: number;
+    conversionRate: number;
+    avgLeadsInSequence: number;
   };
 }
 
@@ -39,18 +55,19 @@ export interface SequenceStep {
   id: string;
   order: number;
   templateId: string;
+  channel: 'email' | 'sms' | 'phone';
   delay: {
     value: number;
     unit: 'hours' | 'days' | 'weeks';
   };
-  conditions?: {
+  conditions: {
     type: 'if_no_response' | 'if_clicked' | 'if_opened' | 'always';
     value?: any;
-  };
+  }[];
 }
 
 // Sample templates data
-export const sampleTemplates = [
+export const sampleTemplates: MessageTemplate[] = [
   {
     id: 'template-1',
     title: 'Initial Follow-up',
@@ -69,7 +86,9 @@ export const sampleTemplates = [
     performanceMetrics: {
       openRate: 68,
       clickRate: 42,
-      responseRate: 27
+      responseRate: 27,
+      conversionRate: 15,
+      usageCount: 42
     }
   },
   {
@@ -90,7 +109,9 @@ export const sampleTemplates = [
     performanceMetrics: {
       openRate: 72,
       clickRate: 45,
-      responseRate: 31
+      responseRate: 31,
+      conversionRate: 18,
+      usageCount: 36
     }
   },
   {
@@ -110,7 +131,9 @@ export const sampleTemplates = [
     performanceMetrics: {
       openRate: 95,
       clickRate: 0,
-      responseRate: 42
+      responseRate: 42,
+      conversionRate: 22,
+      usageCount: 58
     }
   },
   {
@@ -131,7 +154,9 @@ export const sampleTemplates = [
     performanceMetrics: {
       openRate: 88,
       clickRate: 62,
-      responseRate: 53
+      responseRate: 53,
+      conversionRate: 32,
+      usageCount: 45
     }
   },
   {
@@ -151,12 +176,156 @@ export const sampleTemplates = [
     performanceMetrics: {
       openRate: 100,
       clickRate: 0,
-      responseRate: 75
+      responseRate: 75,
+      conversionRate: 45,
+      usageCount: 32
     }
   }
 ];
 
-// Define other necessary types for follow-ups
+// Sample sequences data
+export const sampleSequences: Sequence[] = [
+  {
+    id: 'sequence-1',
+    name: 'First-time Homebuyer Sequence',
+    description: 'Engagement series for first-time homebuyers to educate and convert',
+    steps: [
+      {
+        id: 'step-001',
+        order: 1,
+        templateId: 'template-1',
+        channel: 'email',
+        delay: {
+          value: 0,
+          unit: 'hours'
+        },
+        conditions: []
+      },
+      {
+        id: 'step-002',
+        order: 2,
+        templateId: 'template-3',
+        channel: 'sms',
+        delay: {
+          value: 2,
+          unit: 'days'
+        },
+        conditions: [
+          {
+            type: 'if_no_response',
+            value: 'step-001'
+          }
+        ]
+      },
+      {
+        id: 'step-003',
+        order: 3,
+        templateId: 'template-5',
+        channel: 'phone',
+        delay: {
+          value: 1,
+          unit: 'weeks'
+        },
+        conditions: [
+          {
+            type: 'if_no_response',
+            value: 'step-002'
+          }
+        ]
+      }
+    ],
+    createdAt: '2023-04-15T10:00:00Z',
+    updatedAt: '2023-05-20T14:30:00Z',
+    lastModified: '2023-05-20T14:30:00Z',
+    isActive: true,
+    status: 'active',
+    leadType: 'First-Time Buyer',
+    tags: ['first-time', 'education', 'conversion'],
+    performanceMetrics: {
+      completionRate: 68,
+      conversionRate: 32,
+      avgLeadsInSequence: 45
+    }
+  },
+  {
+    id: 'sequence-2',
+    name: 'Refinance Opportunity',
+    description: 'Sequence for leads interested in refinancing their current mortgage',
+    steps: [
+      {
+        id: 'step-004',
+        order: 1,
+        templateId: 'template-2',
+        channel: 'email',
+        delay: {
+          value: 0,
+          unit: 'hours'
+        },
+        conditions: []
+      },
+      {
+        id: 'step-005',
+        order: 2,
+        templateId: 'template-3',
+        channel: 'sms',
+        delay: {
+          value: 3,
+          unit: 'days'
+        },
+        conditions: [
+          {
+            type: 'if_opened',
+            value: 'step-004'
+          }
+        ]
+      }
+    ],
+    createdAt: '2023-06-10T09:15:00Z',
+    updatedAt: '2023-06-25T11:45:00Z',
+    lastModified: '2023-06-25T11:45:00Z',
+    isActive: true,
+    status: 'active',
+    leadType: 'Refinance',
+    tags: ['refinance', 'rate-change', 'savings'],
+    performanceMetrics: {
+      completionRate: 75,
+      conversionRate: 38,
+      avgLeadsInSequence: 32
+    }
+  },
+  {
+    id: 'sequence-3',
+    name: 'Investment Property Buyers',
+    description: 'Sequence for real estate investors seeking mortgage options',
+    steps: [
+      {
+        id: 'step-006',
+        order: 1,
+        templateId: 'template-1',
+        channel: 'email',
+        delay: {
+          value: 0,
+          unit: 'hours'
+        },
+        conditions: []
+      }
+    ],
+    createdAt: '2023-07-05T13:20:00Z',
+    updatedAt: '2023-07-05T13:20:00Z',
+    lastModified: '2023-07-05T13:20:00Z',
+    isActive: false,
+    status: 'draft',
+    leadType: 'Investor',
+    tags: ['investment', 'multi-property', 'commercial'],
+    performanceMetrics: {
+      completionRate: 0,
+      conversionRate: 0,
+      avgLeadsInSequence: 0
+    }
+  }
+];
+
+// Define Template interface
 export interface Template {
   id: string;
   name: string;
@@ -170,9 +339,12 @@ export interface Template {
     openRate: number;
     clickRate: number;
     responseRate: number;
+    conversionRate?: number;
+    usageCount?: number;
   };
 }
 
+// Define FollowUp interface
 export interface FollowUp {
   id: string;
   leadId: string;
@@ -194,3 +366,70 @@ export interface FollowUp {
   createdAt: string;
   lastUpdated: string;
 }
+
+// Sample follow-ups data
+export const sampleFollowUps: FollowUp[] = [
+  {
+    id: "followup-1",
+    leadId: "lead-001",
+    leadInfo: {
+      name: "John Smith",
+      email: "john.smith@example.com",
+      phone: "(555) 123-4567",
+      interestType: "First-time home buyer",
+      qualificationScore: "High"
+    },
+    channel: "email",
+    status: "pending",
+    priority: "high",
+    scheduledFor: "2023-05-15T10:00:00Z",
+    suggestedContent: "Hi John, I wanted to follow up on our conversation about first-time home buying options. Do you have time this week to discuss the pre-approval process?",
+    suggestedTemplate: "template-1",
+    assignedTo: "agent-1",
+    aiReasoning: "Lead showed high interest in pre-approval process during initial call",
+    createdAt: "2023-05-12T14:30:00Z",
+    lastUpdated: "2023-05-12T14:30:00Z"
+  },
+  {
+    id: "followup-2",
+    leadId: "lead-002",
+    leadInfo: {
+      name: "Sarah Johnson",
+      email: "sarah.j@example.com",
+      phone: "(555) 234-5678",
+      interestType: "Refinance",
+      qualificationScore: "Medium"
+    },
+    channel: "phone",
+    status: "approved",
+    priority: "medium",
+    scheduledFor: "2023-05-16T15:30:00Z",
+    suggestedContent: "Call Sarah to discuss the current refinance rates and how they compare to her existing mortgage.",
+    suggestedTemplate: "template-5",
+    assignedTo: "agent-2",
+    aiReasoning: "Lead inquired about refinance rates but hasn't responded to email",
+    createdAt: "2023-05-13T09:45:00Z",
+    lastUpdated: "2023-05-14T11:20:00Z"
+  },
+  {
+    id: "followup-3",
+    leadId: "lead-003",
+    leadInfo: {
+      name: "Michael Chen",
+      email: "m.chen@example.com",
+      phone: "(555) 345-6789",
+      interestType: "Investment property",
+      qualificationScore: "High"
+    },
+    channel: "sms",
+    status: "completed",
+    priority: "high",
+    scheduledFor: "2023-05-14T13:00:00Z",
+    suggestedContent: "Hi Michael, just checking in about the investment property options we discussed. Let me know if you have any questions!",
+    suggestedTemplate: "template-3",
+    assignedTo: "agent-3",
+    aiReasoning: "Lead has been actively engaged but prefers quick communications",
+    createdAt: "2023-05-12T16:20:00Z",
+    lastUpdated: "2023-05-14T13:05:00Z"
+  }
+];

@@ -13,6 +13,7 @@ export const sampleAgentsData: Agent[] = [
     yearsOfExperience: 8,
     bio: "Sarah is a top-performing agent with 8 years of experience in luxury and waterfront properties. She specializes in helping high-net-worth clients find their dream homes in the most desirable neighborhoods. Her attention to detail and extensive network make her an invaluable resource for both buyers and sellers.",
     status: "Active",
+    availability: "High",
     
     specializations: ["Luxury Homes", "Waterfront Properties", "High-End Condos"],
     areas: ["Lakefront", "Downtown", "Northern Suburbs"],
@@ -27,7 +28,8 @@ export const sampleAgentsData: Agent[] = [
     conversionRate: 68,
     activeListings: 12,
     leadsAssigned: 8,
-    showingsThisMonth: 15
+    showingsThisMonth: 15,
+    activeLeads: 8
   },
   {
     id: "agent-2",
@@ -40,6 +42,7 @@ export const sampleAgentsData: Agent[] = [
     yearsOfExperience: 5,
     bio: "Michael specializes in helping first-time homebuyers navigate the complex real estate market. With a background in finance, he provides clear guidance on budgeting, mortgages, and investment potential. His patience and educational approach help clients make confident decisions.",
     status: "Active",
+    availability: "Medium",
     
     specializations: ["First-Time Buyers", "Condos", "Investment Properties"],
     areas: ["Downtown", "Westside", "University District"],
@@ -54,7 +57,8 @@ export const sampleAgentsData: Agent[] = [
     conversionRate: 62,
     activeListings: 8,
     leadsAssigned: 10,
-    showingsThisMonth: 18
+    showingsThisMonth: 18,
+    activeLeads: 10
   },
   {
     id: "agent-3",
@@ -67,6 +71,7 @@ export const sampleAgentsData: Agent[] = [
     yearsOfExperience: 12,
     bio: "With over a decade of experience, Jessica has developed deep expertise in family homes and relocation services. She takes pride in helping families find not just houses, but communities that match their lifestyle needs. Her comprehensive approach includes school information, local amenities, and future development plans.",
     status: "Active",
+    availability: "Medium",
     
     specializations: ["Family Homes", "Suburban Properties", "Relocation Services"],
     areas: ["Eastside", "Southern District", "School Districts"],
@@ -81,7 +86,8 @@ export const sampleAgentsData: Agent[] = [
     conversionRate: 70,
     activeListings: 15,
     leadsAssigned: 7,
-    showingsThisMonth: 21
+    showingsThisMonth: 21,
+    activeLeads: 7
   },
   {
     id: "agent-4",
@@ -94,6 +100,7 @@ export const sampleAgentsData: Agent[] = [
     yearsOfExperience: 15,
     bio: "David is our commercial real estate expert with 15 years of experience in office, retail, and industrial properties. He works closely with business owners and investors to identify properties that align with their business goals and maximize ROI. His analytical approach and market knowledge make him a trusted advisor.",
     status: "Active",
+    availability: "Low",
     
     specializations: ["Commercial Properties", "Office Space", "Retail Locations", "Industrial"],
     areas: ["Business District", "Industrial Park", "Shopping Centers"],
@@ -108,7 +115,8 @@ export const sampleAgentsData: Agent[] = [
     conversionRate: 58,
     activeListings: 6,
     leadsAssigned: 5,
-    showingsThisMonth: 12
+    showingsThisMonth: 12,
+    activeLeads: 5
   },
   {
     id: "agent-5",
@@ -121,6 +129,7 @@ export const sampleAgentsData: Agent[] = [
     yearsOfExperience: 3,
     bio: "Emily brings fresh energy and tech-savvy marketing strategies to her real estate practice. While newer to the industry, she has quickly established herself with millennial buyers and sellers through her innovative use of social media and virtual tours. Her background in interior design also helps clients visualize potential in properties.",
     status: "Active",
+    availability: "High",
     
     specializations: ["Starter Homes", "Urban Lofts", "Fixer-Uppers"],
     areas: ["Arts District", "Midtown", "Riverside"],
@@ -135,7 +144,8 @@ export const sampleAgentsData: Agent[] = [
     conversionRate: 60,
     activeListings: 7,
     leadsAssigned: 9,
-    showingsThisMonth: 16
+    showingsThisMonth: 16,
+    activeLeads: 9
   },
   {
     id: "agent-6",
@@ -148,6 +158,7 @@ export const sampleAgentsData: Agent[] = [
     yearsOfExperience: 20,
     bio: "Robert is our most experienced agent with 20 years in the industry. He specializes in historic homes and luxury properties with unique character. His encyclopedic knowledge of architectural styles and construction quality makes him invaluable for clients seeking distinctive properties. His patient, no-pressure approach has earned him many repeat clients.",
     status: "Inactive",
+    availability: "Low",
     
     specializations: ["Historic Homes", "Luxury Properties", "Unique Estates"],
     areas: ["Historic District", "Lakefront", "Country Estates"],
@@ -162,6 +173,7 @@ export const sampleAgentsData: Agent[] = [
     conversionRate: 65,
     activeListings: 4,
     leadsAssigned: 3,
-    showingsThisMonth: 8
+    showingsThisMonth: 8,
+    activeLeads: 3
   }
 ];

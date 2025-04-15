@@ -7,10 +7,50 @@ import { FollowUpCalendar } from '@/components/follow-ups/FollowUpCalendar';
 import { TemplateLibrary } from '@/components/follow-ups/TemplateLibrary';
 import { PerformanceMetrics } from '@/components/follow-ups/PerformanceMetrics';
 import { SequenceBuilder } from '@/components/follow-ups/SequenceBuilder';
-import { sampleFollowUps, sampleTemplates, sampleSequences } from '@/data/sampleFollowUpData';
+import { sampleTemplates, sampleSequences, sampleFollowUps, FollowUp } from '@/data/sampleFollowUpData';
+import { useToast } from '@/hooks/use-toast';
 
 const FollowUps = () => {
   const [activeTab, setActiveTab] = useState('queue');
+  const [followUps, setFollowUps] = useState(sampleFollowUps);
+  const { toast } = useToast();
+
+  const handleStatusChange = (followUpId: string, newStatus: FollowUp['status']) => {
+    setFollowUps(prevFollowUps => 
+      prevFollowUps.map(followUp => 
+        followUp.id === followUpId ? { ...followUp, status: newStatus } : followUp
+      )
+    );
+    
+    toast({
+      title: "Status updated",
+      description: `Follow-up status has been updated to ${newStatus}`,
+    });
+  };
+
+  const handleEditFollowUp = (updatedFollowUp: FollowUp) => {
+    setFollowUps(prevFollowUps => 
+      prevFollowUps.map(followUp => 
+        followUp.id === updatedFollowUp.id ? updatedFollowUp : followUp
+      )
+    );
+    
+    toast({
+      title: "Follow-up updated",
+      description: "The follow-up has been updated successfully",
+    });
+  };
+
+  const handleDeleteFollowUp = (followUpId: string) => {
+    setFollowUps(prevFollowUps => 
+      prevFollowUps.filter(followUp => followUp.id !== followUpId)
+    );
+    
+    toast({
+      title: "Follow-up deleted",
+      description: "The follow-up has been deleted successfully",
+    });
+  };
 
   return (
     <PageLayout>
@@ -29,11 +69,16 @@ const FollowUps = () => {
         </TabsList>
 
         <TabsContent value="queue" className="mt-0">
-          <FollowUpQueue followUps={sampleFollowUps} />
+          <FollowUpQueue 
+            followUps={followUps}
+            onStatusChange={handleStatusChange}
+            onEditFollowUp={handleEditFollowUp}
+            onDeleteFollowUp={handleDeleteFollowUp}
+          />
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-0">
-          <FollowUpCalendar followUps={sampleFollowUps} />
+          <FollowUpCalendar followUps={followUps} />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-0">
@@ -46,7 +91,7 @@ const FollowUps = () => {
 
         <TabsContent value="performance" className="mt-0">
           <PerformanceMetrics 
-            followUps={sampleFollowUps} 
+            followUps={followUps} 
             templates={sampleTemplates} 
             sequences={sampleSequences}
           />

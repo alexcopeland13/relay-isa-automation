@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { format, addDays, isToday, isTomorrow } from 'date-fns';
 import { CalendarPlus, Phone, Users, Calendar as CalendarIcon, PhoneIncoming, PhoneOutgoing, Clock, PhoneCall } from 'lucide-react';
 import { CallSchedulerModal } from '@/components/conversations/CallSchedulerModal';
+import { UpcomingCallCard, CallInfo } from '@/components/calls/UpcomingCallCard';
 
 // Sample call data for demonstration purposes
-const sampleCalls = [
+const sampleCalls: CallInfo[] = [
   {
     id: 1,
     leadName: 'Michael Brown',
@@ -23,7 +24,8 @@ const sampleCalls = [
     purpose: 'Initial consultation',
     duration: '30 min',
     assignedAgent: 'Sarah Johnson',
-    notes: 'Interested in single-family homes in north area'
+    notes: 'Interested in single-family homes in north area',
+    status: 'confirmed'
   },
   {
     id: 2,
@@ -35,7 +37,8 @@ const sampleCalls = [
     purpose: 'Follow-up discussion',
     duration: '15 min',
     assignedAgent: 'David Wilson',
-    notes: 'Wants to discuss financing options'
+    notes: 'Wants to discuss financing options',
+    status: 'tentative'
   },
   {
     id: 3,
@@ -47,7 +50,8 @@ const sampleCalls = [
     purpose: 'Property viewing coordination',
     duration: '20 min',
     assignedAgent: 'Emily Taylor',
-    notes: 'Interested in scheduling weekend viewings'
+    notes: 'Interested in scheduling weekend viewings',
+    status: 'confirmed'
   },
   {
     id: 4,
@@ -59,7 +63,8 @@ const sampleCalls = [
     purpose: 'Contract negotiation',
     duration: '45 min',
     assignedAgent: 'Michael Scott',
-    notes: 'Ready to make offer on the Hillcrest property'
+    notes: 'Ready to make offer on the Hillcrest property',
+    status: 'rescheduled'
   },
   {
     id: 5,
@@ -71,7 +76,8 @@ const sampleCalls = [
     purpose: 'Initial consultation',
     duration: '30 min',
     assignedAgent: 'Sarah Johnson',
-    notes: 'New lead, first contact'
+    notes: 'New lead, first contact',
+    status: 'confirmed'
   }
 ];
 
@@ -141,7 +147,7 @@ const UpcomingCalls = () => {
         <TabsContent value="today" className="mt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredCalls.length > 0 ? filteredCalls.map(call => (
-              <CallCard key={call.id} call={call} />
+              <UpcomingCallCard key={call.id} call={call} />
             )) : (
               <p className="col-span-2 text-center py-8 text-muted-foreground">
                 No calls scheduled for today
@@ -153,7 +159,7 @@ const UpcomingCalls = () => {
         <TabsContent value="tomorrow" className="mt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredCalls.length > 0 ? filteredCalls.map(call => (
-              <CallCard key={call.id} call={call} />
+              <UpcomingCallCard key={call.id} call={call} />
             )) : (
               <p className="col-span-2 text-center py-8 text-muted-foreground">
                 No calls scheduled for tomorrow
@@ -191,7 +197,7 @@ const UpcomingCalls = () => {
               <CardContent>
                 <div className="space-y-4">
                   {filteredCalls.length > 0 ? filteredCalls.map(call => (
-                    <CallCard key={call.id} call={call} compact />
+                    <UpcomingCallCard key={call.id} call={call} compact />
                   )) : (
                     <p className="text-center py-8 text-muted-foreground">
                       No calls scheduled for this date
@@ -204,95 +210,6 @@ const UpcomingCalls = () => {
         </TabsContent>
       </Tabs>
     </PageLayout>
-  );
-};
-
-interface CallCardProps {
-  call: {
-    id: number;
-    leadName: string;
-    phone: string;
-    date: Date;
-    time: string;
-    direction: string;
-    purpose: string;
-    duration: string;
-    assignedAgent: string;
-    notes: string;
-  };
-  compact?: boolean;
-}
-
-const CallCard = ({ call, compact = false }: CallCardProps) => {
-  const isOutbound = call.direction === 'outbound';
-  
-  return (
-    <Card className={compact ? "overflow-hidden" : ""}>
-      <CardHeader className={compact ? "p-4" : ""}>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className={compact ? "text-base" : ""}>{call.leadName}</CardTitle>
-            <CardDescription>{call.phone}</CardDescription>
-          </div>
-          <Badge variant={isOutbound ? "default" : "secondary"} className="flex items-center gap-1">
-            {isOutbound ? (
-              <>
-                <PhoneOutgoing className="h-3 w-3" />
-                Outbound
-              </>
-            ) : (
-              <>
-                <PhoneIncoming className="h-3 w-3" />
-                Inbound
-              </>
-            )}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className={compact ? "p-4 pt-0" : ""}>
-        <div className="space-y-3">
-          <div className="flex items-center text-sm">
-            <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span className="font-medium">{format(call.date, 'MMMM d, yyyy')}</span>
-            <span className="mx-2">•</span>
-            <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span>{call.time}</span>
-            <span className="mx-2">•</span>
-            <span className="text-muted-foreground">{call.duration}</span>
-          </div>
-          
-          <div className="flex items-center text-sm">
-            <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span>{call.purpose}</span>
-          </div>
-          
-          {!compact && (
-            <>
-              <div className="flex items-center text-sm">
-                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>Assigned: {call.assignedAgent}</span>
-              </div>
-              
-              {call.notes && (
-                <div className="pt-2 text-sm">
-                  <p className="text-muted-foreground">{call.notes}</p>
-                </div>
-              )}
-              
-              <div className="pt-3 flex gap-2">
-                <Button size="sm" variant="default">
-                  <Phone className="mr-2 h-4 w-4" />
-                  Call Now
-                </Button>
-                <Button size="sm" variant="outline">
-                  Reschedule
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 };
 

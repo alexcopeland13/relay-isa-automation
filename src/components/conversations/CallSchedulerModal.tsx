@@ -1,45 +1,23 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, PhoneOutgoing, PhoneIncoming, CalendarCheck2, Plus, Minus, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { useForm } from 'react-hook-form';
+import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { AvailableTimeSlots } from './AvailableTimeSlots';
+import { AgentAvailabilityIndicator } from './AgentAvailabilityIndicator';
+import { sampleAgentsData } from '@/data/sampleAgentsData';
 
 const checkForConflicts = (date: Date, time: string): { hasConflict: boolean, conflictDetails?: string } => {
   const isConflict = date && 
@@ -61,11 +39,14 @@ const callScheduleSchema = z.object({
   time: z.string({
     required_error: "Please select a time",
   }),
-  purpose: z.string({
-    required_error: "Please select a purpose",
+  duration: z.number({
+    required_error: "Please select a duration",
   }),
   direction: z.enum(['inbound', 'outbound'], {
     required_error: "Please select a call direction",
+  }),
+  purpose: z.string({
+    required_error: "Please select a purpose",
   }),
   notes: z.string().optional(),
   addToCalendar: z.boolean().default(true),
@@ -76,21 +57,19 @@ const callScheduleSchema = z.object({
 type CallScheduleFormValues = z.infer<typeof callScheduleSchema>;
 
 export const CallSchedulerModal = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflict, setConflict] = useState<{ hasConflict: boolean, conflictDetails?: string }>({ hasConflict: false });
-  
+  const [selectedAgent, setSelectedAgent] = useState(sampleAgentsData[0]);
+
   const form = useForm<CallScheduleFormValues>({
     resolver: zodResolver(callScheduleSchema),
     defaultValues: {
-      date: undefined,
+      date: new Date(),
       time: '',
-      purpose: '',
+      duration: 30,
       direction: 'outbound',
+      purpose: '',
       notes: '',
-      addToCalendar: true,
-      sendReminder: true,
-      reminderTime: '15min',
     },
   });
 
@@ -100,9 +79,9 @@ export const CallSchedulerModal = () => {
   const checkConflicts = () => {
     if (watchDate && watchTime) {
       const conflictResult = checkForConflicts(watchDate, watchTime);
-      setConflict(conflictResult);
-    } else {
-      setConflict({ hasConflict: false });
+      if (conflictResult.hasConflict) {
+        setConflict(conflictResult);
+      }
     }
   };
   
@@ -135,298 +114,246 @@ export const CallSchedulerModal = () => {
       );
     } catch (error) {
       toast.error('Failed to schedule call', {
-        description: 'There was a problem scheduling your call. Please try again.',
+        description: 'An error occurred while scheduling the call. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
-    const hour = Math.floor(i / 4);
-    const minute = (i % 4) * 15;
-    const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
-    const period = hour < 12 ? 'AM' : 'PM';
-    const formattedMinute = minute.toString().padStart(2, '0');
-    return `${formattedHour}:${formattedMinute} ${period}`;
-  });
-
-  const purposeOptions = [
-    'Initial consultation',
-    'Follow-up discussion',
-    'Property viewing coordination',
-    'Financing options',
-    'Contract negotiation',
-    'Closing details',
-    'Other',
-  ];
-  
-  const reminderOptions = [
-    { value: '5min', label: '5 minutes before' },
-    { value: '15min', label: '15 minutes before' },
-    { value: '30min', label: '30 minutes before' },
-    { value: '1hour', label: '1 hour before' },
-    { value: '1day', label: '1 day before' },
-  ];
+  const handleSelectTime = (time: string) => {
+    form.setValue('time', time);
+    
+    if (conflict.hasConflict) {
+      setConflict({ hasConflict: false });
+    }
+  };
 
   return (
-    <DialogContent className="sm:max-w-[500px]">
+    <DialogContent className="max-w-3xl overflow-y-auto max-h-[90vh]">
       <DialogHeader>
         <DialogTitle>Schedule a Call</DialogTitle>
         <DialogDescription>
-          Plan a voice conversation with this lead at a specific time.
+          Set up a call with the selected lead or contact.
         </DialogDescription>
       </DialogHeader>
       
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {conflict.hasConflict && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Scheduling Conflict</AlertTitle>
-              <AlertDescription>
-                {conflict.conflictDetails}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Date <span className="text-destructive">*</span></FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <img 
+              src={selectedAgent.photoUrl || '/placeholder.svg'} 
+              alt={selectedAgent.name}
+              className="w-12 h-12 rounded-full object-cover"
+            />
+            <div>
+              <h3 className="font-medium">{selectedAgent.name}</h3>
+              <p className="text-sm text-muted-foreground">{selectedAgent.title || 'Agent'}</p>
+            </div>
+          </div>
+          <AgentAvailabilityIndicator agent={selectedAgent} showNextAvailable={true} />
+        </div>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <AvailableTimeSlots 
+                  selectedDate={watchDate}
+                  agent={selectedAgent}
+                  onSelectTime={handleSelectTime}
+                  selectedTime={watchTime}
+                />
+              </div>
+              
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="direction"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1">
+                      <FormLabel>Call Direction</FormLabel>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1"
                         >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="outbound" id="outbound" />
+                            <Label htmlFor="outbound" className="flex items-center cursor-pointer">
+                              <PhoneOutgoing className="mr-2 h-4 w-4" />
+                              Outbound (you call them)
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="inbound" id="inbound" />
+                            <Label htmlFor="inbound" className="flex items-center cursor-pointer">
+                              <PhoneIncoming className="mr-2 h-4 w-4" />
+                              Inbound (they call you)
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration (minutes)</FormLabel>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => form.setValue('duration', Math.max(15, field.value - 15))}
+                        >
+                          <Minus className="h-4 w-4" />
                         </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          field.onChange(date);
-                          setSelectedDate(date);
-                        }}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="time"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Time <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {timeOptions.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          
-          <FormField
-            control={form.control}
-            name="purpose"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Call Purpose <span className="text-destructive">*</span></FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select the purpose of this call" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {purposeOptions.map((purpose) => (
-                      <SelectItem key={purpose} value={purpose}>
-                        {purpose}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="direction"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Call Direction <span className="text-destructive">*</span></FormLabel>
-                <div className="flex space-x-4">
-                  <div 
-                    className={cn(
-                      "flex-1 border rounded-md p-3 cursor-pointer flex items-center justify-center space-x-2",
-                      field.value === 'outbound' ? "bg-primary/10 border-primary" : "border-input"
-                    )}
-                    onClick={() => field.onChange('outbound')}
-                  >
-                    <PhoneOutgoing size={16} />
-                    <span>Outbound</span>
-                  </div>
-                  <div 
-                    className={cn(
-                      "flex-1 border rounded-md p-3 cursor-pointer flex items-center justify-center space-x-2",
-                      field.value === 'inbound' ? "bg-primary/10 border-primary" : "border-input"
-                    )}
-                    onClick={() => field.onChange('inbound')}
-                  >
-                    <PhoneIncoming size={16} />
-                    <span>Inbound</span>
-                  </div>
-                </div>
-                <FormDescription>
-                  Who will initiate the call
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Pre-call Notes</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Add any preparation notes or topics to cover..." 
-                    className="resize-none"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <div className="space-y-2">
-            <FormField
-              control={form.control}
-              name="addToCalendar"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Add to Calendar</FormLabel>
-                    <FormDescription>
-                      Automatically add this call to your work calendar
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="sendReminder"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Send Reminder</FormLabel>
-                    <FormDescription>
-                      Get notified before the scheduled call
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            {form.watch('sendReminder') && (
-              <FormField
-                control={form.control}
-                name="reminderTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reminder Time</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            className="w-20 text-center"
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => form.setValue('duration', field.value + 15)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="purpose"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Purpose</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="When to send the reminder" />
-                        </SelectTrigger>
+                        <Input {...field} placeholder="e.g., Initial consultation, Property review" />
                       </FormControl>
-                      <SelectContent>
-                        {reminderOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Any additional information about this call"
+                          rows={3}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+            
+            {conflict.hasConflict && (
+              <div className="flex p-3 text-sm border border-yellow-200 bg-yellow-50 rounded-md items-start">
+                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 text-yellow-500 mt-0.5" />
+                <div>
+                  <p className="font-medium">Scheduling Conflict</p>
+                  <p>{conflict.conflictDetails}</p>
+                </div>
+              </div>
             )}
-          </div>
-          
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || conflict.hasConflict}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Scheduling...
-                </>
-              ) : (
-                <>
-                  <CalendarCheck2 className="mr-2 h-4 w-4" />
-                  Schedule Call
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </Form>
+            
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  document.querySelector('[data-radix-dialog-close]')?.dispatchEvent(
+                    new MouseEvent('click', { bubbles: true })
+                  );
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <CalendarCheck2 className="mr-2 h-4 w-4" />
+                    Schedule Call
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </DialogContent>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { 
   Download, 
@@ -25,13 +26,23 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 
 export interface ExportMenuProps {
   data: any[];
   filename?: string;
   exportableCols?: string[];
   supportedFormats?: ('csv' | 'pdf' | 'email')[];
-  onExport?: (format: string, dateRange?: {from: Date, to: Date}) => Promise<void>;
+  onExport?: (format: string, options: ExportOptions) => Promise<void>;
+}
+
+export interface ExportOptions {
+  dateRange: {from: Date, to: Date} | null;
+  fields: string[];
+  format: string;
+  recipient?: string;
 }
 
 export function ExportMenu({
@@ -43,72 +54,70 @@ export function ExportMenu({
 }: ExportMenuProps) {
   const [exportFormat, setExportFormat] = useState<string | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
   const [showDateDialog, setShowDateDialog] = useState(false);
   const [date, setDate] = useState<{from: Date, to: Date}>({
     from: new Date(new Date().setDate(new Date().getDate() - 30)), // Last 30 days
     to: new Date(),
   });
   const [emailAddress, setEmailAddress] = useState('');
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Initialize selected fields with all available fields
+  useState(() => {
+    if (exportableCols) {
+      setSelectedFields(exportableCols);
+    } else if (data.length > 0) {
+      setSelectedFields(Object.keys(data[0]));
+    }
+  });
 
   const handleExport = async (format: string) => {
     setExportFormat(format);
-    
-    if (format === 'email') {
-      setShowDateDialog(true);
-      return;
-    }
-    
     setShowDateDialog(true);
+  };
+
+  const toggleField = (field: string) => {
+    setSelectedFields(current => 
+      current.includes(field)
+        ? current.filter(f => f !== field)
+        : [...current, field]
+    );
   };
 
   const processExport = async () => {
     if (!exportFormat) return;
     
     setExportLoading(true);
+    setExportProgress(0);
     
     try {
+      const exportOptions: ExportOptions = {
+        dateRange: date,
+        fields: selectedFields,
+        format: exportFormat,
+        recipient: exportFormat === 'email' ? emailAddress : undefined
+      };
+
       if (onExport) {
-        await onExport(exportFormat, date);
+        // Simulate progress updates
+        const progressInterval = setInterval(() => {
+          setExportProgress(prev => {
+            if (prev >= 95) {
+              clearInterval(progressInterval);
+              return 95;
+            }
+            return prev + 5;
+          });
+        }, 200);
+        
+        await onExport(exportFormat, exportOptions);
+        
+        clearInterval(progressInterval);
+        setExportProgress(100);
       } else {
-        if (exportFormat === 'csv') {
-          const headers = exportableCols || Object.keys(data[0] || {});
-          let csvContent = headers.join(',') + '\n';
-          
-          data.forEach(item => {
-            const row = headers.map(header => {
-              let cell = item[header] || '';
-              if (cell && cell.toString().includes(',')) {
-                return `"${cell}"`;
-              }
-              return cell;
-            });
-            csvContent += row.join(',') + '\n';
-          });
-          
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          const dateStr = format(new Date(), 'yyyy-MM-dd');
-          
-          link.setAttribute('href', url);
-          link.setAttribute('download', `${filename}_${dateStr}.csv`);
-          link.click();
-        }
-        
-        if (exportFormat === 'pdf') {
-          toast({
-            title: "PDF Export",
-            description: "PDF export functionality requires server integration.",
-          });
-        }
-        
-        if (exportFormat === 'email') {
-          toast({
-            title: "Email Export",
-            description: `Export will be sent to ${emailAddress} when ready.`,
-          });
-        }
+        await simulateExport(exportFormat, exportOptions);
       }
       
       setShowDateDialog(false);
@@ -129,6 +138,40 @@ export function ExportMenu({
       console.error("Export error:", error);
     } finally {
       setExportLoading(false);
+      setTimeout(() => setExportProgress(0), 1000);
+    }
+  };
+
+  const simulateExport = async (format: string, options: ExportOptions) => {
+    // Simulate an export operation with progress
+    for (let i = 0; i <= 100; i += 10) {
+      setExportProgress(i);
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    if (format === 'csv') {
+      const headers = options.fields;
+      let csvContent = headers.join(',') + '\n';
+      
+      data.forEach(item => {
+        const row = headers.map(header => {
+          let cell = item[header] || '';
+          if (cell && cell.toString().includes(',')) {
+            return `"${cell}"`;
+          }
+          return cell;
+        });
+        csvContent += row.join(',') + '\n';
+      });
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = format(new Date(), 'yyyy-MM-dd');
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${filename}_${dateStr}.csv`);
+      link.click();
     }
   };
 
@@ -169,7 +212,7 @@ export function ExportMenu({
       </DropdownMenu>
 
       <Dialog open={showDateDialog} onOpenChange={setShowDateDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Export Settings</DialogTitle>
           </DialogHeader>
@@ -216,6 +259,29 @@ export function ExportMenu({
               </div>
             </div>
             
+            <div className="space-y-2">
+              <Label>Fields to Export</Label>
+              <div className="border rounded-md p-3 h-32 overflow-y-auto">
+                <div className="space-y-2">
+                  {(exportableCols || (data.length > 0 ? Object.keys(data[0]) : [])).map((field) => (
+                    <div key={field} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={field} 
+                        checked={selectedFields.includes(field)}
+                        onCheckedChange={() => toggleField(field)}
+                      />
+                      <Label 
+                        htmlFor={field}
+                        className="text-sm capitalize cursor-pointer"
+                      >
+                        {field.replace(/_/g, ' ')}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
             {exportFormat === 'email' && (
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
@@ -226,6 +292,16 @@ export function ExportMenu({
                   onChange={(e) => setEmailAddress(e.target.value)}
                   placeholder="Enter recipient email"
                 />
+              </div>
+            )}
+            
+            {exportLoading && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Export Progress</Label>
+                  <span className="text-sm">{exportProgress}%</span>
+                </div>
+                <Progress value={exportProgress} />
               </div>
             )}
           </div>

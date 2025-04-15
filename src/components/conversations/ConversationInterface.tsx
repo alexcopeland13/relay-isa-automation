@@ -1,241 +1,149 @@
 
-import { useState } from 'react';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Conversation } from '@/data/sampleConversation';
+import { useState, useEffect } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { ConversationHeader } from './ConversationHeader';
 import { TranscriptViewer } from './TranscriptViewer';
 import { InformationPanel } from './InformationPanel';
-import { SentimentGraph } from './SentimentGraph';
-import { ActionReview } from './ActionReview';
-import { FeedbackModule } from './FeedbackModule';
-import { HandoffProtocol } from './HandoffProtocol';
-import { Button } from "@/components/ui/button";
 import { AgentMatchingPanel } from './AgentMatchingPanel';
+import { SentimentGraph } from './SentimentGraph';
 import { FollowUpPanel } from './FollowUpPanel';
-import { 
-  User, 
-  UserCheck, 
-  Calendar, 
-  Phone, 
-  Mail, 
-  MessageSquare, 
-  ChevronLeft, 
-  ChevronRight 
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { FeedbackModule } from './FeedbackModule';
+import { CategoryItem } from './CategoryItem';
+import { ProfileUpdateNotification } from './ProfileUpdateNotification';
+import { FollowUpRecommendations } from '../follow-ups/FollowUpRecommendations'; 
+import { useConversationData } from '@/hooks/use-conversation-data';
+import { useFollowUpRecommendations } from '@/hooks/use-followup-recommendations';
+import { useToast } from '@/hooks/use-toast';
 
-interface ConversationInterfaceProps {
-  conversation: Conversation;
-}
-
-export const ConversationInterface = ({ conversation }: ConversationInterfaceProps) => {
+export const ConversationInterface = ({ conversation }: { conversation: any }) => {
   const [activeTab, setActiveTab] = useState('transcript');
-  const [activePanel, setActivePanel] = useState('lead-info');
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
-  const [isHandoffDialogOpen, setIsHandoffDialogOpen] = useState(false);
+  const [showNotification, setShowNotification] = useState(true);
+  const { toast } = useToast();
   
-  const qualification = typeof conversation.extractedInfo.qualification === 'object' 
-    ? conversation.extractedInfo.qualification.status 
-    : conversation.extractedInfo.qualification;
+  // Integrate with our new hooks
+  const { 
+    conversationData, 
+    extractedUpdates, 
+    updateLeadProfile, 
+    hasPendingUpdates 
+  } = useConversationData(conversation.id);
   
-  const getQualificationStatus = () => {
-    const status = typeof conversation.extractedInfo.qualification === 'object'
-      ? conversation.extractedInfo.qualification.status
-      : conversation.extractedInfo.qualification;
-      
-    switch(status) {
-      case 'Highly Qualified':
-        return {
-          color: 'bg-green-100 text-green-800 border-green-200',
-          icon: <UserCheck className="h-4 w-4 mr-1" />
-        };
-      case 'Qualified':
-        return {
-          color: 'bg-blue-100 text-blue-800 border-blue-200',
-          icon: <UserCheck className="h-4 w-4 mr-1" />
-        };
-      case 'Not Qualified':
-        return {
-          color: 'bg-red-100 text-red-800 border-red-200',
-          icon: <User className="h-4 w-4 mr-1" />
-        };
-      case 'Needs More Information':
-        return {
-          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          icon: <User className="h-4 w-4 mr-1" />
-        };
-      default:
-        return {
-          color: 'bg-gray-100 text-gray-800 border-gray-200',
-          icon: <User className="h-4 w-4 mr-1" />
-        };
-    }
+  const {
+    recommendations,
+    isLoading: isLoadingRecommendations,
+    createFollowUp,
+    dismissRecommendation
+  } = useFollowUpRecommendations(conversation.leadInfo.id);
+
+  // Map extracted entities to the format expected by ProfileUpdateNotification
+  const formatExtractedUpdates = () => {
+    if (!extractedUpdates) return [];
+    
+    return Object.entries(extractedUpdates).map(([key, data]) => ({
+      name: key,
+      displayName: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      value: data.value,
+      confidence: data.confidence,
+      source: data.source,
+      timestamp: data.timestamp
+    }));
   };
-  
-  const statusInfo = getQualificationStatus();
-  
+
+  const handleApproveUpdates = async () => {
+    const success = await updateLeadProfile();
+    if (success) {
+      toast({
+        title: "Profile Updated",
+        description: "Lead profile has been updated with conversation data.",
+      });
+    }
+    return success;
+  };
+
   return (
-    <div className="rounded-lg border border-border bg-card flex flex-col h-[calc(100vh-12rem)]">
-      <ConversationHeader 
-        leadInfo={conversation.leadInfo}
-        timestamp={conversation.timestamp}
-        duration={conversation.duration}
-        type={conversation.type}
-        qualification={qualification}
-      />
-      
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main Content Area */}
-        <div className={cn(
-          "transition-all duration-300 h-full",
-          isPanelCollapsed ? "w-full" : "w-2/3"
-        )}>
-          {/* Action Bar */}
-          <div className="border-b border-border p-3 flex items-center justify-between bg-muted/30">
-            <div className="flex items-center">
-              <div className={`px-3 py-1 rounded-full flex items-center ${statusInfo.color} text-sm font-medium`}>
-                {statusInfo.icon}
-                {qualification}
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button size="sm" variant="outline">
-                <Phone className="mr-2 h-4 w-4" />
-                Schedule Call
-              </Button>
-              <Button size="sm" variant="outline">
-                <Mail className="mr-2 h-4 w-4" />
-                Send Email
-              </Button>
-              <Button size="sm" variant="outline">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Send Text
-              </Button>
-              <Dialog open={isHandoffDialogOpen} onOpenChange={setIsHandoffDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Agent Handoff
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
-                  <HandoffProtocol conversation={conversation} />
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-          
-          {/* Tabs Area */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-[calc(100%-3.5rem)]">
-            <div className="border-b border-border px-6">
-              <TabsList className="h-14">
-                <TabsTrigger value="transcript" className="data-[state=active]:bg-secondary">
-                  Transcript
-                </TabsTrigger>
-                <TabsTrigger value="sentiment" className="data-[state=active]:bg-secondary">
-                  Sentiment Analysis
-                </TabsTrigger>
-                <TabsTrigger value="actions" className="data-[state=active]:bg-secondary">
-                  Suggested Actions
-                </TabsTrigger>
-                <TabsTrigger value="feedback" className="data-[state=active]:bg-secondary">
-                  AI Feedback
-                </TabsTrigger>
-              </TabsList>
-            </div>
-            
-            <TabsContent value="transcript" className="mt-0 p-0 focus-visible:outline-none focus-visible:ring-0 h-full">
-              <TranscriptViewer messages={conversation.messages} />
-            </TabsContent>
-            
-            <TabsContent value="sentiment" className="mt-0 focus-visible:outline-none focus-visible:ring-0 h-full">
-              <SentimentGraph messages={conversation.messages} />
-            </TabsContent>
-            
-            <TabsContent value="actions" className="mt-0 focus-visible:outline-none focus-visible:ring-0 h-full">
-              <ActionReview suggestedActions={conversation.suggestedActions} />
-            </TabsContent>
-            
-            <TabsContent value="feedback" className="mt-0 focus-visible:outline-none focus-visible:ring-0 h-full">
-              <FeedbackModule aiPerformance={conversation.aiPerformance} />
-            </TabsContent>
-          </Tabs>
-        </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-15rem)]">
+      <div className="lg:col-span-2 flex flex-col h-full">
+        <ConversationHeader conversation={conversation} leadInfo={conversation.leadInfo} />
         
-        {/* Contextual Side Panel */}
-        <div className={cn(
-          "border-l border-border transition-all duration-300 h-full bg-background",
-          isPanelCollapsed ? "w-0 opacity-0 hidden" : "w-1/3 opacity-100"
-        )}>
-          {/* Side Panel Header with Tabs */}
-          <div className="border-b border-border p-2 flex items-center">
-            <button 
-              className="mr-2 p-1 hover:bg-muted rounded"
-              onClick={() => setIsPanelCollapsed(true)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            
-            <Tabs value={activePanel} onValueChange={setActivePanel} className="w-full">
-              <TabsList className="bg-transparent h-8">
-                <TabsTrigger 
-                  value="lead-info"
-                  className="text-xs data-[state=active]:bg-secondary h-8 px-3"
-                >
-                  Lead Info
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="agent-matching" 
-                  className="text-xs data-[state=active]:bg-secondary h-8 px-3"
-                >
-                  Agent Matching
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="follow-ups" 
-                  className="text-xs data-[state=active]:bg-secondary h-8 px-3"
-                >
-                  Follow-ups
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          {/* Side Panel Content */}
-          <div className="h-[calc(100%-3rem)] overflow-auto">
-            {activePanel === 'lead-info' && (
-              <InformationPanel extractedInfo={conversation.extractedInfo} />
-            )}
-            
-            {activePanel === 'agent-matching' && (
-              <AgentMatchingPanel conversation={conversation} />
-            )}
-            
-            {activePanel === 'follow-ups' && (
-              <FollowUpPanel conversation={conversation} />
-            )}
-          </div>
-        </div>
-        
-        {/* Expand Panel Button (when collapsed) */}
-        {isPanelCollapsed && (
-          <button 
-            className="border-l border-border bg-background p-2 hover:bg-muted transition-colors"
-            onClick={() => setIsPanelCollapsed(false)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+        {hasPendingUpdates && showNotification && (
+          <ProfileUpdateNotification 
+            updates={formatExtractedUpdates()}
+            onApprove={handleApproveUpdates}
+            onDismiss={() => setShowNotification(false)}
+            className="mb-4"
+          />
         )}
+        
+        <div className="flex-1 overflow-hidden border rounded-md">
+          <div className="flex border-b">
+            <Button
+              variant={activeTab === 'transcript' ? 'default' : 'ghost'}
+              className="rounded-none"
+              onClick={() => setActiveTab('transcript')}
+            >
+              Transcript
+            </Button>
+            <Button
+              variant={activeTab === 'sentiment' ? 'default' : 'ghost'}
+              className="rounded-none"
+              onClick={() => setActiveTab('sentiment')}
+            >
+              Sentiment Analysis
+            </Button>
+            <Button
+              variant={activeTab === 'feedback' ? 'default' : 'ghost'}
+              className="rounded-none"
+              onClick={() => setActiveTab('feedback')}
+            >
+              Feedback
+            </Button>
+          </div>
+          
+          <div className="p-4 h-[calc(100%-3.5rem)]">
+            {activeTab === 'transcript' && (
+              <TranscriptViewer transcript={conversation.transcript} />
+            )}
+            {activeTab === 'sentiment' && (
+              <SentimentGraph data={conversation.sentimentData} />
+            )}
+            {activeTab === 'feedback' && (
+              <FeedbackModule conversationId={conversation.id} />
+            )}
+          </div>
+        </div>
+      </div>
+      
+      <div className="space-y-4 h-full overflow-y-auto">
+        <ScrollArea className="h-full">
+          <InformationPanel leadInfo={conversation.leadInfo} />
+          
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Categories</h3>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {conversation.categories.map((category: string, index: number) => (
+                <CategoryItem key={index} category={category} />
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-4">
+            <FollowUpRecommendations
+              recommendations={recommendations}
+              isLoading={isLoadingRecommendations}
+              onCreateFollowUp={createFollowUp}
+              onDismiss={dismissRecommendation}
+            />
+          </div>
+          
+          <div className="mt-4">
+            <AgentMatchingPanel leadInfo={conversation.leadInfo} />
+          </div>
+          
+          <div className="mt-4 mb-8">
+            <FollowUpPanel conversationId={conversation.id} />
+          </div>
+        </ScrollArea>
       </div>
     </div>
   );

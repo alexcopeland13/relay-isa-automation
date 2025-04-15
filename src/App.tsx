@@ -19,6 +19,8 @@ import Agents from "./pages/Agents";
 import AgentDetail from "./pages/AgentDetail";
 import AgentCreate from "./pages/AgentCreate";
 import AgentEdit from "./pages/AgentEdit";
+import UpcomingCalls from "./pages/UpcomingCalls";
+import PendingFollowups from "./pages/PendingFollowups";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +64,8 @@ const App = () => {
             <Route path="/agents/edit/:id" element={<AgentEdit />} />
             <Route path="/conversations" element={<Conversations />} />
             <Route path="/follow-ups" element={<FollowUps />} />
+            <Route path="/upcoming-calls" element={<UpcomingCalls />} />
+            <Route path="/pending-followups" element={<PendingFollowups />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />

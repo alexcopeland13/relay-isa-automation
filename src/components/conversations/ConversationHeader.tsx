@@ -64,11 +64,12 @@ export const ConversationHeader = ({
   const formattedTime = format(parseISO(timestamp), 'h:mm a');
   
   // Get the qualification status and confidence score, handling both string and object types
+  // Add null checks to prevent accessing properties on undefined
   const qualificationStatus = typeof qualification === 'string' 
     ? qualification 
-    : qualification.status;
+    : qualification?.status || 'Unknown'; // Provide a default value
     
-  const confidenceScore = typeof qualification === 'object' 
+  const confidenceScore = typeof qualification === 'object' && qualification
     ? Math.round(qualification.confidenceScore * 100) 
     : null;
   

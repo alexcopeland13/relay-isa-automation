@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -29,15 +28,11 @@ import {
 } from '@/components/ui/loading-skeleton';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock function to simulate API data fetch
 const fetchLeadsData = async () => {
-  // Check for leads in localStorage first
   const storedLeads = localStorage.getItem('relayLeads');
   
-  // Simulate network latency
   await new Promise(resolve => setTimeout(resolve, 1200));
   
-  // If we have stored leads, use those, otherwise use sample data
   return {
     leads: storedLeads ? JSON.parse(storedLeads) : sampleLeads,
   };
@@ -54,41 +49,42 @@ const Leads = () => {
     data, 
     isLoading, 
     error, 
-    retry,
-    setData
+    retry
   } = useAsyncData(fetchLeadsData, null, []);
+
+  const [leadsData, setLeadsData] = useState<{ leads: Lead[] } | null>(null);
   
-  // Initialize leads in localStorage if not already present
   useEffect(() => {
-    if (data?.leads && !localStorage.getItem('relayLeads')) {
-      localStorage.setItem('relayLeads', JSON.stringify(data.leads));
+    if (data) {
+      setLeadsData(data);
     }
   }, [data]);
+  
+  useEffect(() => {
+    if (leadsData?.leads && !localStorage.getItem('relayLeads')) {
+      localStorage.setItem('relayLeads', JSON.stringify(leadsData.leads));
+    }
+  }, [leadsData]);
 
-  // Function to handle selecting a lead (would navigate to lead detail page)
   const handleSelectLead = (lead: Lead) => {
     setSelectedLead(lead);
-    // In the future this would navigate to a lead detail page
-    // navigate(`/leads/${lead.id}`)
-    
-    // For now, we'll open the edit form
     setShowLeadForm(true);
   };
   
   const handleLeadSave = (updatedLead: Lead) => {
-    if (data?.leads) {
+    if (leadsData?.leads) {
       const updatedLeads = selectedLead 
-        ? data.leads.map(lead => lead.id === updatedLead.id ? updatedLead : lead)
-        : [...data.leads, updatedLead];
+        ? leadsData.leads.map(lead => lead.id === updatedLead.id ? updatedLead : lead)
+        : [...leadsData.leads, updatedLead];
       
-      setData({ leads: updatedLeads });
+      setLeadsData({ leads: updatedLeads });
       setSelectedLead(undefined);
     }
   };
   
   const handleAssignLead = (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
-    if (data?.leads) {
-      const updatedLeads = data.leads.map(lead => {
+    if (leadsData?.leads) {
+      const updatedLeads = leadsData.leads.map(lead => {
         if (lead.id === leadId) {
           return {
             ...lead,
@@ -100,7 +96,7 @@ const Leads = () => {
       });
       
       localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
-      setData({ leads: updatedLeads });
+      setLeadsData({ leads: updatedLeads });
       setSelectedLead(undefined);
     }
   };
@@ -111,27 +107,26 @@ const Leads = () => {
   };
   
   const handleScheduleFollowUp = (lead: Lead) => {
-    // This would open a follow-up scheduling modal in a real app
-    // For MVP, we'll just show a toast
     toast({
       title: "Follow-up scheduled",
       description: `A follow-up has been scheduled for ${lead.name}`,
     });
   };
   
-  const handleExportData = (format: string) => {
+  const handleExportData = async (format: string, dateRange?: { from: Date; to: Date }) => {
     toast({
       title: `Export initiated`,
       description: `Your leads are being exported to ${format.toUpperCase()}. You'll be notified when it's ready.`,
     });
     
-    // Simulate export completion after a delay
-    setTimeout(() => {
-      toast({
-        title: `Export complete`,
-        description: `Your leads have been exported to ${format.toUpperCase()}. Check your downloads folder.`,
-      });
-    }, 2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    toast({
+      title: `Export complete`,
+      description: `Your leads have been exported to ${format.toUpperCase()}. Check your downloads folder.`,
+    });
+    
+    return Promise.resolve();
   };
 
   const renderLoading = () => (
@@ -149,7 +144,6 @@ const Leads = () => {
         </div>
       </div>
       
-      {/* Metrics Dashboard - Loading */}
       <div className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCardSkeleton />
@@ -159,12 +153,10 @@ const Leads = () => {
         </div>
       </div>
       
-      {/* Lead Distribution Charts - Loading */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <ChartSkeleton />
       </div>
       
-      {/* Lead List View - Loading */}
       <div className="bg-card rounded-lg border border-border p-6">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -214,7 +206,7 @@ const Leads = () => {
     );
   }
 
-  const leads = data?.leads || [];
+  const leads = leadsData?.leads || [];
 
   return (
     <PageLayout>
@@ -249,17 +241,14 @@ const Leads = () => {
         </div>
       </div>
       
-      {/* Metrics Dashboard */}
       <div className="mb-6">
         <LeadMetrics leads={leads} />
       </div>
       
-      {/* Lead Distribution Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <LeadDistribution leads={leads} />
       </div>
       
-      {/* Lead List View */}
       <div className="bg-card rounded-lg border border-border p-6">
         <div className="flex justify-between items-center mb-4">
           <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'list' | 'board')}>
@@ -303,7 +292,6 @@ const Leads = () => {
         </div>
       </div>
       
-      {/* Modals */}
       {showLeadForm && (
         <LeadFormModal 
           isOpen={showLeadForm}

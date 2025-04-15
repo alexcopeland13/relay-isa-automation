@@ -84,15 +84,19 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
       if (a.specializations?.includes(lead.interestType)) aScore += 3;
       if (b.specializations?.includes(lead.interestType)) bScore += 3;
 
-      // Check if agent is in the same location as the lead
-      if (a.location?.includes(lead.location.split(',')[0])) aScore += 2;
-      if (b.location?.includes(lead.location.split(',')[0])) bScore += 2;
+      // Check if agent is in the same location as the lead (if location property exists)
+      const agentLocationA = a.location || '';
+      const agentLocationB = b.location || '';
+      const leadLocation = lead.location.split(',')[0];
+      
+      if (agentLocationA.includes(leadLocation)) aScore += 2;
+      if (agentLocationB.includes(leadLocation)) bScore += 2;
 
       // Prefer agents with more availability
-      if (a.availability === 'High') aScore += 2;
-      if (a.availability === 'Medium') aScore += 1;
-      if (b.availability === 'High') bScore += 2;
-      if (b.availability === 'Medium') bScore += 1;
+      if (a.availability === "High") aScore += 2;
+      if (a.availability === "Medium") aScore += 1;
+      if (b.availability === "High") bScore += 2;
+      if (b.availability === "Medium") bScore += 1;
 
       return bScore - aScore;
     });
@@ -180,7 +184,7 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
                           >
                             {agent.name}
                           </label>
-                          <p className="text-xs text-muted-foreground">{agent.title}</p>
+                          <p className="text-xs text-muted-foreground">{agent.title || 'Agent'}</p>
                           <div className="flex mt-1 gap-2">
                             {agent.specializations?.map((spec, index) => (
                               <span
@@ -232,7 +236,7 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
                       <SelectContent>
                         {agents.map(agent => (
                           <SelectItem key={agent.id} value={agent.id}>
-                            {agent.name} - {agent.title}
+                            {agent.name} - {agent.title || 'Agent'}
                           </SelectItem>
                         ))}
                       </SelectContent>

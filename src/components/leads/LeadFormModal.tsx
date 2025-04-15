@@ -108,7 +108,15 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
             lastContact: new Date().toISOString(),
             assignedTo: 'unassigned',
             score: Math.floor(Math.random() * 50) + 30,
-            ...values,
+            name: values.name,
+            email: values.email,
+            phone: values.phone,
+            status: values.status,
+            source: values.source,
+            type: values.type,
+            interestType: values.interestType,
+            location: values.location,
+            notes: values.notes || '',
           };
 
       // Get existing leads from localStorage or use empty array

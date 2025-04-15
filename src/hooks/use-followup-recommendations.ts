@@ -42,7 +42,7 @@ export function useFollowUpRecommendations(leadId?: string) {
             id: 'template-1',
             title: 'Property Viewing Follow-up',
             description: 'Template to use after a property showing',
-            content: 'Hi {{name}}, Thank you for viewing the property at {{address}} yesterday. I wanted to follow up to see if you had any questions or if you'd like to schedule another viewing. Looking forward to hearing back from you!',
+            content: 'Hi {{name}}, Thank you for viewing the property at {{address}} yesterday. I wanted to follow up to see if you had any questions or if you\'d like to schedule another viewing. Looking forward to hearing back from you!',
             category: 'follow-up',
             channel: 'email',
             tags: ['viewing', 'follow-up'],

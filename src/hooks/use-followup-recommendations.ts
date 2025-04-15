@@ -107,7 +107,7 @@ export function useFollowUpRecommendations(leadId?: string) {
 
         setRecommendations(mockRecommendations);
 
-        // Mock lead data
+        // Mock lead data with all required properties
         const mockLead: Lead = {
           id: leadId,
           name: 'Michael Brown',
@@ -115,9 +115,14 @@ export function useFollowUpRecommendations(leadId?: string) {
           phone: '(555) 123-4567',
           status: 'Qualified',
           source: 'Website Inquiry',
+          createdAt: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
           lastContact: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
           notes: 'Interested in investment properties',
-          assignedTo: 'Sarah Johnson'
+          assignedTo: 'Sarah Johnson',
+          type: 'Mortgage',
+          interestType: 'Investment Property',
+          location: 'San Francisco, CA',
+          score: 85
         };
 
         setLeadData(mockLead);

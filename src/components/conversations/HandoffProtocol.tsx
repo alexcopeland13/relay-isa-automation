@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Conversation } from '@/data/sampleConversation';
 import { Agent } from '@/types/agent';
 import { Button } from '@/components/ui/button';
@@ -37,13 +37,14 @@ export const HandoffProtocol = ({ conversation }: HandoffProtocolProps) => {
       : 'Qualified'
   );
   const [priority, setPriority] = useState('Medium');
+  const [recommendedAgents, setRecommendedAgents] = useState<Agent[]>([]);
   
   // Get property information from propertyInfo
-  const propertyType = conversation.extractedInfo.propertyInfo?.location || 'a property';
+  const propertyType = conversation.extractedInfo.propertyInfo?.type || 'a property';
   const location = conversation.extractedInfo.propertyInfo?.location || 'the area';
-  const budget = '$300,000-$450,000';
-  const timeframe = 'within 3 months';
-  const requirements = ['3 bedrooms', '2 bathrooms', 'garage'];
+  const budget = conversation.extractedInfo.budget || '$300,000-$450,000';
+  const timeframe = conversation.extractedInfo.timeframe || 'within 3 months';
+  const requirements = conversation.extractedInfo.requirements || ['3 bedrooms', '2 bathrooms', 'garage'];
   
   const [summaryText, setSummaryText] = useState(
     `${conversation.leadInfo.name} is looking for ${propertyType} in ${location}. ` +
@@ -55,9 +56,53 @@ export const HandoffProtocol = ({ conversation }: HandoffProtocolProps) => {
   const [meetingType, setMeetingType] = useState<string>('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
   const [handoffInProgress, setHandoffInProgress] = useState(false);
+  const [handoffComplete, setHandoffComplete] = useState(false);
 
-  // Filter to show at most 3 recommended agents
-  const recommendedAgents = sampleAgentsData.slice(0, 3);
+  // Load the agents and calculate recommendations when component mounts
+  useEffect(() => {
+    // In a real app, we would fetch this data from an API
+    // For now, we'll use sample data and simulate the agent matching algorithm
+    
+    // Get lead interests and requirements from conversation
+    const leadInterests = [];
+    if (conversation.extractedInfo.refinanceGoals?.lowerRate) leadInterests.push('Lower Rate');
+    if (conversation.extractedInfo.refinanceGoals?.shortenTerm) leadInterests.push('Shorter Term');
+    if (conversation.extractedInfo.refinanceGoals?.cashOut) leadInterests.push('Cash Out');
+    
+    // Simple algorithm to match agents based on the lead's interests and requirements
+    const scoredAgents = sampleAgentsData.map(agent => {
+      let score = 0;
+      
+      // Increase score for each matching specialization
+      if (agent.specializations) {
+        for (const interest of leadInterests) {
+          if (agent.specializations.includes(interest)) {
+            score += 2;
+          }
+        }
+      }
+      
+      // Increase score for high availability
+      if (agent.availability === 'High') score += 3;
+      else if (agent.availability === 'Medium') score += 1;
+      
+      // Increase score for experience
+      if (agent.experience === 'Senior') score += 2;
+      else if (agent.experience === 'Mid-level') score += 1;
+      
+      // Prefer agents with fewer active leads (more bandwidth)
+      if (agent.activeLeads) {
+        if (agent.activeLeads < 5) score += 2;
+        else if (agent.activeLeads < 10) score += 1;
+      }
+      
+      return { ...agent, matchScore: score };
+    });
+    
+    // Sort by matchScore and take top 3
+    const sorted = scoredAgents.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+    setRecommendedAgents(sorted.slice(0, 3));
+  }, [conversation]);
 
   const handleAgentSelect = (agent: Agent) => {
     setSelectedAgent(agent);
@@ -75,6 +120,33 @@ export const HandoffProtocol = ({ conversation }: HandoffProtocolProps) => {
   };
 
   const handleSaveDraft = () => {
+    // Save handoff data to localStorage
+    const handoffData = {
+      id: `handoff-${Date.now()}`,
+      conversationId: conversation.id,
+      leadInfo: conversation.leadInfo,
+      agentId: selectedAgent?.id,
+      agentName: selectedAgent?.name,
+      qualification,
+      priority,
+      summary: summaryText,
+      contactPreference,
+      appointmentTime: selectedTimeSlot,
+      meetingType,
+      status: 'draft',
+      createdAt: new Date().toISOString()
+    };
+    
+    // Get existing handoffs or initialize empty array
+    const existingHandoffsJSON = localStorage.getItem('relayHandoffs');
+    const existingHandoffs = existingHandoffsJSON ? JSON.parse(existingHandoffsJSON) : [];
+    
+    // Add new handoff to array
+    existingHandoffs.push(handoffData);
+    
+    // Save updated array back to localStorage
+    localStorage.setItem('relayHandoffs', JSON.stringify(existingHandoffs));
+    
     toast({
       title: "Draft saved",
       description: "Handoff has been saved as a draft and can be completed later.",
@@ -84,17 +156,83 @@ export const HandoffProtocol = ({ conversation }: HandoffProtocolProps) => {
   const handleSendHandoff = () => {
     setHandoffInProgress(true);
     
+    // Save handoff data to localStorage (similar to handleSaveDraft but with 'sent' status)
+    const handoffData = {
+      id: `handoff-${Date.now()}`,
+      conversationId: conversation.id,
+      leadInfo: conversation.leadInfo,
+      agentId: selectedAgent?.id,
+      agentName: selectedAgent?.name,
+      qualification,
+      priority,
+      summary: summaryText,
+      contactPreference,
+      appointmentTime: selectedTimeSlot,
+      meetingType,
+      status: 'sent',
+      createdAt: new Date().toISOString()
+    };
+    
+    // Get existing handoffs or initialize empty array
+    const existingHandoffsJSON = localStorage.getItem('relayHandoffs');
+    const existingHandoffs = existingHandoffsJSON ? JSON.parse(existingHandoffsJSON) : [];
+    
+    // Add new handoff to array
+    existingHandoffs.push(handoffData);
+    
+    // Save updated array back to localStorage
+    localStorage.setItem('relayHandoffs', JSON.stringify(existingHandoffs));
+    
     // Simulate API call
     setTimeout(() => {
       setHandoffInProgress(false);
+      setHandoffComplete(true);
+      
       toast({
         title: "Handoff sent successfully!",
         description: `${selectedAgent?.name} has been notified of this lead assignment.`,
       });
+      
+      // Add a notification for the handoff
+      const notification = {
+        id: `notif-${Date.now()}`,
+        type: 'handoff',
+        title: 'Lead Handoff',
+        description: `${conversation.leadInfo.name} was handed off to ${selectedAgent?.name}`,
+        status: 'unread',
+        timestamp: new Date().toISOString()
+      };
+      
+      // Get existing notifications or initialize empty array
+      const existingNotificationsJSON = localStorage.getItem('relayNotifications');
+      const existingNotifications = existingNotificationsJSON ? JSON.parse(existingNotificationsJSON) : [];
+      
+      // Add new notification to array
+      existingNotifications.push(notification);
+      
+      // Save updated array back to localStorage
+      localStorage.setItem('relayNotifications', JSON.stringify(existingNotifications));
     }, 1500);
   };
 
   const renderStepContent = () => {
+    if (handoffComplete) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <Check className="h-8 w-8 text-green-600" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Handoff Complete!</h3>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            {selectedAgent?.name} has been notified about {conversation.leadInfo.name} and will take over the lead management process.
+          </p>
+          <Button className="mt-4" onClick={() => window.location.reload()}>
+            Back to Conversation
+          </Button>
+        </div>
+      );
+    }
+    
     switch (step) {
       case 'agents':
         return (
@@ -105,11 +243,21 @@ export const HandoffProtocol = ({ conversation }: HandoffProtocolProps) => {
                 Based on lead preferences
               </Badge>
             </div>
-            <RecommendedAgentsList 
-              agents={recommendedAgents} 
-              leadInfo={conversation.extractedInfo}
-              onSelectAgent={handleAgentSelect}
-            />
+            {recommendedAgents.length > 0 ? (
+              <RecommendedAgentsList 
+                agents={recommendedAgents} 
+                leadInfo={conversation.extractedInfo}
+                onSelectAgent={handleAgentSelect}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h4 className="text-lg font-medium mb-2">Finding the best agents</h4>
+                <p className="text-muted-foreground">
+                  We're analyzing this lead's preferences to find the most suitable agents.
+                </p>
+              </div>
+            )}
           </div>
         );
         

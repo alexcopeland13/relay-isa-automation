@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Table, 
@@ -33,7 +32,10 @@ import {
   Filter, 
   MapPin,
   Clock,
-  Tag
+  Tag,
+  FileEdit,
+  Users,
+  CalendarPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -57,33 +59,35 @@ export interface Lead {
 interface LeadsListProps {
   leads: Lead[];
   onSelectLead: (lead: Lead) => void;
+  onAssignLead?: (lead: Lead) => void;
+  onScheduleFollowUp?: (lead: Lead) => void;
 }
 
-export const LeadsList = ({ leads, onSelectLead }: LeadsListProps) => {
+export const LeadsList = ({ 
+  leads, 
+  onSelectLead, 
+  onAssignLead,
+  onScheduleFollowUp
+}: LeadsListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   
-  // Apply filters to leads
   const filteredLeads = leads.filter(lead => {
-    // Search query filter
     if (searchQuery && !lead.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !lead.email.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     
-    // Status filter
     if (filterStatus !== 'all' && lead.status !== filterStatus) {
       return false;
     }
     
-    // Source filter
     if (filterSource !== 'all' && lead.source !== filterSource) {
       return false;
     }
     
-    // Lead type filter
     if (filterType !== 'all' && lead.type !== filterType) {
       return false;
     }
@@ -91,7 +95,6 @@ export const LeadsList = ({ leads, onSelectLead }: LeadsListProps) => {
     return true;
   });
   
-  // Get badge color based on status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New':
@@ -111,7 +114,6 @@ export const LeadsList = ({ leads, onSelectLead }: LeadsListProps) => {
     }
   };
   
-  // Get badge for lead type
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'Mortgage':
@@ -123,7 +125,6 @@ export const LeadsList = ({ leads, onSelectLead }: LeadsListProps) => {
     }
   };
   
-  // Get score indicator color
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'bg-emerald-500';
     if (score >= 60) return 'bg-green-500';
@@ -291,12 +292,33 @@ export const LeadsList = ({ leads, onSelectLead }: LeadsListProps) => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[160px]">
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Lead</DropdownMenuItem>
-                          <DropdownMenuItem>Schedule Follow-up</DropdownMenuItem>
-                          <DropdownMenuItem>Assign Lead</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Delete Lead
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectLead(lead);
+                          }}>
+                            <User className="h-4 w-4 mr-2" />
+                            View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectLead(lead);
+                          }}>
+                            <FileEdit className="h-4 w-4 mr-2" />
+                            Edit Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onScheduleFollowUp?.(lead);
+                          }}>
+                            <CalendarPlus className="h-4 w-4 mr-2" />
+                            Schedule Follow-up
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onAssignLead?.(lead);
+                          }}>
+                            <Users className="h-4 w-4 mr-2" />
+                            Assign Lead
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

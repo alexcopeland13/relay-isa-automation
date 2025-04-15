@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,6 +7,8 @@ import { LeadsList, Lead } from '@/components/leads/LeadsList';
 import { LeadsBoard } from '@/components/leads/LeadsBoard';
 import { LeadMetrics } from '@/components/leads/LeadMetrics';
 import { LeadDistribution } from '@/components/leads/LeadDistribution';
+import { LeadFormModal } from '@/components/leads/LeadFormModal';
+import { LeadAssignmentModal } from '@/components/leads/LeadAssignmentModal';
 import { 
   PlusCircle, 
   UserPlus, 
@@ -25,33 +27,111 @@ import {
   StatCardSkeleton, 
   ChartSkeleton 
 } from '@/components/ui/loading-skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock function to simulate API data fetch
 const fetchLeadsData = async () => {
+  // Check for leads in localStorage first
+  const storedLeads = localStorage.getItem('relayLeads');
+  
   // Simulate network latency
   await new Promise(resolve => setTimeout(resolve, 1200));
   
-  // Return sample data
+  // If we have stored leads, use those, otherwise use sample data
   return {
-    leads: sampleLeads,
+    leads: storedLeads ? JSON.parse(storedLeads) : sampleLeads,
   };
 };
 
 const Leads = () => {
   const [activeView, setActiveView] = useState<'list' | 'board'>('list');
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const { toast } = useToast();
   
   const { 
     data, 
     isLoading, 
     error, 
-    retry 
+    retry,
+    setData
   } = useAsyncData(fetchLeadsData, null, []);
   
+  // Initialize leads in localStorage if not already present
+  useEffect(() => {
+    if (data?.leads && !localStorage.getItem('relayLeads')) {
+      localStorage.setItem('relayLeads', JSON.stringify(data.leads));
+    }
+  }, [data]);
+
   // Function to handle selecting a lead (would navigate to lead detail page)
   const handleSelectLead = (lead: Lead) => {
-    console.log('Selected lead:', lead);
+    setSelectedLead(lead);
     // In the future this would navigate to a lead detail page
     // navigate(`/leads/${lead.id}`)
+    
+    // For now, we'll open the edit form
+    setShowLeadForm(true);
+  };
+  
+  const handleLeadSave = (updatedLead: Lead) => {
+    if (data?.leads) {
+      const updatedLeads = selectedLead 
+        ? data.leads.map(lead => lead.id === updatedLead.id ? updatedLead : lead)
+        : [...data.leads, updatedLead];
+      
+      setData({ leads: updatedLeads });
+      setSelectedLead(undefined);
+    }
+  };
+  
+  const handleAssignLead = (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
+    if (data?.leads) {
+      const updatedLeads = data.leads.map(lead => {
+        if (lead.id === leadId) {
+          return {
+            ...lead,
+            assignedTo: agentId,
+            lastContact: new Date().toISOString()
+          };
+        }
+        return lead;
+      });
+      
+      localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
+      setData({ leads: updatedLeads });
+      setSelectedLead(undefined);
+    }
+  };
+  
+  const handleOpenAssignmentModal = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowAssignmentModal(true);
+  };
+  
+  const handleScheduleFollowUp = (lead: Lead) => {
+    // This would open a follow-up scheduling modal in a real app
+    // For MVP, we'll just show a toast
+    toast({
+      title: "Follow-up scheduled",
+      description: `A follow-up has been scheduled for ${lead.name}`,
+    });
+  };
+  
+  const handleExportData = (format: string) => {
+    toast({
+      title: `Export initiated`,
+      description: `Your leads are being exported to ${format.toUpperCase()}. You'll be notified when it's ready.`,
+    });
+    
+    // Simulate export completion after a delay
+    setTimeout(() => {
+      toast({
+        title: `Export complete`,
+        description: `Your leads have been exported to ${format.toUpperCase()}. Check your downloads folder.`,
+      });
+    }, 2000);
   };
 
   const renderLoading = () => (
@@ -151,9 +231,13 @@ const Leads = () => {
               filename="relay_leads"
               exportableCols={['name', 'email', 'phone', 'status', 'source', 'date']}
               supportedFormats={['csv', 'email']}
+              onExport={handleExportData}
             />
             
-            <Button className="gap-1">
+            <Button className="gap-1" onClick={() => {
+              setSelectedLead(undefined);
+              setShowLeadForm(true);
+            }}>
               <UserPlus className="h-4 w-4" />
               <span className="hidden sm:inline">New Lead</span>
             </Button>
@@ -204,6 +288,8 @@ const Leads = () => {
               <LeadsList 
                 leads={leads}
                 onSelectLead={handleSelectLead}
+                onAssignLead={handleOpenAssignmentModal}
+                onScheduleFollowUp={handleScheduleFollowUp}
               />
             </TabsContent>
             
@@ -216,6 +302,31 @@ const Leads = () => {
           </Tabs>
         </div>
       </div>
+      
+      {/* Modals */}
+      {showLeadForm && (
+        <LeadFormModal 
+          isOpen={showLeadForm}
+          onClose={() => {
+            setShowLeadForm(false);
+            setSelectedLead(undefined);
+          }}
+          onSave={handleLeadSave}
+          lead={selectedLead}
+        />
+      )}
+      
+      {showAssignmentModal && selectedLead && (
+        <LeadAssignmentModal
+          isOpen={showAssignmentModal}
+          onClose={() => {
+            setShowAssignmentModal(false);
+            setSelectedLead(undefined);
+          }}
+          lead={selectedLead}
+          onAssign={handleAssignLead}
+        />
+      )}
     </PageLayout>
   );
 };

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -100,6 +99,8 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
         ? {
             ...lead!,
             ...values,
+            // Ensure status is properly typed
+            status: values.status as "New" | "Contacted" | "Qualified" | "Proposal" | "Converted" | "Lost",
             lastContact: new Date().toISOString(),
           }
         : {
@@ -111,7 +112,8 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
             name: values.name,
             email: values.email,
             phone: values.phone,
-            status: values.status,
+            // Ensure status is properly typed
+            status: values.status as "New" | "Contacted" | "Qualified" | "Proposal" | "Converted" | "Lost",
             source: values.source,
             type: values.type,
             interestType: values.interestType,

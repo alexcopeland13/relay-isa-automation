@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -36,7 +35,6 @@ import { Avatar } from '@/components/ui/avatar';
 import { sampleAgentsData } from '@/data/sampleAgentsData';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-// Form schema for lead assignment
 const assignmentFormSchema = z.object({
   agentId: z.string().min(1, { message: 'Please select an agent' }),
   priority: z.string(),
@@ -58,7 +56,6 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
   const [agents, setAgents] = useState<Agent[]>([]);
   const [recommendedAgents, setRecommendedAgents] = useState<Agent[]>([]);
 
-  // Initialize form
   const form = useForm<AssignmentFormValues>({
     resolver: zodResolver(assignmentFormSchema),
     defaultValues: {
@@ -68,35 +65,27 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
     },
   });
 
-  // Load agents on component mount
   useEffect(() => {
-    // In a real app, we would fetch agents from an API
-    // For now, we'll use the sample data
     setAgents(sampleAgentsData);
 
-    // Calculate agent compatibility based on lead properties
-    // This is a simplified algorithm - in a real app, this would be more sophisticated
     const sortedAgents = [...sampleAgentsData].sort((a, b) => {
       let aScore = 0;
       let bScore = 0;
 
-      // Check if agent specializes in the lead's interest type
       if (a.specializations?.includes(lead.interestType)) aScore += 3;
       if (b.specializations?.includes(lead.interestType)) bScore += 3;
 
-      // Check if agent is in the same location as the lead (if location property exists)
       const agentLocationA = a.location || '';
       const agentLocationB = b.location || '';
-      const leadLocation = lead.location.split(',')[0];
-      
+      const leadLocation = lead.location.split(',')[0] || '';
+
       if (agentLocationA.includes(leadLocation)) aScore += 2;
       if (agentLocationB.includes(leadLocation)) bScore += 2;
 
-      // Prefer agents with more availability
       if (a.availability === "High") aScore += 2;
-      if (a.availability === "Medium") aScore += 1;
+      else if (a.availability === "Medium") aScore += 1;
       if (b.availability === "High") bScore += 2;
-      if (b.availability === "Medium") bScore += 1;
+      else if (b.availability === "Medium") bScore += 1;
 
       return bScore - aScore;
     });
@@ -108,23 +97,19 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
     setIsSubmitting(true);
 
     try {
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Call the onAssign callback
       onAssign(lead.id, values.agentId, {
         priority: values.priority,
         notes: values.notes || '',
       });
 
-      // Show success toast
       const assignedAgent = agents.find(agent => agent.id === values.agentId);
       toast({
         title: 'Lead assigned successfully',
         description: `${lead.name} has been assigned to ${assignedAgent?.name}`,
       });
 
-      // Close the modal
       onClose();
     } catch (error) {
       console.error('Error assigning lead:', error);
@@ -138,7 +123,6 @@ export function LeadAssignmentModal({ isOpen, onClose, onAssign, lead }: LeadAss
     }
   };
 
-  // Get the selected agent's details
   const selectedAgentId = form.watch('agentId');
   const selectedAgent = agents.find(agent => agent.id === selectedAgentId);
 

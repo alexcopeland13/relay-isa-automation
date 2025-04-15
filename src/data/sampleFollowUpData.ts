@@ -1,3 +1,4 @@
+
 // Define the MessageTemplate type
 export interface MessageTemplate {
   id: string;
@@ -12,6 +13,40 @@ export interface MessageTemplate {
   updatedAt: string;
   author: string;
   usage: number;
+  variables?: string[];
+  name?: string; // For backward compatibility
+}
+
+// Define the Sequence type
+export interface Sequence {
+  id: string;
+  name: string;
+  description: string;
+  steps: SequenceStep[];
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+  targetAudience?: string;
+  performance?: {
+    opened: number;
+    clicked: number;
+    responded: number;
+    converted: number;
+  };
+}
+
+export interface SequenceStep {
+  id: string;
+  order: number;
+  templateId: string;
+  delay: {
+    value: number;
+    unit: 'hours' | 'days' | 'weeks';
+  };
+  conditions?: {
+    type: 'if_no_response' | 'if_clicked' | 'if_opened' | 'always';
+    value?: any;
+  };
 }
 
 // Sample templates data
@@ -19,6 +54,7 @@ export const sampleTemplates = [
   {
     id: 'template-1',
     title: 'Initial Follow-up',
+    name: 'Initial Follow-up', // For compatibility
     description: 'For following up with a lead after first contact',
     channel: 'email',
     subject: 'Following up on our conversation',
@@ -29,11 +65,17 @@ export const sampleTemplates = [
     updatedAt: new Date().toISOString(),
     author: 'System',
     usage: 0,
-    tags: ['initial', 'follow-up']
+    tags: ['initial', 'follow-up'],
+    performanceMetrics: {
+      openRate: 68,
+      clickRate: 42,
+      responseRate: 27
+    }
   },
   {
     id: 'template-2',
     title: 'Rate Change Alert',
+    name: 'Rate Change Alert', // For compatibility
     description: 'Alert clients about rate changes that may benefit them',
     channel: 'email',
     subject: 'Interest Rate Update - Time Sensitive Opportunity',
@@ -44,11 +86,17 @@ export const sampleTemplates = [
     updatedAt: new Date().toISOString(),
     author: 'System',
     usage: 0,
-    tags: ['rate', 'offer']
+    tags: ['rate', 'offer'],
+    performanceMetrics: {
+      openRate: 72,
+      clickRate: 45,
+      responseRate: 31
+    }
   },
   {
     id: 'template-3',
     title: 'Quick SMS Check-in',
+    name: 'Quick SMS Check-in', // For compatibility
     description: 'Brief SMS to check in with leads',
     channel: 'sms',
     content: 'Hi {{leadName}}, this is {{agentName}} from NexusISA. Just checking in about your mortgage inquiry. Do you have any questions I can help with? Let me know!',
@@ -58,11 +106,17 @@ export const sampleTemplates = [
     updatedAt: new Date().toISOString(),
     author: 'System',
     usage: 0,
-    tags: ['sms', 'check-in']
+    tags: ['sms', 'check-in'],
+    performanceMetrics: {
+      openRate: 95,
+      clickRate: 0,
+      responseRate: 42
+    }
   },
   {
     id: 'template-4',
     title: 'Pre-approval Completed',
+    name: 'Pre-approval Completed', // For compatibility
     description: 'Notifying clients their pre-approval is complete',
     channel: 'email',
     subject: 'Your Mortgage Pre-Approval is Complete',
@@ -73,11 +127,17 @@ export const sampleTemplates = [
     updatedAt: new Date().toISOString(),
     author: 'System',
     usage: 0,
-    tags: ['pre-approval', 'announcement']
+    tags: ['pre-approval', 'announcement'],
+    performanceMetrics: {
+      openRate: 88,
+      clickRate: 62,
+      responseRate: 53
+    }
   },
   {
     id: 'template-5',
     title: 'Initial Call Script',
+    name: 'Initial Call Script', // For compatibility
     description: 'Script for first call with a new lead',
     channel: 'phone',
     content: 'Introduction:\n- Hello, may I speak with {{leadName}}?\n- This is {{agentName}} calling from {{companyName}}. I am following up on your recent inquiry about {{interestType}}.\n\nQualification Questions:\n- Is now a good time for a quick 5-minute conversation?\n- Could you tell me a bit more about what you are looking for in a mortgage?\n- Have you been pre-approved for a mortgage before?\n- What is your timeframe for {{interestType}}?\n\nClose:\n- Based on what you have shared, I think we can definitely help you with {{interestType}}.\n- The next step would be to schedule a more detailed consultation. Would you prefer a phone call, video call, or in-person meeting?\n- Great, I will send you a calendar invite and an email with some information to review before our meeting.\n- Do you have any questions for me before we wrap up?',
@@ -87,7 +147,12 @@ export const sampleTemplates = [
     updatedAt: new Date().toISOString(),
     author: 'System',
     usage: 0,
-    tags: ['phone', 'introduction']
+    tags: ['phone', 'introduction'],
+    performanceMetrics: {
+      openRate: 100,
+      clickRate: 0,
+      responseRate: 75
+    }
   }
 ];
 
@@ -101,6 +166,11 @@ export interface Template {
   content: string;
   category: string;
   variables: string[];
+  performanceMetrics?: {
+    openRate: number;
+    clickRate: number;
+    responseRate: number;
+  };
 }
 
 export interface FollowUp {

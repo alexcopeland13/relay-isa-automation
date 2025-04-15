@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -35,9 +34,16 @@ interface TimeOff {
   notes: string;
 }
 
+interface DayAvailability {
+  day: string;
+  slots: string[];
+}
+
 export function AgentAvailabilityForm({ agent, onSave }: AgentAvailabilityFormProps) {
   const { toast } = useToast();
   const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  
+  // Initialize workingDays from agent data if available
   const [workingDays, setWorkingDays] = useState<Record<string, boolean>>({
     Monday: true,
     Tuesday: true,
@@ -46,12 +52,9 @@ export function AgentAvailabilityForm({ agent, onSave }: AgentAvailabilityFormPr
     Friday: true,
     Saturday: false,
     Sunday: false,
-    ...agent?.availability?.reduce((acc, day) => ({
-      ...acc,
-      [day.day]: true
-    }), {})
   });
 
+  // Initialize timeSlots with default values
   const [timeSlots, setTimeSlots] = useState<Record<string, TimeSlot[]>>({
     Monday: [{ start: "09:00", end: "17:00" }],
     Tuesday: [{ start: "09:00", end: "17:00" }],
@@ -60,17 +63,15 @@ export function AgentAvailabilityForm({ agent, onSave }: AgentAvailabilityFormPr
     Friday: [{ start: "09:00", end: "17:00" }],
     Saturday: [],
     Sunday: [],
-    ...agent?.availability?.reduce((acc, day) => ({
-      ...acc,
-      [day.day]: day.slots.map(slot => {
-        const [start, end] = slot.split(" - ");
-        return { 
-          start: start.replace(" AM", "").replace(" PM", ""), 
-          end: end.replace(" AM", "").replace(" PM", "")
-        };
-      })
-    }), {})
   });
+
+  // Load agent availability data if available
+  useEffect(() => {
+    if (agent && agent.availability) {
+      // Here we would parse the availability from the agent data
+      // This is a placeholder for real implementation
+    }
+  }, [agent]);
 
   const [timeOffDates, setTimeOffDates] = useState<Date[]>([]);
   const [timeOffType, setTimeOffType] = useState<string>("vacation");

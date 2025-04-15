@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, addDays, isSameDay } from 'date-fns';
 import { FollowUp } from '@/data/sampleFollowUpData';
@@ -55,7 +54,7 @@ export const FollowUpCalendar = ({ followUps }: FollowUpCalendarProps) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending_approval':
+      case 'pending':
         return 'border-amber-500 bg-amber-50';
       case 'approved':
         return 'border-green-500 bg-green-50';
@@ -266,7 +265,7 @@ export const FollowUpCalendar = ({ followUps }: FollowUpCalendarProps) => {
                               </span>
                             </div>
                             <div>
-                              {followUp.status === 'pending_approval' ? 'Pending Approval' : 
+                              {followUp.status === 'pending' ? 'Pending' : 
                                followUp.status === 'approved' ? 'Approved' :
                                followUp.status === 'completed' ? 'Completed' : 'Declined'}
                             </div>

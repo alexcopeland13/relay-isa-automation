@@ -54,6 +54,7 @@ export interface Lead {
   interestType: string;
   location: string;
   score: number;
+  notes?: string;
 }
 
 interface LeadsListProps {

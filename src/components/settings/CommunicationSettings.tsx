@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 const emailFormSchema = z.object({
   smtpServer: z.string().min(1, { message: "SMTP server is required" }),
@@ -36,58 +38,147 @@ const smsFormSchema = z.object({
   includeCompanyName: z.boolean().default(true),
 });
 
+// Mock function to simulate API call for email settings
+const saveEmailSettingsToAPI = async (data: z.infer<typeof emailFormSchema>): Promise<boolean> => {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  // In a real app, this would be an API call
+  localStorage.setItem('emailSettings', JSON.stringify(data));
+  console.log('Email settings saved:', data);
+  return true;
+};
+
+// Mock function to simulate API call for SMS settings
+const saveSmsSettingsToAPI = async (data: z.infer<typeof smsFormSchema>): Promise<boolean> => {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  // In a real app, this would be an API call
+  localStorage.setItem('smsSettings', JSON.stringify(data));
+  console.log('SMS settings saved:', data);
+  return true;
+};
+
+// Load saved email settings
+const loadSavedEmailSettings = (): z.infer<typeof emailFormSchema> => {
+  const savedSettings = localStorage.getItem('emailSettings');
+  if (savedSettings) {
+    try {
+      return JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error parsing saved email settings:', error);
+    }
+  }
+  
+  // Default values
+  return {
+    smtpServer: "smtp.example.com",
+    smtpPort: "587",
+    smtpUsername: "no-reply@emmloans.com",
+    smtpPassword: "••••••••••••",
+    fromName: "EMM Loans",
+    fromEmail: "no-reply@emmloans.com",
+    emailSignature: "EMM Loans Team\nPhone: (555) 123-4567\nwww.emmloans.com",
+    trackOpens: true,
+    trackClicks: true,
+    handleBounces: true,
+  };
+};
+
+// Load saved SMS settings
+const loadSavedSmsSettings = (): z.infer<typeof smsFormSchema> => {
+  const savedSettings = localStorage.getItem('smsSettings');
+  if (savedSettings) {
+    try {
+      return JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error parsing saved SMS settings:', error);
+    }
+  }
+  
+  // Default values
+  return {
+    smsProvider: "Twilio",
+    apiKey: "••••••••••••••••••••••••••••••",
+    phoneNumber: "+15551234567",
+    optInMessage: "Reply YES to receive messages from EMM Loans. Msg & data rates may apply.",
+    optOutMessage: "Reply STOP to unsubscribe from EMM Loans messages.",
+    maxSmsLength: "160",
+    enableAutoSplit: true,
+    includeCompanyName: true,
+  };
+};
+
 export const CommunicationSettings = () => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("email");
+  const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
+  const [isSmsSubmitting, setIsSmsSubmitting] = useState(false);
   
   const emailForm = useForm<z.infer<typeof emailFormSchema>>({
     resolver: zodResolver(emailFormSchema),
-    defaultValues: {
-      smtpServer: "smtp.example.com",
-      smtpPort: "587",
-      smtpUsername: "no-reply@emmloans.com",
-      smtpPassword: "••••••••••••",
-      fromName: "EMM Loans",
-      fromEmail: "no-reply@emmloans.com",
-      emailSignature: "EMM Loans Team\nPhone: (555) 123-4567\nwww.emmloans.com",
-      trackOpens: true,
-      trackClicks: true,
-      handleBounces: true,
-    },
+    defaultValues: loadSavedEmailSettings(),
   });
 
   const smsForm = useForm<z.infer<typeof smsFormSchema>>({
     resolver: zodResolver(smsFormSchema),
-    defaultValues: {
-      smsProvider: "Twilio",
-      apiKey: "••••••••••••••••••••••••••••••",
-      phoneNumber: "+15551234567",
-      optInMessage: "Reply YES to receive messages from EMM Loans. Msg & data rates may apply.",
-      optOutMessage: "Reply STOP to unsubscribe from EMM Loans messages.",
-      maxSmsLength: "160",
-      enableAutoSplit: true,
-      includeCompanyName: true,
-    },
+    defaultValues: loadSavedSmsSettings(),
   });
 
-  function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
-    toast({
-      title: "Email settings updated",
-      description: "Your email communication settings have been saved.",
-    });
-    console.log(values);
+  async function onEmailSubmit(values: z.infer<typeof emailFormSchema>) {
+    setIsEmailSubmitting(true);
+    
+    try {
+      const success = await saveEmailSettingsToAPI(values);
+      
+      if (success) {
+        toast({
+          title: "Email settings updated",
+          description: "Your email communication settings have been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to save email settings");
+      }
+    } catch (error) {
+      console.error("Error saving email settings:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem saving your email settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEmailSubmitting(false);
+    }
   }
 
-  function onSmsSubmit(values: z.infer<typeof smsFormSchema>) {
-    toast({
-      title: "SMS settings updated",
-      description: "Your SMS communication settings have been saved.",
-    });
-    console.log(values);
+  async function onSmsSubmit(values: z.infer<typeof smsFormSchema>) {
+    setIsSmsSubmitting(true);
+    
+    try {
+      const success = await saveSmsSettingsToAPI(values);
+      
+      if (success) {
+        toast({
+          title: "SMS settings updated",
+          description: "Your SMS communication settings have been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to save SMS settings");
+      }
+    } catch (error) {
+      console.error("Error saving SMS settings:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem saving your SMS settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSmsSubmitting(false);
+    }
   }
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="email" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-3 mb-6">
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="sms">SMS</TabsTrigger>
@@ -294,7 +385,16 @@ export const CommunicationSettings = () => {
                     />
                   </div>
                   
-                  <Button type="submit">Save Email Settings</Button>
+                  <Button type="submit" disabled={isEmailSubmitting}>
+                    {isEmailSubmitting ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Email Settings'
+                    )}
+                  </Button>
                 </form>
               </Form>
             </CardContent>
@@ -471,7 +571,16 @@ export const CommunicationSettings = () => {
                     />
                   </div>
                   
-                  <Button type="submit">Save SMS Settings</Button>
+                  <Button type="submit" disabled={isSmsSubmitting}>
+                    {isSmsSubmitting ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save SMS Settings'
+                    )}
+                  </Button>
                 </form>
               </Form>
             </CardContent>

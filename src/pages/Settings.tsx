@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AiServiceConfig } from '@/components/ai-integration/AiServiceConfig';
@@ -30,7 +30,16 @@ import {
 } from 'lucide-react';
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  // Load active tab from localStorage or default to 'general'
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem('settingsActiveTab');
+    return savedTab || 'general';
+  });
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('settingsActiveTab', activeTab);
+  }, [activeTab]);
 
   return (
     <PageLayout>

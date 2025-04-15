@@ -1,3 +1,5 @@
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -15,15 +17,70 @@ import {
   AlertCircle,
   Check, 
   X,
-  ArrowRight
+  ArrowRight,
+  Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 import { CincIntegrationModal } from "@/components/integrations/CincIntegrationModal";
+
+interface IntegrationStatus {
+  name: string;
+  connected: boolean;
+  lastSync?: string;
+}
+
+interface CincConfig {
+  apiKey: string;
+  syncFrequency: "realtime" | "hourly" | "daily";
+  filterOption: "all" | "new" | "active";
+  isConnected: boolean;
+  lastSync?: string;
+}
 
 export const IntegrationSettings = () => {
   const { toast } = useToast();
   const [showCincModal, setShowCincModal] = useState(false);
+  const [integrations, setIntegrations] = useState<Record<string, IntegrationStatus>>({
+    salesforce: { name: "Salesforce", connected: false },
+    hubspot: { name: "HubSpot", connected: true, lastSync: new Date().toISOString() },
+    zoho: { name: "Zoho CRM", connected: false },
+    cinc: { name: "CINC", connected: false },
+    googleCalendar: { name: "Google Calendar", connected: true, lastSync: new Date().toISOString() },
+    googleMail: { name: "Google Mail", connected: true, lastSync: new Date().toISOString() },
+    microsoftCalendar: { name: "Microsoft Calendar", connected: false },
+    microsoftMail: { name: "Microsoft Mail", connected: false },
+  });
+  const [cincConfig, setCincConfig] = useState<CincConfig | null>(null);
+  const [isSavingApiSettings, setIsSavingApiSettings] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [apiSettings, setApiSettings] = useState({
+    apiKey: "••••••••••••••••••••••••••••••",
+    webhooksEnabled: true
+  });
+
+  // Load CINC configuration on component mount
+  useEffect(() => {
+    // Load CINC configuration from localStorage
+    const savedCincConfig = localStorage.getItem('cincConfig');
+    if (savedCincConfig) {
+      try {
+        const config = JSON.parse(savedCincConfig) as CincConfig;
+        setCincConfig(config);
+        
+        // Update integrations state with CINC connection status
+        setIntegrations(prev => ({
+          ...prev,
+          cinc: { 
+            name: "CINC", 
+            connected: config.isConnected,
+            lastSync: config.lastSync
+          }
+        }));
+      } catch (error) {
+        console.error("Error parsing CINC configuration:", error);
+      }
+    }
+  }, []);
 
   const handleConnect = (service: string) => {
     if (service === 'CINC') {
@@ -31,6 +88,7 @@ export const IntegrationSettings = () => {
       return;
     }
     
+    // For other services, just show a toast for now
     toast({
       title: `${service} integration`,
       description: `${service} integration has been initiated. Complete setup in the popup window.`,
@@ -38,17 +96,120 @@ export const IntegrationSettings = () => {
   };
 
   const handleDisconnect = (service: string) => {
+    if (service === 'CINC' && cincConfig) {
+      // Remove CINC configuration from localStorage
+      localStorage.removeItem('cincConfig');
+      setCincConfig(null);
+      
+      // Update integrations state
+      setIntegrations(prev => ({
+        ...prev,
+        cinc: { name: "CINC", connected: false }
+      }));
+      
+      toast({
+        title: "CINC disconnected",
+        description: "CINC integration has been disconnected.",
+      });
+      return;
+    }
+    
+    // For other services, just update the state and show a toast
+    setIntegrations(prev => ({
+      ...prev,
+      [service.toLowerCase().replace(/\s+/g, '')]: { 
+        ...prev[service.toLowerCase().replace(/\s+/g, '')],
+        connected: false,
+        lastSync: undefined 
+      }
+    }));
+    
     toast({
       title: `${service} disconnected`,
       description: `${service} integration has been disconnected.`,
     });
   };
 
-  const handleSave = () => {
-    toast({
-      title: "API settings saved",
-      description: "Your API configuration has been updated.",
-    });
+  const handleSaveApiSettings = async () => {
+    setIsSavingApiSettings(true);
+    
+    try {
+      // Simulate API call with a timeout
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Save API settings to localStorage
+      localStorage.setItem('apiSettings', JSON.stringify(apiSettings));
+      
+      toast({
+        title: "API settings saved",
+        description: "Your API configuration has been updated.",
+      });
+    } catch (error) {
+      console.error("Error saving API settings:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem saving your API settings. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingApiSettings(false);
+    }
+  };
+
+  const handleCincSuccess = () => {
+    setShowCincModal(false);
+    
+    // Reload CINC configuration from localStorage
+    const savedCincConfig = localStorage.getItem('cincConfig');
+    if (savedCincConfig) {
+      try {
+        const config = JSON.parse(savedCincConfig) as CincConfig;
+        setCincConfig(config);
+        
+        // Update integrations state
+        setIntegrations(prev => ({
+          ...prev,
+          cinc: { 
+            name: "CINC", 
+            connected: config.isConnected,
+            lastSync: config.lastSync
+          }
+        }));
+        
+        toast({
+          title: "CINC integration successful",
+          description: "Your CINC account is now connected to Relay.",
+        });
+      } catch (error) {
+        console.error("Error parsing CINC configuration:", error);
+      }
+    }
+  };
+
+  const formatLastSync = (dateString?: string) => {
+    if (!dateString) return null;
+    
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins} minutes ago`;
+      
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} hours ago`;
+      
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return `${diffDays} days ago`;
+      
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Unknown";
+    }
   };
 
   return (
@@ -56,13 +217,8 @@ export const IntegrationSettings = () => {
       {showCincModal && (
         <CincIntegrationModal
           onClose={() => setShowCincModal(false)}
-          onSuccess={() => {
-            setShowCincModal(false);
-            toast({
-              title: "CINC integration successful",
-              description: "Your CINC account is now connected to Relay.",
-            });
-          }}
+          onSuccess={handleCincSuccess}
+          existingConfig={cincConfig || undefined}
         />
       )}
       
@@ -99,6 +255,12 @@ export const IntegrationSettings = () => {
                   </div>
                   <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">Connected</Badge>
                 </div>
+                {integrations.hubspot.lastSync && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Last sync: {formatLastSync(integrations.hubspot.lastSync)}</span>
+                  </div>
+                )}
                 <p className="text-sm text-muted-foreground mb-4">Integrate with HubSpot for marketing automation and CRM.</p>
                 <Button 
                   variant="outline" 
@@ -142,15 +304,56 @@ export const IntegrationSettings = () => {
                     <div className="h-6 w-6 bg-[#9b87f5] rounded-md flex items-center justify-center text-white font-bold text-xs">CI</div>
                     <h3 className="font-medium">CINC</h3>
                   </div>
-                  <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50">Disconnected</Badge>
+                  <Badge 
+                    variant="outline" 
+                    className={integrations.cinc.connected 
+                      ? "text-green-500 border-green-200 bg-green-50" 
+                      : "text-red-500 border-red-200 bg-red-50"}
+                  >
+                    {integrations.cinc.connected ? "Connected" : "Disconnected"}
+                  </Badge>
                 </div>
+                
+                {integrations.cinc.connected && integrations.cinc.lastSync && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Last sync: {formatLastSync(integrations.cinc.lastSync)}</span>
+                  </div>
+                )}
+                
+                {cincConfig && (
+                  <div className="mb-4 text-xs text-muted-foreground">
+                    <p><strong>Sync:</strong> {cincConfig.syncFrequency === 'realtime' ? 'Real-time' : cincConfig.syncFrequency === 'hourly' ? 'Hourly' : 'Daily'}</p>
+                    <p><strong>Filter:</strong> {cincConfig.filterOption === 'all' ? 'All Leads' : cincConfig.filterOption === 'new' ? 'New Leads Only' : 'Active Leads Only'}</p>
+                  </div>
+                )}
+                
                 <p className="text-sm text-muted-foreground mb-4">Sync leads and property information from CINC's real estate lead generation platform.</p>
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleConnect('CINC')}
-                >
-                  Connect
-                </Button>
+                
+                {integrations.cinc.connected ? (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1" 
+                      onClick={() => handleDisconnect('CINC')}
+                    >
+                      Disconnect
+                    </Button>
+                    <Button 
+                      className="flex-1" 
+                      onClick={() => setShowCincModal(true)}
+                    >
+                      Settings
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    className="w-full" 
+                    onClick={() => handleConnect('CINC')}
+                  >
+                    Connect
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -171,6 +374,12 @@ export const IntegrationSettings = () => {
                   </div>
                   <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">Connected</Badge>
                 </div>
+                {integrations.googleCalendar.lastSync && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Last sync: {formatLastSync(integrations.googleCalendar.lastSync)}</span>
+                  </div>
+                )}
                 <p className="text-sm text-muted-foreground mb-4">Sync follow-ups and appointments with Google Calendar.</p>
                 <div className="flex gap-2">
                   <Button 
@@ -197,6 +406,12 @@ export const IntegrationSettings = () => {
                   </div>
                   <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">Connected</Badge>
                 </div>
+                {integrations.googleMail.lastSync && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Last sync: {formatLastSync(integrations.googleMail.lastSync)}</span>
+                  </div>
+                )}
                 <p className="text-sm text-muted-foreground mb-4">Integrate with Gmail for email tracking and synchronization.</p>
                 <div className="flex gap-2">
                   <Button 
@@ -285,8 +500,31 @@ export const IntegrationSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="api-key">API Key</Label>
               <div className="flex gap-2">
-                <Input id="api-key" value="••••••••••••••••••••••••••••••" readOnly />
-                <Button variant="outline">Regenerate</Button>
+                <Input 
+                  id="api-key" 
+                  value={apiSettings.apiKey} 
+                  onChange={(e) => setApiSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                  readOnly 
+                  type="password"
+                />
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    // Generate a new API key
+                    const newKey = Array.from({ length: 32 }, () => 
+                      Math.floor(Math.random() * 36).toString(36)
+                    ).join('');
+                    
+                    setApiSettings(prev => ({ ...prev, apiKey: newKey }));
+                    
+                    toast({
+                      title: "New API key generated",
+                      description: "Your API key has been regenerated. Save changes to apply."
+                    });
+                  }}
+                >
+                  Regenerate
+                </Button>
               </div>
               <p className="text-sm text-muted-foreground">Use this key to authenticate API requests.</p>
             </div>
@@ -295,7 +533,12 @@ export const IntegrationSettings = () => {
             
             <div className="space-y-2">
               <Label htmlFor="webhook-url">Webhook URL</Label>
-              <Input id="webhook-url" placeholder="https://your-service.com/webhook" />
+              <Input 
+                id="webhook-url" 
+                placeholder="https://your-service.com/webhook" 
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
               <p className="text-sm text-muted-foreground">URL to receive event notifications.</p>
             </div>
             
@@ -305,12 +548,27 @@ export const IntegrationSettings = () => {
                   <Label className="text-base">Enable Webhooks</Label>
                   <p className="text-sm text-muted-foreground">Send event notifications to external services.</p>
                 </div>
-                <Switch defaultChecked={true} />
+                <Switch 
+                  checked={apiSettings.webhooksEnabled}
+                  onCheckedChange={(checked) => setApiSettings(prev => ({ ...prev, webhooksEnabled: checked }))}
+                />
               </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleSave}>Save API Settings</Button>
+            <Button 
+              onClick={handleSaveApiSettings}
+              disabled={isSavingApiSettings}
+            >
+              {isSavingApiSettings ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save API Settings'
+              )}
+            </Button>
           </CardFooter>
         </Card>
       </div>

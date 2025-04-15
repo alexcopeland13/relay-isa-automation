@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 const formSchema = z.object({
   companyName: z.string().min(2, {
@@ -27,28 +29,72 @@ const formSchema = z.object({
   darkMode: z.boolean().default(false),
 });
 
+// Mock function to simulate API call to save settings
+const saveSettingsToAPI = async (data: z.infer<typeof formSchema>): Promise<boolean> => {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  // In a real app, this would be an API call to save settings
+  localStorage.setItem('generalSettings', JSON.stringify(data));
+  console.log('Settings saved:', data);
+  return true;
+};
+
+// Mock function to load saved settings
+const loadSavedSettings = (): z.infer<typeof formSchema> => {
+  const savedSettings = localStorage.getItem('generalSettings');
+  if (savedSettings) {
+    try {
+      return JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error parsing saved settings:', error);
+    }
+  }
+  
+  // Default values if nothing is saved
+  return {
+    companyName: "EMM Loans",
+    timezone: "America/New_York",
+    dateFormat: "MM/DD/YYYY",
+    businessHoursStart: "09:00",
+    businessHoursEnd: "17:00",
+    enableNotifications: true,
+    darkMode: false,
+  };
+};
+
 export const GeneralSettings = () => {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      companyName: "EMM Loans",
-      timezone: "America/New_York",
-      dateFormat: "MM/DD/YYYY",
-      businessHoursStart: "09:00",
-      businessHoursEnd: "17:00",
-      enableNotifications: true,
-      darkMode: false,
-    },
+    defaultValues: loadSavedSettings(),
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    toast({
-      title: "Settings updated",
-      description: "Your application settings have been saved.",
-    });
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
+    
+    try {
+      const success = await saveSettingsToAPI(values);
+      
+      if (success) {
+        toast({
+          title: "Settings updated",
+          description: "Your application settings have been saved successfully.",
+        });
+      } else {
+        throw new Error("Failed to save settings");
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem saving your settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -221,7 +267,16 @@ export const GeneralSettings = () => {
                 />
               </div>
               
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
             </form>
           </Form>
         </CardContent>

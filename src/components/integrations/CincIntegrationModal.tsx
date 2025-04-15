@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertCircle, Check, X, ArrowRight, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,20 +13,72 @@ import { useToast } from "@/hooks/use-toast";
 interface CincIntegrationModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  existingConfig?: CincConfig;
 }
 
-export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModalProps) => {
+interface CincConfig {
+  apiKey: string;
+  syncFrequency: "realtime" | "hourly" | "daily";
+  filterOption: "all" | "new" | "active";
+  isConnected: boolean;
+  lastSync?: string;
+}
+
+// Mock function to simulate API connection test
+const testCincConnection = async (apiKey: string): Promise<boolean> => {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // In a real app, this would make an API call to CINC to test the connection
+  // For demo, we'll simulate an 80% success rate
+  const success = apiKey.length > 5 && Math.random() > 0.2;
+  
+  console.log('CINC connection test:', success ? 'successful' : 'failed');
+  return success;
+};
+
+// Mock function to save CINC configuration
+const saveCincConfig = async (config: Omit<CincConfig, 'isConnected'>): Promise<boolean> => {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // In a real app, this would make an API call to save the configuration
+  const savedConfig = {
+    ...config,
+    isConnected: true,
+    lastSync: new Date().toISOString()
+  };
+  
+  localStorage.setItem('cincConfig', JSON.stringify(savedConfig));
+  console.log('CINC configuration saved:', savedConfig);
+  return true;
+};
+
+export const CincIntegrationModal = ({ onClose, onSuccess, existingConfig }: CincIntegrationModalProps) => {
   const { toast } = useToast();
-  const [apiKey, setApiKey] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [syncFrequency, setSyncFrequency] = useState<"realtime" | "hourly" | "daily">("realtime");
-  const [filterOption, setFilterOption] = useState<"all" | "new" | "active">("all");
+  const [apiKey, setApiKey] = useState(existingConfig?.apiKey || "");
+  const [showAdvanced, setShowAdvanced] = useState(!!existingConfig);
+  const [syncFrequency, setSyncFrequency] = useState<"realtime" | "hourly" | "daily">(
+    existingConfig?.syncFrequency || "realtime"
+  );
+  const [filterOption, setFilterOption] = useState<"all" | "new" | "active">(
+    existingConfig?.filterOption || "all"
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">(
+    existingConfig?.isConnected ? "success" : "idle"
+  );
   
   const webhookUrl = "https://api.relay.app/webhooks/cinc";
 
-  const handleTest = () => {
+  useEffect(() => {
+    // If we have an existing config with API key, consider it tested successfully
+    if (existingConfig?.apiKey && existingConfig.isConnected) {
+      setTestStatus("success");
+    }
+  }, [existingConfig]);
+
+  const handleTest = async () => {
     if (!apiKey.trim()) {
       toast({
         title: "API Key Required",
@@ -38,9 +90,8 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
 
     setTestStatus("loading");
     
-    // Simulate API test call
-    setTimeout(() => {
-      const success = Math.random() > 0.2; // 80% success rate for demo
+    try {
+      const success = await testCincConnection(apiKey);
       
       if (success) {
         setTestStatus("success");
@@ -56,10 +107,18 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
           variant: "destructive"
         });
       }
-    }, 1500);
+    } catch (error) {
+      setTestStatus("error");
+      toast({
+        title: "Connection Error",
+        description: "An error occurred while testing the connection. Please try again.",
+        variant: "destructive"
+      });
+      console.error("CINC connection test error:", error);
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!apiKey.trim()) {
       toast({
         title: "API Key Required",
@@ -69,13 +128,51 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
       return;
     }
 
+    if (testStatus !== "success") {
+      toast({
+        title: "Connection Test Required",
+        description: "Please test the connection before saving the integration.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const success = await saveCincConfig({
+        apiKey,
+        syncFrequency,
+        filterOption
+      });
+      
+      if (success) {
+        toast({
+          title: "Integration Successful",
+          description: "CINC integration has been successfully configured."
+        });
+        onSuccess();
+      } else {
+        throw new Error("Failed to save CINC configuration");
+      }
+    } catch (error) {
+      console.error("Error saving CINC configuration:", error);
+      toast({
+        title: "Integration Error",
+        description: "There was a problem saving your CINC integration. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-      onSuccess();
-    }, 1500);
+    }
+  };
+
+  const handleCopyToClipboard = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast({
+      title: "Copied to clipboard",
+      description: "Webhook URL has been copied to clipboard."
+    });
   };
 
   return (
@@ -84,10 +181,12 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 bg-[#9b87f5] rounded-md flex items-center justify-center text-white font-bold text-xs">CI</div>
-            <DialogTitle>Connect to CINC</DialogTitle>
+            <DialogTitle>{existingConfig ? "Update CINC Integration" : "Connect to CINC"}</DialogTitle>
           </div>
           <DialogDescription>
-            Connect Relay to your CINC account to automatically import leads and property information.
+            {existingConfig 
+              ? "Update your CINC integration settings to customize lead synchronization."
+              : "Connect Relay to your CINC account to automatically import leads and property information."}
           </DialogDescription>
         </DialogHeader>
         
@@ -99,6 +198,7 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
               placeholder="Enter your CINC API key" 
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              type="password"
             />
             <p className="text-sm text-muted-foreground">
               You can find your API key in your CINC admin dashboard under Settings &gt; Integrations.
@@ -109,13 +209,7 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
             <Label htmlFor="webhook-url">Webhook URL</Label>
             <div className="flex gap-2">
               <Input id="webhook-url" value={webhookUrl} readOnly className="bg-muted" />
-              <Button variant="outline" size="icon" onClick={() => {
-                navigator.clipboard.writeText(webhookUrl);
-                toast({
-                  title: "Copied to clipboard",
-                  description: "Webhook URL has been copied to clipboard."
-                });
-              }}>
+              <Button variant="outline" size="icon" onClick={handleCopyToClipboard}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c0-1.1.9-2 2-2h2"/><path d="M4 12c0-1.1.9-2 2-2h2"/><path d="M4 8c0-1.1.9-2 2-2h2"/></svg>
               </Button>
             </div>
@@ -251,16 +345,16 @@ export const CincIntegrationModal = ({ onClose, onSuccess }: CincIntegrationModa
             Cancel
           </Button>
           <Button 
-            disabled={isLoading} 
+            disabled={isLoading || testStatus !== "success"} 
             onClick={handleSubmit}
           >
             {isLoading ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Connecting...
+                {existingConfig ? "Updating..." : "Connecting..."}
               </>
             ) : (
-              'Connect'
+              existingConfig ? 'Update' : 'Connect'
             )}
           </Button>
         </DialogFooter>

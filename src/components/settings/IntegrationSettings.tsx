@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,10 +17,15 @@ import {
   Check, 
   X,
   ArrowRight,
-  Clock
+  Clock,
+  Home,
+  ExternalLink
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CincIntegrationModal } from "@/components/integrations/CincIntegrationModal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface IntegrationStatus {
   name: string;
@@ -57,6 +61,88 @@ export const IntegrationSettings = () => {
     apiKey: "••••••••••••••••••••••••••••••",
     webhooksEnabled: true
   });
+
+  // New state for SimplyRETS integration
+  const [simplyRETSForm, setSimplyRETSForm] = useState({
+    apiKey: "",
+    apiSecret: "",
+    mlsSelection: ""
+  });
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnectionTested, setIsConnectionTested] = useState(false);
+  
+  // Handler for SimplyRETS form changes
+  const handleSimplyRETSChange = (field: string, value: string) => {
+    setSimplyRETSForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Reset connection tested status when form changes
+    if (isConnectionTested) {
+      setIsConnectionTested(false);
+    }
+  };
+  
+  // Handler for testing SimplyRETS connection
+  const handleTestConnection = () => {
+    // Validate form
+    if (!simplyRETSForm.apiKey || !simplyRETSForm.apiSecret || !simplyRETSForm.mlsSelection) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields to test the connection.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsConnecting(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsConnecting(false);
+      setIsConnectionTested(true);
+      
+      toast({
+        title: "Connection successful",
+        description: "Successfully connected to SimplyRETS API with provided credentials.",
+      });
+    }, 1500);
+  };
+  
+  // Handler for connecting SimplyRETS
+  const handleConnectSimplyRETS = () => {
+    if (!isConnectionTested) {
+      toast({
+        title: "Test connection first",
+        description: "Please test the connection before connecting.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsConnecting(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsConnecting(false);
+      
+      // Update integrations state to show SimplyRETS as connected
+      setIntegrations(prev => ({
+        ...prev,
+        simplyrets: { 
+          name: "SimplyRETS", 
+          connected: true,
+          lastSync: new Date().toISOString()
+        }
+      }));
+      
+      toast({
+        title: "SimplyRETS connected",
+        description: "SimplyRETS integration has been successfully set up.",
+      });
+    }, 1500);
+  };
 
   // Load CINC configuration on component mount
   useEffect(() => {
@@ -223,6 +309,7 @@ export const IntegrationSettings = () => {
       )}
       
       <div className="space-y-6">
+        {/* CRM Integration Section - Keep existing */}
         <Card>
           <CardHeader>
             <CardTitle>CRM Integration</CardTitle>
@@ -286,6 +373,186 @@ export const IntegrationSettings = () => {
                 >
                   Connect
                 </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* New MLS Integration Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>MLS Integration</CardTitle>
+            <CardDescription>Connect to MLS property data to enhance conversations with real-time listings.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 bg-[#4a90e2] rounded-md flex items-center justify-center text-white">
+                      <Home className="h-4 w-4" />
+                    </div>
+                    <h3 className="font-medium">SimplyRETS</h3>
+                  </div>
+                  <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50">Disconnected</Badge>
+                </div>
+                
+                {integrations.simplyrets?.connected && integrations.simplyrets.lastSync && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                    <Clock className="h-3 w-3" />
+                    <span>Last sync: {formatLastSync(integrations.simplyrets.lastSync)}</span>
+                  </div>
+                )}
+                
+                <p className="text-sm text-muted-foreground mb-4">
+                  Access real estate listing data from your MLS via SimplyRETS API.
+                </p>
+                
+                {!integrations.simplyrets?.connected ? (
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="api-key">API Key</Label>
+                        <Input 
+                          id="api-key" 
+                          type="password" 
+                          placeholder="Enter your SimplyRETS API key"
+                          value={simplyRETSForm.apiKey}
+                          onChange={(e) => handleSimplyRETSChange('apiKey', e.target.value)}
+                          className="font-mono"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="api-secret">API Secret</Label>
+                        <Input 
+                          id="api-secret" 
+                          type="password" 
+                          placeholder="Enter your SimplyRETS API secret"
+                          value={simplyRETSForm.apiSecret}
+                          onChange={(e) => handleSimplyRETSChange('apiSecret', e.target.value)}
+                          className="font-mono"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="mls-selection">MLS Selection</Label>
+                        <Select 
+                          value={simplyRETSForm.mlsSelection} 
+                          onValueChange={(value) => handleSimplyRETSChange('mlsSelection', value)}
+                        >
+                          <SelectTrigger id="mls-selection">
+                            <SelectValue placeholder="Select your MLS" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ARMLS">ARMLS</SelectItem>
+                            <SelectItem value="CRMLS">CRMLS</SelectItem>
+                            <SelectItem value="GAMLS">GAMLS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={handleTestConnection}
+                        disabled={isConnecting || !simplyRETSForm.apiKey || !simplyRETSForm.apiSecret || !simplyRETSForm.mlsSelection}
+                        className="flex-1"
+                      >
+                        {isConnecting ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          'Test Connection'
+                        )}
+                      </Button>
+                      
+                      <Button 
+                        onClick={handleConnectSimplyRETS}
+                        disabled={isConnecting || !isConnectionTested}
+                        className="flex-1"
+                      >
+                        {isConnecting ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          'Connect'
+                        )}
+                      </Button>
+                    </div>
+                    
+                    <Button 
+                      variant="secondary" 
+                      disabled={true}
+                      className="w-full"
+                    >
+                      Configure Settings
+                    </Button>
+                    
+                    <div className="text-sm text-muted-foreground p-3 bg-secondary/50 rounded-md">
+                      <p className="mb-2">
+                        SimplyRETS provides access to MLS listing data for use during conversations. 
+                        This integration allows agents to reference property details and search listings in real-time.
+                      </p>
+                      <a 
+                        href="https://docs.simplyrets.com/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center text-primary text-xs font-medium hover:underline"
+                      >
+                        <ExternalLink className="mr-1 h-3 w-3" />
+                        Documentation
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1" 
+                      onClick={() => {
+                        // Disconnect SimplyRETS integration
+                        setIntegrations(prev => ({
+                          ...prev,
+                          simplyrets: { name: "SimplyRETS", connected: false }
+                        }));
+                        
+                        // Clear form data
+                        setSimplyRETSForm({
+                          apiKey: "",
+                          apiSecret: "",
+                          mlsSelection: ""
+                        });
+                        
+                        // Reset connection tested status
+                        setIsConnectionTested(false);
+                        
+                        toast({
+                          title: "SimplyRETS disconnected",
+                          description: "SimplyRETS integration has been disconnected.",
+                        });
+                      }}
+                    >
+                      Disconnect
+                    </Button>
+                    <Button 
+                      className="flex-1" 
+                      onClick={() => {
+                        toast({
+                          title: "Settings",
+                          description: "Configure SimplyRETS settings.",
+                        });
+                      }}
+                    >
+                      Settings
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

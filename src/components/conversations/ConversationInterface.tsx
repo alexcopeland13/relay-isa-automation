@@ -64,6 +64,9 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
   // Safely check if we have recommendations before rendering
   const safeRecommendations = recommendations || [];
 
+  // Ensure we have the transcript messages for TranscriptViewer
+  const transcriptMessages = conversation?.messages || [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-15rem)]">
       <div className="lg:col-span-2 flex flex-col h-full">
@@ -109,9 +112,9 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
             </Button>
           </div>
           
-          <div className="p-4 h-[calc(100%-3.5rem)]">
-            {activeTab === 'transcript' && conversation?.transcript && (
-              <TranscriptViewer messages={conversation.transcript} />
+          <div className="h-[calc(100%-3.5rem)]">
+            {activeTab === 'transcript' && (
+              <TranscriptViewer messages={transcriptMessages} />
             )}
             {activeTab === 'sentiment' && conversation?.sentimentData && (
               <SentimentGraph messages={conversation.sentimentData} />

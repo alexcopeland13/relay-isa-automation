@@ -19,6 +19,14 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
   
+  // Ensure refs array length matches the number of messages
+  useEffect(() => {
+    messageRefs.current = messageRefs.current.slice(0, messages.length);
+    while (messageRefs.current.length < messages.length) {
+      messageRefs.current.push(null);
+    }
+  }, [messages]);
+  
   // Search for matches when query changes
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -56,7 +64,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
   };
   
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-full">
       {/* Search bar */}
       {isSearching && (
         <SearchBar
@@ -71,24 +79,29 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
       )}
       
       {/* Message area */}
-      <ScrollArea className="flex-1 p-6">
-        <div className="space-y-6">
-          {messages.map((message, index) => (
-            <MessageBubble
-              key={index}
-              ref={el => {
-                messageRefs.current[index] = el;
-                return null;
-              }}
-              speaker={message.speaker}
-              timestamp={message.timestamp}
-              text={message.text}
-              sentiment={message.sentiment}
-              highlights={message.highlights}
-              searchQuery={searchQuery}
-              isCurrentSearchResult={searchResults.includes(index) && currentSearchIndex === searchResults.indexOf(index)}
-            />
-          ))}
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-2">
+          {messages && messages.length > 0 ? (
+            messages.map((message, index) => (
+              <MessageBubble
+                key={index}
+                ref={(el) => {
+                  messageRefs.current[index] = el;
+                }}
+                speaker={message.speaker}
+                timestamp={message.timestamp}
+                text={message.text}
+                sentiment={message.sentiment}
+                highlights={message.highlights}
+                searchQuery={searchQuery}
+                isCurrentSearchResult={searchResults.includes(index) && currentSearchIndex === searchResults.indexOf(index)}
+              />
+            ))
+          ) : (
+            <div className="text-center text-muted-foreground py-8">
+              No messages available in this conversation.
+            </div>
+          )}
         </div>
       </ScrollArea>
       

@@ -21,7 +21,7 @@ export const MessageBubble = React.forwardRef<HTMLDivElement, MessageBubbleProps
       <div 
         ref={ref}
         className={cn(
-          "flex max-w-[85%]",
+          "flex max-w-[85%] mb-4",
           speaker === "AI" ? "mr-auto" : "ml-auto flex-row-reverse"
         )}
       >
@@ -36,14 +36,14 @@ export const MessageBubble = React.forwardRef<HTMLDivElement, MessageBubbleProps
               : ""
           )}
         >
-          <div className="font-medium mb-1 flex items-center justify-between">
+          <div className="font-medium mb-1 flex items-center justify-between gap-2">
             <span>{speaker}</span>
             <div className="flex items-center text-xs opacity-70">
               <Clock className="mr-1" size={12} />
               <span>{timestamp}</span>
             </div>
           </div>
-          <p className={cn(
+          <div className={cn(
             "text-sm",
             speaker === "Lead" && "text-primary-foreground"
           )}>
@@ -52,17 +52,22 @@ export const MessageBubble = React.forwardRef<HTMLDivElement, MessageBubbleProps
               searchQuery={searchQuery} 
               highlights={highlights} 
             />
-          </p>
+          </div>
           
           {/* Sentiment indicator */}
-          <div className="absolute top-2 right-2">
-            {sentiment === 'positive' && (
-              <div className="w-2 h-2 rounded-full bg-green-500" title="Positive sentiment" />
-            )}
-            {sentiment === 'negative' && (
-              <div className="w-2 h-2 rounded-full bg-red-500" title="Negative sentiment" />
-            )}
-          </div>
+          {sentiment && (
+            <div className="absolute top-2 right-2">
+              {sentiment === 'positive' && (
+                <div className="w-2 h-2 rounded-full bg-green-500" title="Positive sentiment" />
+              )}
+              {sentiment === 'negative' && (
+                <div className="w-2 h-2 rounded-full bg-red-500" title="Negative sentiment" />
+              )}
+              {sentiment === 'neutral' && (
+                <div className="w-2 h-2 rounded-full bg-gray-500" title="Neutral sentiment" />
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

@@ -7,7 +7,6 @@ import { TranscriptViewer } from './TranscriptViewer';
 import { InformationPanel } from './InformationPanel';
 import { AgentMatchingPanel } from './AgentMatchingPanel';
 import { SentimentGraph } from './SentimentGraph';
-import { FollowUpPanel } from './FollowUpPanel';
 import { FeedbackModule } from './FeedbackModule';
 import { CategoryItem } from './CategoryItem';
 import { ProfileUpdateNotification } from './ProfileUpdateNotification';
@@ -15,6 +14,7 @@ import { FollowUpRecommendations } from '../follow-ups/FollowUpRecommendations';
 import { useConversationData } from '@/hooks/use-conversation-data';
 import { useFollowUpRecommendations } from '@/hooks/use-followup-recommendations';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const ConversationInterface = ({ conversation }: { conversation: any }) => {
   const [activeTab, setActiveTab] = useState('transcript');
@@ -69,6 +69,7 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-15rem)]">
+      {/* Left column - Conversation view */}
       <div className="lg:col-span-2 flex flex-col h-full">
         <ConversationHeader 
           timestamp={conversation?.timestamp}
@@ -78,6 +79,7 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           leadInfo={conversation?.leadInfo} 
         />
         
+        {/* Profile update notification */}
         {hasPendingUpdates && showNotification && (
           <ProfileUpdateNotification 
             updates={formatExtractedUpdates()}
@@ -87,53 +89,55 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           />
         )}
         
-        <div className="flex-1 overflow-hidden border rounded-md">
-          <div className="flex border-b">
-            <Button
-              variant={activeTab === 'transcript' ? 'default' : 'ghost'}
-              className="rounded-none"
-              onClick={() => setActiveTab('transcript')}
-            >
-              Transcript
-            </Button>
-            <Button
-              variant={activeTab === 'sentiment' ? 'default' : 'ghost'}
-              className="rounded-none"
-              onClick={() => setActiveTab('sentiment')}
-            >
-              Sentiment Analysis
-            </Button>
-            <Button
-              variant={activeTab === 'feedback' ? 'default' : 'ghost'}
-              className="rounded-none"
-              onClick={() => setActiveTab('feedback')}
-            >
-              Feedback
-            </Button>
-          </div>
-          
-          <div className="h-[calc(100%-3.5rem)]">
-            {activeTab === 'transcript' && (
-              <TranscriptViewer messages={transcriptMessages} />
-            )}
-            {activeTab === 'sentiment' && conversation?.sentimentData && (
-              <SentimentGraph messages={conversation.sentimentData} />
-            )}
-            {activeTab === 'feedback' && conversation?.aiPerformance && (
-              <FeedbackModule aiPerformance={conversation.aiPerformance} />
-            )}
-          </div>
+        {/* Main content area with tabs */}
+        <div className="flex-1 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <TabsList className="mx-4 mt-1 mb-2">
+              <TabsTrigger value="transcript">Transcript</TabsTrigger>
+              <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
+              <TabsTrigger value="feedback">AI Performance</TabsTrigger>
+            </TabsList>
+            
+            <div className="flex-1">
+              <TabsContent value="transcript" className="h-full m-0 p-0">
+                <TranscriptViewer messages={transcriptMessages} />
+              </TabsContent>
+              
+              <TabsContent value="sentiment" className="h-full m-0 p-0">
+                {conversation?.sentimentData ? (
+                  <SentimentGraph messages={conversation.sentimentData} />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    No sentiment data available
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="feedback" className="h-full m-0 p-0">
+                {conversation?.aiPerformance ? (
+                  <FeedbackModule aiPerformance={conversation.aiPerformance} />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    No AI performance data available
+                  </div>
+                )}
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
       </div>
       
+      {/* Right column - Information panels */}
       <div className="space-y-4 h-full overflow-y-auto">
         <ScrollArea className="h-full">
+          {/* Lead information panel */}
           {conversation?.extractedInfo && (
             <InformationPanel extractedInfo={conversation.extractedInfo} />
           )}
           
+          {/* Categories */}
           {conversation?.categories && conversation.categories.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-4 p-4 border rounded-md bg-card">
               <h3 className="text-lg font-semibold mb-2">Categories</h3>
               <div className="flex flex-wrap gap-2 mb-4">
                 {conversation.categories.map((category: string, index: number) => (
@@ -143,6 +147,7 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
             </div>
           )}
           
+          {/* Follow-up recommendations */}
           <div className="mt-4">
             <FollowUpRecommendations
               recommendations={safeRecommendations}
@@ -152,12 +157,9 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
             />
           </div>
           
+          {/* Agent matching panel */}
           <div className="mt-4">
             <AgentMatchingPanel conversation={conversation} />
-          </div>
-          
-          <div className="mt-4 mb-8">
-            <FollowUpPanel conversation={conversation} />
           </div>
         </ScrollArea>
       </div>

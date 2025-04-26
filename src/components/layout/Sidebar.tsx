@@ -5,18 +5,11 @@ import {
   LayoutDashboard, 
   Users, 
   MessageSquare, 
-  Calendar, 
-  Settings, 
   BarChart3, 
-  Home,
+  Settings,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  UserSearch,
-  PhoneCall,
-  CheckSquare,
-  Clock,
-  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,9 +27,16 @@ type NavItemProps = NavItem & {
   isCollapsed: boolean;
 };
 
+type NavSectionProps = {
+  title: string;
+  items: NavItem[];
+  isCollapsed: boolean;
+};
+
 const NavItem = ({ icon: Icon, label, path, isCollapsed, badgeCount }: NavItemProps) => {
   const location = useLocation();
-  const isActive = location.pathname === path;
+  const isActive = location.pathname === path || 
+                  (path !== '/' && location.pathname.startsWith(path));
 
   return (
     <Link 
@@ -67,30 +67,42 @@ const NavItem = ({ icon: Icon, label, path, isCollapsed, badgeCount }: NavItemPr
   );
 };
 
+const NavSection = ({ title, items, isCollapsed }: NavSectionProps) => {
+  return (
+    <div className="mb-6">
+      {!isCollapsed && (
+        <div className="text-xs uppercase text-white/50 font-medium px-3 pt-2 pb-1" role="presentation">
+          {title}
+        </div>
+      )}
+      {items.map((item) => (
+        <NavItem 
+          key={item.path}
+          {...item}
+          isCollapsed={isCollapsed}
+        />
+      ))}
+    </div>
+  );
+};
+
 export const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const engageItems: NavItem[] = [
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
-    { icon: Users, label: 'New Leads', path: '/leads', badgeCount: 2 },
-    { icon: PhoneCall, label: 'Priority Follow-ups', path: '/follow-ups', badgeCount: 3 },
-  ];
-  
-  const planItems: NavItem[] = [
-    { icon: Calendar, label: 'Upcoming Calls', path: '/upcoming-calls' },
-    { icon: Clock, label: 'Pending Follow-ups', path: '/pending-followups' },
-    { icon: UserSearch, label: 'Agent Availability', path: '/agents', badgeCount: 1 },
-  ];
-  
-  const reviewItems: NavItem[] = [
-    { icon: CheckSquare, label: 'Completed Tasks', path: '/completed-tasks' },
-    { icon: FileText, label: 'Conversion Outcomes', path: '/conversion-outcomes' },
-    { icon: BarChart3, label: 'Performance Metrics', path: '/analytics' },
+    { icon: Users, label: 'Leads', path: '/leads', badgeCount: 2 },
   ];
   
   const manageItems: NavItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: MessageSquare, label: 'Follow-ups', path: '/follow-ups', badgeCount: 3 },
+    { icon: Users, label: 'Team', path: '/agents', badgeCount: 1 },
+  ];
+  
+  const reviewItems: NavItem[] = [
+    { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
@@ -113,67 +125,33 @@ export const Sidebar = () => {
           <Link to="/" className="flex items-center gap-2 text-white" aria-label="Home">
             {!isCollapsed ? (
               <>
-                <Home size={24} className="text-emmaccent" aria-hidden="true" />
+                <MessageSquare size={24} className="text-emmaccent" aria-hidden="true" />
                 <span className="font-bold text-lg">Relay</span>
               </>
             ) : (
-              <Home size={24} className="mx-auto text-emmaccent" aria-hidden="true" />
+              <MessageSquare size={24} className="mx-auto text-emmaccent" aria-hidden="true" />
             )}
           </Link>
         </div>
         
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto" role="menubar">
-          {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-2 pb-1" role="presentation">
-              Engage
-            </div>
-          )}
-          {engageItems.map((item) => (
-            <NavItem 
-              key={item.path}
-              {...item}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+          <NavSection 
+            title="Engage" 
+            items={engageItems} 
+            isCollapsed={isCollapsed} 
+          />
           
-          {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3" role="presentation">
-              Plan
-            </div>
-          )}
-          {planItems.map((item) => (
-            <NavItem 
-              key={item.path}
-              {...item}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+          <NavSection 
+            title="Manage" 
+            items={manageItems} 
+            isCollapsed={isCollapsed} 
+          />
           
-          {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3" role="presentation">
-              Review
-            </div>
-          )}
-          {reviewItems.map((item) => (
-            <NavItem 
-              key={item.path}
-              {...item}
-              isCollapsed={isCollapsed}
-            />
-          ))}
-          
-          {!isCollapsed && (
-            <div className="text-xs uppercase text-white/50 font-medium px-3 pt-4 pb-1 mt-3" role="presentation">
-              Manage
-            </div>
-          )}
-          {manageItems.map((item) => (
-            <NavItem 
-              key={item.path}
-              {...item}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+          <NavSection 
+            title="Review" 
+            items={reviewItems} 
+            isCollapsed={isCollapsed} 
+          />
         </nav>
         
         <div className="p-2 mb-2">

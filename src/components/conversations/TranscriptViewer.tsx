@@ -1,11 +1,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Message } from '@/data/sampleConversation';
-import { Search } from 'lucide-react';
+import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchBar } from './transcript/SearchBar';
 import { MessageBubble } from './transcript/MessageBubble';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import React from 'react';
 
 interface TranscriptViewerProps {
@@ -17,6 +18,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+  const [activeView, setActiveView] = useState<'all' | 'highlights' | 'questions'>('all');
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
   
   // Ensure refs array length matches the number of messages
@@ -63,8 +65,41 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
     setCurrentSearchIndex((prevIndex) => (prevIndex - 1 + searchResults.length) % searchResults.length);
   };
 
+  // Filter messages based on active view
+  const filteredMessages = messages.filter(message => {
+    if (activeView === 'all') return true;
+    if (activeView === 'highlights') return message.highlights && message.highlights.length > 0;
+    if (activeView === 'questions') return message.text.includes('?');
+    return true;
+  });
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full border rounded-md overflow-hidden">
+      {/* Transcript toolbar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)} className="w-auto">
+          <TabsList className="h-8">
+            <TabsTrigger value="all" className="text-xs px-3">All</TabsTrigger>
+            <TabsTrigger value="highlights" className="text-xs px-3">Highlights</TabsTrigger>
+            <TabsTrigger value="questions" className="text-xs px-3">Questions</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="h-8 px-2">
+            <Flag className="h-4 w-4 mr-1" />
+            <span className="text-xs">Flag</span>
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 px-2">
+            <Download className="h-4 w-4 mr-1" />
+            <span className="text-xs">Export</span>
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setIsSearching(true)}>
+            <Search className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      
       {/* Search bar */}
       {isSearching && (
         <SearchBar
@@ -78,46 +113,47 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
         />
       )}
       
-      {/* Message area with tabs */}
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full">
-          <ScrollArea className="h-full px-4 py-2">
-            <div className="space-y-2">
-              {messages && messages.length > 0 ? (
-                messages.map((message, index) => (
-                  <MessageBubble
-                    key={index}
-                    ref={(el) => {
-                      messageRefs.current[index] = el;
-                    }}
-                    speaker={message.speaker}
-                    timestamp={message.timestamp}
-                    text={message.text}
-                    sentiment={message.sentiment}
-                    highlights={message.highlights}
-                    searchQuery={searchQuery}
-                    isCurrentSearchResult={searchResults.includes(index) && currentSearchIndex === searchResults.indexOf(index)}
-                  />
-                ))
+      {/* Message area */}
+      <ScrollArea className="flex-1 px-4 py-2">
+        <div className="space-y-2 pb-4">
+          {filteredMessages.length > 0 ? (
+            filteredMessages.map((message, index) => (
+              <MessageBubble
+                key={index}
+                ref={(el) => {
+                  messageRefs.current[index] = el;
+                }}
+                speaker={message.speaker}
+                timestamp={message.timestamp}
+                text={message.text}
+                sentiment={message.sentiment}
+                highlights={message.highlights}
+                searchQuery={searchQuery}
+                isCurrentSearchResult={searchResults.includes(index) && currentSearchIndex === searchResults.indexOf(index)}
+              />
+            ))
+          ) : (
+            <div className="text-center text-muted-foreground py-8 flex flex-col items-center">
+              {activeView === 'all' ? (
+                <>
+                  <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
+                  <p>No messages available in this conversation.</p>
+                </>
+              ) : activeView === 'highlights' ? (
+                <>
+                  <Info className="h-8 w-8 mb-2 opacity-40" />
+                  <p>No highlighted text found in this conversation.</p>
+                </>
               ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  No messages available in this conversation.
-                </div>
+                <>
+                  <Info className="h-8 w-8 mb-2 opacity-40" />
+                  <p>No questions found in this conversation.</p>
+                </>
               )}
             </div>
-          </ScrollArea>
+          )}
         </div>
-      </div>
-      
-      {/* Search toggle button */}
-      {!isSearching && (
-        <div className="border-t border-border p-4 flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setIsSearching(true)}>
-            <Search className="mr-2 h-4 w-4" />
-            Search Transcript
-          </Button>
-        </div>
-      )}
+      </ScrollArea>
     </div>
   );
 };

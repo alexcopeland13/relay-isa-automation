@@ -20,10 +20,6 @@ import Agents from "./pages/Agents";
 import AgentDetail from "./pages/AgentDetail";
 import AgentCreate from "./pages/AgentCreate";
 import AgentEdit from "./pages/AgentEdit";
-import UpcomingCalls from "./pages/UpcomingCalls";
-import PendingFollowups from "./pages/PendingFollowups";
-import CompletedTasks from "./pages/CompletedTasks";
-import ConversionOutcomes from "./pages/ConversionOutcomes";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,25 +58,20 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/leads" element={<Leads />} />
+              <Route path="/conversations" element={<Conversations />} />
+              <Route path="/follow-ups" element={<FollowUps />} />
               <Route path="/agents" element={<Agents />} />
               <Route path="/agents/create" element={<AgentCreate />} />
               <Route path="/agents/edit/:id" element={<AgentEdit />} />
               <Route path="/agents/:id" element={<AgentDetail />} />
-              <Route path="/conversations" element={<Conversations />} />
-              <Route path="/follow-ups" element={<FollowUps />} />
-              <Route path="/upcoming-calls" element={<UpcomingCalls />} />
-              <Route path="/pending-followups" element={<PendingFollowups />} />
-              <Route path="/completed-tasks" element={<CompletedTasks />} />
-              <Route path="/conversion-outcomes" element={<ConversionOutcomes />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
               
-              {/* Catch old or incorrect routes and redirect them */}
-              <Route path="/agent/:id" element={<Navigate to="/agents/:id" replace />} />
-              <Route path="/pending-follow-ups" element={<Navigate to="/pending-followups" replace />} />
-              <Route path="/upcoming-call" element={<Navigate to="/upcoming-calls" replace />} />
-              <Route path="/completed-task" element={<Navigate to="/completed-tasks" replace />} />
-              <Route path="/conversion-outcome" element={<Navigate to="/conversion-outcomes" replace />} />
+              {/* Redirect old paths to consolidated pages */}
+              <Route path="/upcoming-calls" element={<Navigate to="/follow-ups" replace />} />
+              <Route path="/pending-followups" element={<Navigate to="/follow-ups" replace />} />
+              <Route path="/completed-tasks" element={<Navigate to="/follow-ups" replace />} />
+              <Route path="/conversion-outcomes" element={<Navigate to="/analytics" replace />} />
               
               {/* Catch-all for 404s */}
               <Route path="*" element={<NotFound />} />

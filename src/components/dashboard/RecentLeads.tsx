@@ -1,11 +1,11 @@
-
-import { CalendarClock, ArrowUpRight } from 'lucide-react';
+import { CalendarClock, ArrowUpRight, FileCheck, TagIcon, CurrencyDollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from '@/lib/utils';
 
-// Sample data
+// Sample data with enhanced fields
 const recentLeads = [
   {
     id: 'ld-001',
@@ -15,7 +15,17 @@ const recentLeads = [
     source: 'Website',
     status: 'New',
     time: '10 mins ago',
-    interest: 'Mortgage Refinancing'
+    interest: 'Mortgage Refinancing',
+    propertyPreferences: {
+      type: 'Single Family Home',
+      bedrooms: '3-4',
+      location: 'Suburban'
+    },
+    mortgageDetails: {
+      status: 'Pre-qualified',
+      amount: '$450,000',
+      type: 'Conventional'
+    }
   },
   {
     id: 'ld-002',
@@ -79,7 +89,7 @@ export const RecentLeads = () => {
       <CardContent className="px-0 py-1">
         <div className="divide-y">
           {recentLeads.map((lead) => (
-            <div key={lead.id} className="lead-item">
+            <div key={lead.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
                   <Link 
@@ -102,19 +112,40 @@ export const RecentLeads = () => {
                   {lead.status}
                 </Badge>
               </div>
-              <div className="mt-2 flex flex-wrap gap-y-2 gap-x-4 text-sm">
-                <div className="flex items-center text-muted-foreground">
-                  <CalendarClock size={14} className="mr-1" />
-                  {lead.time}
+              
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1">
+                    <CurrencyDollarSign className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{lead.mortgageDetails.amount}</span>
+                    <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
+                      {lead.mortgageDetails.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <FileCheck className="h-4 w-4" />
+                    <span>{lead.mortgageDetails.type}</span>
+                  </div>
                 </div>
-                <div className="flex items-center">
-                  <span className="text-muted-foreground mr-1">Interest:</span> 
-                  {lead.interest}
+                
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <TagIcon className="h-4 w-4" />
+                  <span>
+                    {lead.propertyPreferences.type} • {lead.propertyPreferences.bedrooms} beds • {lead.propertyPreferences.location}
+                  </span>
                 </div>
-                <div className="flex items-center">
-                  <span className="text-muted-foreground mr-1">Source:</span> 
-                  {lead.source}
+                
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CalendarClock className="h-4 w-4" />
+                  <span>{lead.time}</span>
+                  <span className="text-muted-foreground">via {lead.source}</span>
                 </div>
+              </div>
+              
+              <div className="mt-3">
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/leads/${lead.id}`}>View Details</Link>
+                </Button>
               </div>
             </div>
           ))}

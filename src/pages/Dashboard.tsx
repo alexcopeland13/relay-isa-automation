@@ -10,7 +10,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  FileCheck
 } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -38,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { MessageSquareCheck } from '@/components/ui/icons/MessageSquareCheck';
+import { QualificationQueue } from '@/components/dashboard/QualificationQueue';
 
 const fetchDashboardData = async () => {
   await new Promise(resolve => setTimeout(resolve, 1500));
@@ -172,49 +174,22 @@ const Dashboard = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Today's Priority Tasks</CardTitle>
-            <CardDescription>Tasks requiring immediate attention</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {data?.priorityTasks.map((task) => (
-                <div key={task.id} className="flex items-center border rounded-lg p-4 bg-card hover:bg-accent/10 transition-colors">
-                  <div className="mr-4">
-                    {getTaskIcon(task.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">{task.title}</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {task.dueTime && (
-                        <span className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Due in {task.dueTime}
-                        </span>
-                      )}
-                      {task.status && <span>{task.status}</span>}
-                    </div>
-                  </div>
-                  <Link to={task.path}>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <span>View</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="link" size="sm" className="gap-1">
-              <span>Show all tasks</span>
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </CardFooter>
-        </Card>
+        <div className="lg:col-span-2">
+          <QualificationQueue />
+        </div>
         
-        <Card className="col-span-1">
+        <div className="space-y-6">
+          <StatCard 
+            title="Pending Qualifications" 
+            value="12" 
+            icon={<FileCheck size={20} />}
+            trend={{
+              value: 2,
+              label: "from yesterday",
+              positive: true
+            }}
+          />
+          <Card className="col-span-1">
           <CardHeader>
             <CardTitle className="text-lg">Available Resources</CardTitle>
             <CardDescription>Current capacity and availability</CardDescription>
@@ -278,6 +253,62 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <RecentLeads />
+        </div>
+        <div>
+          <UpcomingFollowUps />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Today's Priority Tasks</CardTitle>
+            <CardDescription>Tasks requiring immediate attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data?.priorityTasks.map((task) => (
+                <div key={task.id} className="flex items-center border rounded-lg p-4 bg-card hover:bg-accent/10 transition-colors">
+                  <div className="mr-4">
+                    {getTaskIcon(task.type)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{task.title}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {task.dueTime && (
+                        <span className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Due in {task.dueTime}
+                        </span>
+                      )}
+                      {task.status && <span>{task.status}</span>}
+                    </div>
+                  </div>
+                  <Link to={task.path}>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <span>View</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="link" size="sm" className="gap-1">
+              <span>Show all tasks</span>
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <AiActivitySummary />
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -323,12 +354,6 @@ const Dashboard = () => {
             }}
           />
         </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <RecentLeads />
-        <UpcomingFollowUps />
-        <AiActivitySummary />
       </div>
     </PageLayout>
   );

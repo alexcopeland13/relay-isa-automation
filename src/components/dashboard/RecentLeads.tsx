@@ -1,4 +1,4 @@
-import { CalendarClock, ArrowUpRight, FileCheck, TagIcon, CurrencyDollarSign } from 'lucide-react';
+import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -116,7 +116,7 @@ export const RecentLeads = () => {
               <div className="mt-3 space-y-2">
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
-                    <CurrencyDollarSign className="h-4 w-4 text-muted-foreground" />
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{lead.mortgageDetails.amount}</span>
                     <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
                       {lead.mortgageDetails.status}
@@ -136,7 +136,7 @@ export const RecentLeads = () => {
                 </div>
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CalendarClock className="h-4 w-4" />
+                  <Calendar className="h-4 w-4" />
                   <span>{lead.time}</span>
                   <span className="text-muted-foreground">via {lead.source}</span>
                 </div>

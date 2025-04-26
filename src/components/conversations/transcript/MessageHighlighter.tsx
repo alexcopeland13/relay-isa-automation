@@ -14,7 +14,8 @@ export const MessageHighlighter: React.FC<MessageHighlighterProps> = ({ text, se
   }
 
   // First highlight search query if present
-  let highlightedContent = text;
+  let highlightedContent: React.ReactNode[] = [text];
+  
   if (searchQuery) {
     highlightedContent = highlightText(text, searchQuery, (match, index) => (
       <span key={`search-${index}`} className="bg-yellow-200 dark:bg-yellow-900 font-medium">
@@ -25,19 +26,19 @@ export const MessageHighlighter: React.FC<MessageHighlighterProps> = ({ text, se
 
   // Then apply content highlights if any
   if (highlights && highlights.length > 0) {
-    // Convert the content to string if it's an array of React nodes
-    const contentAsString = typeof highlightedContent === 'string' 
-      ? highlightedContent 
-      : Array.isArray(highlightedContent)
-        ? highlightedContent.map(node => typeof node === 'string' ? node : '').join('')
-        : '';
+    // Convert the array of ReactNodes to a single string for the second highlight pass
+    const contentAsString = highlightedContent
+      .map(node => (typeof node === 'string' ? node : ''))
+      .join('');
     
-    highlightedContent = highlightText(contentAsString, highlights.map(h => h.text), (match, index) => {
-      const highlight = highlights.find(h => h.text === match);
-      if (!highlight) return match;
+    if (contentAsString) {
+      highlightedContent = highlightText(contentAsString, highlights.map(h => h.text), (match, index) => {
+        const highlight = highlights.find(h => h.text === match);
+        if (!highlight) return match;
 
-      return getHighlightSpan(match, highlight.type, index);
-    });
+        return getHighlightSpan(match, highlight.type, index);
+      });
+    }
   }
 
   return <>{highlightedContent}</>;

@@ -1,3 +1,6 @@
+
+import React from 'react';
+
 type HighlightRenderer = (match: string, index: number) => React.ReactNode;
 
 // Highlight function to avoid unnecessary React.Fragment creation

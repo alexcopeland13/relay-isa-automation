@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import MainNavigation from './MainNavigation';
+import { MainNavigation } from './MainNavigation';
 
 export const Header = () => {
   return (

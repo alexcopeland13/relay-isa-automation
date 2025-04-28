@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Filter, Users, User, Briefcase, MapPin, ArrowRight } from 'lucide-react';
+import { Search, Filter, Users, User, Briefcase, MapPin, ArrowRight, Check } from 'lucide-react';
 
 // Sample data for experts
 const expertsData = [

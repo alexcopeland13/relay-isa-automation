@@ -1,105 +1,95 @@
 
-import { useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, BarChart3, Settings, Search, BellRing, UserPlus } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
+import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import {
+  LayoutDashboard,
+  UserRound,
+  MessageSquare,
+  BarChart3,
+  CalendarCheck,
+  Settings,
+  Users,
+  FolderCheck,
+  Phone,
+  Shield
+} from 'lucide-react';
 
-const MainNavigation = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const location = useLocation();
-  
-  // Define main navigation sections
-  const navigationItems = [
+export function MainNavigation({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLElement>) {
+  const navItems = [
     {
-      title: "Conversations",
-      path: "/conversations",
-      description: "View and manage AI-handled conversations with leads",
-      icon: MessageSquare,
-      active: location.pathname.includes('/conversations')
+      href: "/dashboard",
+      title: "Dashboard",
+      icon: <LayoutDashboard className="mr-2 h-4 w-4" />
     },
     {
+      href: "/leads",
       title: "Leads",
-      path: "/leads",
-      description: "Manage potential clients and their information",
-      icon: Users,
-      active: location.pathname.includes('/leads')
+      icon: <UserRound className="mr-2 h-4 w-4" />
     },
     {
-      title: "Follow-ups",
-      path: "/follow-ups",
-      description: "Schedule and track follow-up activities",
-      icon: MessageSquare,
-      active: location.pathname.includes('/follow-ups')
+      href: "/conversations",
+      title: "Conversations",
+      icon: <MessageSquare className="mr-2 h-4 w-4" />
     },
     {
+      href: "/agents",
+      title: "Agents",
+      icon: <Users className="mr-2 h-4 w-4" />
+    },
+    {
+      href: "/follow-ups",
+      title: "Follow-Ups",
+      icon: <CalendarCheck className="mr-2 h-4 w-4" />
+    },
+    {
+      href: "/analytics",
       title: "Analytics",
-      path: "/analytics",
-      description: "View performance metrics and insights",
-      icon: BarChart3,
-      active: location.pathname.includes('/analytics')
+      icon: <BarChart3 className="mr-2 h-4 w-4" />
     },
+    {
+      href: "/team-lead-controls",
+      title: "Team Lead Controls",
+      icon: <Shield className="mr-2 h-4 w-4" />
+    },
+    {
+      href: "/upcoming-calls",
+      title: "Upcoming Calls",
+      icon: <Phone className="mr-2 h-4 w-4" />
+    },
+    {
+      href: "/completed-tasks",
+      title: "Completed Tasks",
+      icon: <FolderCheck className="mr-2 h-4 w-4" />
+    },
+    {
+      href: "/settings",
+      title: "Settings",
+      icon: <Settings className="mr-2 h-4 w-4" />
+    }
   ];
-  
-  return (
-    <div className="flex items-center justify-between px-4 h-16 border-b">
-      <div className="flex items-center gap-6">
-        <NavigationMenu>
-          <NavigationMenuList>
-            {navigationItems.map((item) => (
-              <NavigationMenuItem key={item.path}>
-                <Link to={item.path}>
-                  <NavigationMenuLink 
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      "gap-1",
-                      item.active ? "bg-accent text-accent-foreground" : ""
-                    )}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.title}
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
-      </div>
-      
-      <div className="flex items-center gap-2">
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input 
-            type="search"
-            placeholder="Search leads, conversations..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        
-        <Button variant="ghost" size="icon" className="relative">
-          <BellRing className="h-5 w-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </Button>
-        
-        <Button variant="secondary" className="gap-1">
-          <UserPlus className="h-4 w-4" />
-          <span>New Lead</span>
-        </Button>
-      </div>
-    </div>
-  );
-};
 
-export default MainNavigation;
+  return (
+    <nav
+      className={cn("flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1", className)}
+      {...props}
+    >
+      {navItems.map((item) => (
+        <NavLink 
+          key={item.href} 
+          to={item.href}
+          className={({ isActive }) =>
+            cn(
+              "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
+              isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+            )
+          }
+        >
+          {item.icon} <span>{item.title}</span>
+        </NavLink>
+      ))}
+    </nav>
+  );
+}

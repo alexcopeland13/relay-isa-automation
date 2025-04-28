@@ -1,3 +1,4 @@
+
 import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +36,17 @@ const recentLeads = [
     source: 'Facebook Ad',
     status: 'Qualified',
     time: '2 hours ago',
-    interest: 'Home Purchase'
+    interest: 'Home Purchase',
+    propertyPreferences: {
+      type: 'Townhouse',
+      bedrooms: '2-3',
+      location: 'Urban'
+    },
+    mortgageDetails: {
+      status: 'Needs Review',
+      amount: '$320,000',
+      type: 'FHA'
+    }
   },
   {
     id: 'ld-003',
@@ -45,7 +56,17 @@ const recentLeads = [
     source: 'Referral',
     status: 'Follow-up',
     time: '1 day ago',
-    interest: 'Investment Property'
+    interest: 'Investment Property',
+    propertyPreferences: {
+      type: 'Multi-family',
+      bedrooms: '4+',
+      location: 'Urban'
+    },
+    mortgageDetails: {
+      status: 'Pre-approved',
+      amount: '$550,000',
+      type: 'Investment'
+    }
   },
   {
     id: 'ld-004',
@@ -55,7 +76,17 @@ const recentLeads = [
     source: 'Google Ads',
     status: 'New',
     time: '1 day ago',
-    interest: 'Mortgage Pre-approval'
+    interest: 'Mortgage Pre-approval',
+    propertyPreferences: {
+      type: 'Condominium',
+      bedrooms: '1-2',
+      location: 'Urban'
+    },
+    mortgageDetails: {
+      status: 'Submitted',
+      amount: '$275,000',
+      type: 'Conventional'
+    }
   }
 ];
 
@@ -114,26 +145,30 @@ export const RecentLeads = () => {
               </div>
               
               <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{lead.mortgageDetails.amount}</span>
-                    <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
-                      {lead.mortgageDetails.status}
-                    </Badge>
+                {lead.mortgageDetails && (
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{lead.mortgageDetails.amount}</span>
+                      <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
+                        {lead.mortgageDetails.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <FileCheck className="h-4 w-4" />
+                      <span>{lead.mortgageDetails.type}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <FileCheck className="h-4 w-4" />
-                    <span>{lead.mortgageDetails.type}</span>
-                  </div>
-                </div>
+                )}
                 
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <TagIcon className="h-4 w-4" />
-                  <span>
-                    {lead.propertyPreferences.type} • {lead.propertyPreferences.bedrooms} beds • {lead.propertyPreferences.location}
-                  </span>
-                </div>
+                {lead.propertyPreferences && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <TagIcon className="h-4 w-4" />
+                    <span>
+                      {lead.propertyPreferences.type} • {lead.propertyPreferences.bedrooms} beds • {lead.propertyPreferences.location}
+                    </span>
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />

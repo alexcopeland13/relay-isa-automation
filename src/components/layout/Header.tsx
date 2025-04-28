@@ -1,11 +1,12 @@
 
 import { useState } from 'react';
-import { MainNavigation } from './MainNavigation';
 
 export const Header = () => {
   return (
     <header className="border-b bg-background">
-      <MainNavigation />
+      <div className="h-16 flex items-center px-6">
+        {/* You can add header content here like search, notifications, user profile */}
+      </div>
     </header>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
@@ -35,9 +36,14 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   };
   
   const generateChartData = () => {
+    if (!leads || leads.length === 0) {
+      return [];
+    }
+    
     if (viewType === 'status') {
       const statusCounts = leads.reduce((acc, lead) => {
-        acc[lead.status] = (acc[lead.status] || 0) + 1;
+        const status = lead.status || 'Unknown';
+        acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       
@@ -50,7 +56,8 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     
     else if (viewType === 'source') {
       const sourceCounts = leads.reduce((acc, lead) => {
-        acc[lead.source] = (acc[lead.source] || 0) + 1;
+        const source = lead.source || 'Unknown';
+        acc[source] = (acc[source] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       
@@ -63,7 +70,8 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     
     else {
       const typeCounts = leads.reduce((acc, lead) => {
-        acc[lead.type] = (acc[lead.type] || 0) + 1;
+        const type = lead.type || 'Unknown';
+        acc[type] = (acc[type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       
@@ -81,7 +89,7 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const percentage = Math.round((data.value / totalLeads) * 100);
+      const percentage = totalLeads > 0 ? Math.round((data.value / totalLeads) * 100) : 0;
       
       return (
         <div className="bg-background p-2 border rounded-md shadow-sm">

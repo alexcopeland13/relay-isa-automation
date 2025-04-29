@@ -123,8 +123,13 @@ const ConversionOutcomes = () => {
   const [timeRange, setTimeRange] = useState('90days');
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Format currency
-  const formatCurrency = (value: number) => {
+  // Format currency with safety check
+  const formatCurrency = (value: number | undefined) => {
+    // Add safety check to handle undefined or null values
+    if (value === undefined || value === null) {
+      return '$0';
+    }
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',

@@ -27,6 +27,14 @@ export const LeadTableRow = ({
   onAssignLead, 
   onScheduleFollowUp 
 }: LeadTableRowProps) => {
+  // Add safety checks for null/undefined values
+  const displayLocation = lead.location || 'Unknown';
+  const displayScore = lead.score || 0;
+  const displayLastContact = lead.lastContact ? new Date(lead.lastContact).toLocaleDateString() : 'Never';
+  const displayCreatedAt = lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : 'Unknown';
+  const displayAssignedTo = lead.assignedTo === 'unassigned' ? 'Unassigned' : 
+    (lead.assignedTo ? lead.assignedTo.split('@')[0] : 'Unassigned');
+  
   return (
     <TableRow 
       key={lead.id} 
@@ -48,7 +56,7 @@ export const LeadTableRow = ({
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
             <MapPin className="h-3 w-3" />
-            <span>{lead.location}</span>
+            <span>{displayLocation}</span>
           </div>
         </div>
       </TableCell>
@@ -60,7 +68,7 @@ export const LeadTableRow = ({
           <TypeBadge type={lead.type} />
           <div className="flex items-center gap-1 text-xs">
             <Tag className="h-3 w-3 text-muted-foreground" />
-            <span>{lead.interestType}</span>
+            <span>{lead.interestType || 'General'}</span>
           </div>
         </div>
       </TableCell>
@@ -68,19 +76,19 @@ export const LeadTableRow = ({
         <div className="text-sm">{lead.source}</div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
-          <span>{new Date(lead.createdAt).toLocaleDateString()}</span>
+          <span>{displayCreatedAt}</span>
         </div>
       </TableCell>
       <TableCell>
-        <ScoreIndicator score={lead.score} />
+        <ScoreIndicator score={displayScore} />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1 text-sm">
           <Clock className="h-3 w-3 text-muted-foreground" />
-          <span>{new Date(lead.lastContact).toLocaleDateString()}</span>
+          <span>{displayLastContact}</span>
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          {lead.assignedTo === 'unassigned' ? 'Unassigned' : lead.assignedTo.split('@')[0]}
+          {displayAssignedTo}
         </div>
       </TableCell>
       <TableCell>

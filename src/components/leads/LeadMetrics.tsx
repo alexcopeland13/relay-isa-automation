@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, DollarSign, Users, CalendarClock } from 'lucide-react';
 import { Lead } from '@/types/lead';
@@ -19,7 +20,7 @@ export const LeadMetrics = ({ leads }: LeadMetricsProps) => {
     : 0;
   
   const avgScore = totalLeads > 0
-    ? Math.round(leads.reduce((sum, lead) => sum + lead.score, 0) / totalLeads)
+    ? Math.round(leads.reduce((sum, lead) => sum + (lead.score || 0), 0) / totalLeads)
     : 0;
   
   return (
@@ -45,7 +46,7 @@ export const LeadMetrics = ({ leads }: LeadMetricsProps) => {
         <CardContent>
           <div className="text-2xl font-bold">{qualifiedLeads}</div>
           <p className="text-xs text-muted-foreground">
-            {Math.round((qualifiedLeads / totalLeads) * 100)}% qualification rate
+            {totalLeads > 0 ? Math.round((qualifiedLeads / totalLeads) * 100) : 0}% qualification rate
           </p>
         </CardContent>
       </Card>

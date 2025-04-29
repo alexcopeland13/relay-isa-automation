@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -122,9 +123,8 @@ const ConversionOutcomes = () => {
   const [timeRange, setTimeRange] = useState('90days');
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Format currency with safety check
+  // Format currency with improved safety check
   const formatCurrency = (value: number | undefined | null) => {
-    // Add safety check to handle undefined or null values
     if (value === undefined || value === null) {
       return '$0';
     }
@@ -374,13 +374,13 @@ const ConversionOutcomes = () => {
             </TableHeader>
             <TableBody>
               {recentConversions.map((conversion) => (
-                <TableRow key={conversion.id}>
-                  <TableCell className="font-medium">{conversion.leadName || 'Unknown'}</TableCell>
-                  <TableCell>{conversion.leadSource || 'Unknown'}</TableCell>
-                  <TableCell>{conversion.convertedBy || 'Unknown'}</TableCell>
-                  <TableCell>{conversion.convertedOn || 'Unknown'}</TableCell>
-                  <TableCell>{conversion.conversionType || 'Unknown'}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(conversion.value)}</TableCell>
+                <TableRow key={conversion.id || `conversion-${Math.random()}`}>
+                  <TableCell className="font-medium">{conversion?.leadName || 'Unknown'}</TableCell>
+                  <TableCell>{conversion?.leadSource || 'Unknown'}</TableCell>
+                  <TableCell>{conversion?.convertedBy || 'Unknown'}</TableCell>
+                  <TableCell>{conversion?.convertedOn || 'Unknown'}</TableCell>
+                  <TableCell>{conversion?.conversionType || 'Unknown'}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(conversion?.value)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm">
                       <ZoomIn className="h-4 w-4" />

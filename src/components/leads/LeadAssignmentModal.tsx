@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Lead } from '@/components/leads/LeadsList';
+import { Lead } from '@/types/lead';
 import { Agent } from '@/types/agent';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, User } from 'lucide-react';

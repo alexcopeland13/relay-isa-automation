@@ -1,7 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, DollarSign, Users, CalendarClock } from 'lucide-react';
-import { Lead } from './LeadsList';
+import { Lead } from '@/types/lead';
 
 interface LeadMetricsProps {
   leads: Lead[];

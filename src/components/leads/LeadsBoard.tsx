@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Lead } from './LeadsList';
+import { Lead } from '@/types/lead';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Phone, Mail, MapPin, Calendar, Plus, MoreHorizontal } from 'lucide-react';

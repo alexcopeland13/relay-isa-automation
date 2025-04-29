@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LeadsList, Lead } from '@/components/leads/LeadsList';
+import { LeadsList } from '@/components/leads/LeadsList';
+import { Lead } from '@/types/lead'; 
 import { LeadsBoard } from '@/components/leads/LeadsBoard';
 import { LeadMetrics } from '@/components/leads/LeadMetrics';
 import { LeadDistribution } from '@/components/leads/LeadDistribution';

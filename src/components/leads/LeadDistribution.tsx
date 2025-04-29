@@ -1,9 +1,8 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lead } from './LeadsList';
+import { Lead } from '@/types/lead';
 
 interface LeadDistributionProps {
   leads: Lead[];
@@ -12,7 +11,6 @@ interface LeadDistributionProps {
 export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   const [viewType, setViewType] = useState<'status' | 'source' | 'type'>('status');
   
-  // Colors for different statuses
   const statusColors = {
     'New': '#3b82f6',
     'Contacted': '#8b5cf6',
@@ -22,7 +20,6 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     'Lost': '#6b7280'
   };
   
-  // Colors for different sources
   const sourceColors = {
     'Website': '#3b82f6',
     'Facebook Ad': '#8b5cf6',
@@ -32,22 +29,18 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     'Other': '#6b7280'
   };
   
-  // Colors for lead types
   const typeColors = {
     'Mortgage': '#8b5cf6',
     'Realtor': '#f59e0b'
   };
   
-  // Generate data for the chart based on selected view
   const generateChartData = () => {
     if (viewType === 'status') {
-      // Group leads by status
       const statusCounts = leads.reduce((acc, lead) => {
         acc[lead.status] = (acc[lead.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       
-      // Convert to array format for chart
       return Object.entries(statusCounts).map(([name, value]) => ({
         name,
         value,
@@ -56,13 +49,11 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     }
     
     else if (viewType === 'source') {
-      // Group leads by source
       const sourceCounts = leads.reduce((acc, lead) => {
         acc[lead.source] = (acc[lead.source] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       
-      // Convert to array format for chart
       return Object.entries(sourceCounts).map(([name, value]) => ({
         name,
         value,
@@ -70,14 +61,12 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
       }));
     }
     
-    else { // type
-      // Group leads by type
+    else {
       const typeCounts = leads.reduce((acc, lead) => {
         acc[lead.type] = (acc[lead.type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
       
-      // Convert to array format for chart
       return Object.entries(typeCounts).map(([name, value]) => ({
         name,
         value,
@@ -89,7 +78,6 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   const chartData = generateChartData();
   const totalLeads = leads.length;
   
-  // Custom tooltip for the chart
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;

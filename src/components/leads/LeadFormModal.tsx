@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -29,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Lead } from '@/components/leads/LeadsList';
+import { Lead } from '@/types/lead';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 

@@ -8,19 +8,21 @@ interface LeadMetricsProps {
 }
 
 export const LeadMetrics = ({ leads }: LeadMetricsProps) => {
-  // Calculate metrics
-  const totalLeads = leads.length;
+  // Ensure leads is an array to prevent errors
+  const safeLeads = Array.isArray(leads) ? leads : [];
+  const totalLeads = safeLeads.length;
   
-  const qualifiedLeads = leads.filter(
-    lead => lead.status === 'Qualified' || lead.status === 'Proposal' || lead.status === 'Converted'
+  // Add null checks and default values
+  const qualifiedLeads = safeLeads.filter(
+    lead => lead && (lead.status === 'Qualified' || lead.status === 'Proposal' || lead.status === 'Converted')
   ).length;
   
   const conversionRate = totalLeads > 0 
-    ? Math.round((leads.filter(lead => lead.status === 'Converted').length / totalLeads) * 100) 
+    ? Math.round((safeLeads.filter(lead => lead && lead.status === 'Converted').length / totalLeads) * 100) 
     : 0;
   
   const avgScore = totalLeads > 0
-    ? Math.round(leads.reduce((sum, lead) => sum + (lead.score || 0), 0) / totalLeads)
+    ? Math.round(safeLeads.reduce((sum, lead) => sum + (lead && lead.score ? lead.score : 0), 0) / totalLeads)
     : 0;
   
   return (

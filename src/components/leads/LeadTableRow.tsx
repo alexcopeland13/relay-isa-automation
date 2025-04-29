@@ -27,13 +27,18 @@ export const LeadTableRow = ({
   onAssignLead, 
   onScheduleFollowUp 
 }: LeadTableRowProps) => {
+  if (!lead) {
+    return null; // Don't render anything if lead is undefined
+  }
+  
   // Add safety checks for null/undefined values
   const displayLocation = lead.location || 'Unknown';
   const displayScore = lead.score || 0;
   const displayLastContact = lead.lastContact ? new Date(lead.lastContact).toLocaleDateString() : 'Never';
   const displayCreatedAt = lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : 'Unknown';
-  const displayAssignedTo = lead.assignedTo === 'unassigned' ? 'Unassigned' : 
-    (lead.assignedTo ? lead.assignedTo.split('@')[0] : 'Unassigned');
+  const displayAssignedTo = !lead.assignedTo ? 'Unassigned' :
+    lead.assignedTo === 'unassigned' ? 'Unassigned' : 
+    lead.assignedTo.split('@')[0];
   
   return (
     <TableRow 
@@ -43,15 +48,15 @@ export const LeadTableRow = ({
     >
       <TableCell>
         <div>
-          <div className="font-medium">{lead.name}</div>
+          <div className="font-medium">{lead.name || 'Unknown'}</div>
           <div className="text-sm text-muted-foreground flex flex-col md:flex-row md:gap-3">
             <div className="flex items-center gap-1">
               <Mail className="h-3 w-3" />
-              <span className="truncate max-w-[150px]">{lead.email}</span>
+              <span className="truncate max-w-[150px]">{lead.email || 'No email'}</span>
             </div>
             <div className="flex items-center gap-1">
               <Phone className="h-3 w-3" />
-              <span>{lead.phone}</span>
+              <span>{lead.phone || 'No phone'}</span>
             </div>
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
@@ -61,11 +66,11 @@ export const LeadTableRow = ({
         </div>
       </TableCell>
       <TableCell>
-        <StatusBadge status={lead.status} />
+        <StatusBadge status={lead.status || 'Unknown'} />
       </TableCell>
       <TableCell>
         <div className="space-y-1">
-          <TypeBadge type={lead.type} />
+          <TypeBadge type={lead.type || 'Unknown'} />
           <div className="flex items-center gap-1 text-xs">
             <Tag className="h-3 w-3 text-muted-foreground" />
             <span>{lead.interestType || 'General'}</span>
@@ -73,7 +78,7 @@ export const LeadTableRow = ({
         </div>
       </TableCell>
       <TableCell>
-        <div className="text-sm">{lead.source}</div>
+        <div className="text-sm">{lead.source || 'Unknown'}</div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
           <span>{displayCreatedAt}</span>
@@ -116,14 +121,14 @@ export const LeadTableRow = ({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation();
-                onScheduleFollowUp?.(lead);
+                if (onScheduleFollowUp) onScheduleFollowUp(lead);
               }}>
                 <CalendarPlus className="h-4 w-4 mr-2" />
                 Schedule Follow-up
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation();
-                onAssignLead?.(lead);
+                if (onAssignLead) onAssignLead(lead);
               }}>
                 <Users className="h-4 w-4 mr-2" />
                 Assign Lead

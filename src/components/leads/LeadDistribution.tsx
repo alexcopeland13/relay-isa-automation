@@ -12,6 +12,9 @@ interface LeadDistributionProps {
 export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   const [viewType, setViewType] = useState<'status' | 'source' | 'type'>('status');
   
+  // Ensure leads is always an array
+  const safeLeads = Array.isArray(leads) ? leads : [];
+  
   const statusColors = {
     'New': '#3b82f6',
     'Contacted': '#8b5cf6',
@@ -36,13 +39,14 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   };
   
   const generateChartData = () => {
-    if (!leads || leads.length === 0) {
+    if (!safeLeads || safeLeads.length === 0) {
       return [];
     }
     
     if (viewType === 'status') {
-      const statusCounts = leads.reduce((acc, lead) => {
-        const status = lead.status || 'Unknown';
+      const statusCounts = safeLeads.reduce((acc, lead) => {
+        // Add null check for lead and lead.status
+        const status = lead && lead.status ? lead.status : 'Unknown';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -55,8 +59,9 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     }
     
     else if (viewType === 'source') {
-      const sourceCounts = leads.reduce((acc, lead) => {
-        const source = lead.source || 'Unknown';
+      const sourceCounts = safeLeads.reduce((acc, lead) => {
+        // Add null check for lead and lead.source
+        const source = lead && lead.source ? lead.source : 'Unknown';
         acc[source] = (acc[source] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -69,8 +74,9 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     }
     
     else {
-      const typeCounts = leads.reduce((acc, lead) => {
-        const type = lead.type || 'Unknown';
+      const typeCounts = safeLeads.reduce((acc, lead) => {
+        // Add null check for lead and lead.type
+        const type = lead && lead.type ? lead.type : 'Unknown';
         acc[type] = (acc[type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -84,10 +90,10 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   };
   
   const chartData = generateChartData();
-  const totalLeads = leads.length;
+  const totalLeads = safeLeads.length;
   
   const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload && payload.length && payload[0].payload) {
       const data = payload[0].payload;
       const percentage = totalLeads > 0 ? Math.round((data.value / totalLeads) * 100) : 0;
       

@@ -124,7 +124,7 @@ const ConversionOutcomes = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
   // Format currency with safety check
-  const formatCurrency = (value: number | undefined) => {
+  const formatCurrency = (value: number | undefined | null) => {
     // Add safety check to handle undefined or null values
     if (value === undefined || value === null) {
       return '$0';

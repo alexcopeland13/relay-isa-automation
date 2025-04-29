@@ -1,5 +1,5 @@
 
-import { Lead } from '@/components/leads/LeadsList';
+import { Lead } from '@/types/lead';
 
 // Sample leads data
 export const sampleLeads: Lead[] = [

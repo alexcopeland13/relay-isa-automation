@@ -149,14 +149,14 @@ export const RecentLeads = () => {
                   <div className="flex items-center gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{lead.mortgageDetails.amount}</span>
+                      <span className="font-medium">{lead.mortgageDetails.amount || 'N/A'}</span>
                       <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
-                        {lead.mortgageDetails.status}
+                        {lead.mortgageDetails.status || 'Unknown'}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <FileCheck className="h-4 w-4" />
-                      <span>{lead.mortgageDetails.type}</span>
+                      <span>{lead.mortgageDetails.type || 'Unknown'}</span>
                     </div>
                   </div>
                 )}
@@ -165,15 +165,17 @@ export const RecentLeads = () => {
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <TagIcon className="h-4 w-4" />
                     <span>
-                      {lead.propertyPreferences.type} • {lead.propertyPreferences.bedrooms} beds • {lead.propertyPreferences.location}
+                      {lead.propertyPreferences.type || 'Unknown'} • 
+                      {lead.propertyPreferences.bedrooms || 'Unknown'} beds • 
+                      {lead.propertyPreferences.location || 'Unknown'}
                     </span>
                   </div>
                 )}
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>{lead.time}</span>
-                  <span className="text-muted-foreground">via {lead.source}</span>
+                  <span>{lead.time || 'Unknown'}</span>
+                  <span className="text-muted-foreground">via {lead.source || 'Unknown'}</span>
                 </div>
               </div>
               

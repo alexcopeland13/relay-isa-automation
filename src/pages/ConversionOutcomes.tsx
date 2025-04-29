@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -376,11 +375,11 @@ const ConversionOutcomes = () => {
             <TableBody>
               {recentConversions.map((conversion) => (
                 <TableRow key={conversion.id}>
-                  <TableCell className="font-medium">{conversion.leadName}</TableCell>
-                  <TableCell>{conversion.leadSource}</TableCell>
-                  <TableCell>{conversion.convertedBy}</TableCell>
-                  <TableCell>{conversion.convertedOn}</TableCell>
-                  <TableCell>{conversion.conversionType}</TableCell>
+                  <TableCell className="font-medium">{conversion.leadName || 'Unknown'}</TableCell>
+                  <TableCell>{conversion.leadSource || 'Unknown'}</TableCell>
+                  <TableCell>{conversion.convertedBy || 'Unknown'}</TableCell>
+                  <TableCell>{conversion.convertedOn || 'Unknown'}</TableCell>
+                  <TableCell>{conversion.conversionType || 'Unknown'}</TableCell>
                   <TableCell className="text-right">{formatCurrency(conversion.value)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm">

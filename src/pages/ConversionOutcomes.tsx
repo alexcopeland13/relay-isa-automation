@@ -123,19 +123,43 @@ const ConversionOutcomes = () => {
   const [timeRange, setTimeRange] = useState('90days');
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Format currency with improved safety check
+  // Enhanced safe format currency
   const formatCurrency = (value: number | undefined | null) => {
-    if (value === undefined || value === null) {
+    // Handle undefined, null, or NaN values
+    if (value === undefined || value === null || isNaN(value)) {
       return '$0';
     }
     
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(value);
+    } catch (error) {
+      console.error('Error formatting currency:', error);
+      return '$0';
+    }
   };
+
+  // Safe access helper function
+  const safeGet = (obj: any, path: string, defaultValue: any = 'Unknown') => {
+    if (!obj) return defaultValue;
+    
+    const keys = path.split('.');
+    let result = obj;
+    
+    for (const key of keys) {
+      if (result === undefined || result === null) return defaultValue;
+      result = result[key];
+    }
+    
+    return result || defaultValue;
+  };
+  
+  // Ensure recentConversions is always an array
+  const safeConversions = Array.isArray(recentConversions) ? recentConversions : [];
 
   return (
     <PageLayout>
@@ -373,21 +397,26 @@ const ConversionOutcomes = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentConversions.map((conversion) => (
-                <TableRow key={conversion.id || `conversion-${Math.random()}`}>
-                  <TableCell className="font-medium">{conversion?.leadName || 'Unknown'}</TableCell>
-                  <TableCell>{conversion?.leadSource || 'Unknown'}</TableCell>
-                  <TableCell>{conversion?.convertedBy || 'Unknown'}</TableCell>
-                  <TableCell>{conversion?.convertedOn || 'Unknown'}</TableCell>
-                  <TableCell>{conversion?.conversionType || 'Unknown'}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(conversion?.value)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {safeConversions.map((conversion) => {
+                // Ensure conversion object exists before accessing properties
+                if (!conversion) return null;
+                
+                return (
+                  <TableRow key={safeGet(conversion, 'id', `conversion-${Math.random()}`)}>
+                    <TableCell className="font-medium">{safeGet(conversion, 'leadName')}</TableCell>
+                    <TableCell>{safeGet(conversion, 'leadSource')}</TableCell>
+                    <TableCell>{safeGet(conversion, 'convertedBy')}</TableCell>
+                    <TableCell>{safeGet(conversion, 'convertedOn')}</TableCell>
+                    <TableCell>{safeGet(conversion, 'conversionType')}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(safeGet(conversion, 'value', 0))}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm">
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

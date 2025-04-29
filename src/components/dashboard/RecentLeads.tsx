@@ -109,6 +109,21 @@ const getStatusColor = (status: string) => {
 };
 
 export const RecentLeads = () => {
+  // Helper function to safely access nested properties
+  const safeGet = (obj: any, path: string, defaultValue: any = 'Unknown') => {
+    if (!obj) return defaultValue;
+    
+    const keys = path.split('.');
+    let result = obj;
+    
+    for (const key of keys) {
+      if (result === undefined || result === null) return defaultValue;
+      result = result[key];
+    }
+    
+    return result || defaultValue;
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -149,14 +164,16 @@ export const RecentLeads = () => {
                   <div className="flex items-center gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{lead.mortgageDetails?.amount || 'N/A'}</span>
+                      <span className="font-medium">
+                        {safeGet(lead, 'mortgageDetails.amount', 'N/A')}
+                      </span>
                       <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
-                        {lead.mortgageDetails?.status || 'Unknown'}
+                        {safeGet(lead, 'mortgageDetails.status')}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <FileCheck className="h-4 w-4" />
-                      <span>{lead.mortgageDetails?.type || 'Unknown'}</span>
+                      <span>{safeGet(lead, 'mortgageDetails.type')}</span>
                     </div>
                   </div>
                 )}
@@ -165,9 +182,9 @@ export const RecentLeads = () => {
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <TagIcon className="h-4 w-4" />
                     <span>
-                      {lead.propertyPreferences?.type || 'Unknown'} • 
-                      {lead.propertyPreferences?.bedrooms || 'Unknown'} beds • 
-                      {lead.propertyPreferences?.location || 'Unknown'}
+                      {safeGet(lead, 'propertyPreferences.type')} • 
+                      {safeGet(lead, 'propertyPreferences.bedrooms')} beds • 
+                      {safeGet(lead, 'propertyPreferences.location')}
                     </span>
                   </div>
                 )}

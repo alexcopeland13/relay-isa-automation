@@ -109,19 +109,24 @@ const getStatusColor = (status: string) => {
 };
 
 export const RecentLeads = () => {
-  // Helper function to safely access nested properties
-  const safeGet = (obj: any, path: string, defaultValue: any = 'Unknown') => {
+  // Enhanced helper function to safely access nested properties with better TypeScript support
+  const safeGet = (obj: any | null | undefined, path: string, defaultValue: any = 'Unknown') => {
     if (!obj) return defaultValue;
     
-    const keys = path.split('.');
-    let result = obj;
-    
-    for (const key of keys) {
-      if (result === undefined || result === null) return defaultValue;
-      result = result[key];
+    try {
+      const keys = path.split('.');
+      let result = obj;
+      
+      for (const key of keys) {
+        if (result === undefined || result === null) return defaultValue;
+        result = result[key];
+      }
+      
+      return result !== undefined && result !== null ? result : defaultValue;
+    } catch (error) {
+      console.error(`Error accessing path ${path}:`, error);
+      return defaultValue;
     }
-    
-    return result || defaultValue;
   };
 
   return (
@@ -160,6 +165,7 @@ export const RecentLeads = () => {
               </div>
               
               <div className="mt-3 space-y-2">
+                {/* Check if mortgageDetails exists before accessing */}
                 {lead.mortgageDetails && (
                   <div className="flex items-center gap-4 text-sm">
                     <div className="flex items-center gap-1">
@@ -168,31 +174,32 @@ export const RecentLeads = () => {
                         {safeGet(lead, 'mortgageDetails.amount', 'N/A')}
                       </span>
                       <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700">
-                        {safeGet(lead, 'mortgageDetails.status')}
+                        {safeGet(lead, 'mortgageDetails.status', 'Unknown')}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <FileCheck className="h-4 w-4" />
-                      <span>{safeGet(lead, 'mortgageDetails.type')}</span>
+                      <span>{safeGet(lead, 'mortgageDetails.type', 'Unknown')}</span>
                     </div>
                   </div>
                 )}
                 
+                {/* Check if propertyPreferences exists before accessing */}
                 {lead.propertyPreferences && (
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <TagIcon className="h-4 w-4" />
                     <span>
-                      {safeGet(lead, 'propertyPreferences.type')} • 
-                      {safeGet(lead, 'propertyPreferences.bedrooms')} beds • 
-                      {safeGet(lead, 'propertyPreferences.location')}
+                      {safeGet(lead, 'propertyPreferences.type', 'Unknown')} • 
+                      {safeGet(lead, 'propertyPreferences.bedrooms', 'Unknown')} beds • 
+                      {safeGet(lead, 'propertyPreferences.location', 'Unknown')}
                     </span>
                   </div>
                 )}
                 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>{lead.time || 'Unknown'}</span>
-                  <span className="text-muted-foreground">via {lead.source || 'Unknown'}</span>
+                  <span>{safeGet(lead, 'time', 'Unknown')}</span>
+                  <span className="text-muted-foreground">via {safeGet(lead, 'source', 'Unknown')}</span>
                 </div>
               </div>
               

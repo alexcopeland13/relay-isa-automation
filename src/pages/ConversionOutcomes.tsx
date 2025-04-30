@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -123,7 +122,7 @@ const ConversionOutcomes = () => {
   const [timeRange, setTimeRange] = useState('90days');
   const [activeTab, setActiveTab] = useState('overview');
   
-  // Enhanced safe format currency
+  // Enhanced safe formatter for currency
   const formatCurrency = (value: number | undefined | null) => {
     // Handle undefined, null, or NaN values
     if (value === undefined || value === null || isNaN(value)) {
@@ -143,19 +142,24 @@ const ConversionOutcomes = () => {
     }
   };
 
-  // Safe access helper function
-  const safeGet = (obj: any, path: string, defaultValue: any = 'Unknown') => {
+  // Enhanced helper function to safely access nested properties
+  const safeGet = (obj: any | null | undefined, path: string, defaultValue: any = 'Unknown') => {
     if (!obj) return defaultValue;
     
-    const keys = path.split('.');
-    let result = obj;
-    
-    for (const key of keys) {
-      if (result === undefined || result === null) return defaultValue;
-      result = result[key];
+    try {
+      const keys = path.split('.');
+      let result = obj;
+      
+      for (const key of keys) {
+        if (result === undefined || result === null) return defaultValue;
+        result = result[key];
+      }
+      
+      return result !== undefined && result !== null ? result : defaultValue;
+    } catch (error) {
+      console.error(`Error accessing path ${path}:`, error);
+      return defaultValue;
     }
-    
-    return result || defaultValue;
   };
   
   // Ensure recentConversions is always an array

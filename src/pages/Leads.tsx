@@ -28,15 +28,120 @@ import {
   ChartSkeleton 
 } from '@/components/ui/loading-skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const fetchLeadsData = async () => {
-  const storedLeads = localStorage.getItem('relayLeads');
-  
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  
-  return {
-    leads: storedLeads ? JSON.parse(storedLeads) : sampleLeads,
+  try {
+    // Try to fetch from Supabase first
+    const { data: supabaseLeads, error } = await supabase
+      .from('leads')
+      .select(`
+        *,
+        qualification_data(*),
+        conversations(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      throw new Error('Failed to fetch leads from Supabase');
+    }
+
+    // Convert Supabase data to match the Lead type
+    const formattedLeads: Lead[] = supabaseLeads.map(lead => ({
+      id: lead.id,
+      name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
+      email: lead.email || '',
+      phone: lead.phone || '',
+      status: mapLeadStatus(lead.status),
+      source: lead.source || '',
+      createdAt: lead.created_at,
+      lastContact: lead.last_contacted || lead.created_at,
+      assignedTo: lead.assigned_to || 'unassigned',
+      type: determineLeadType(lead),
+      interestType: determineInterestType(lead),
+      location: determineLocation(lead),
+      score: calculateLeadScore(lead),
+      notes: lead.notes || ''
+    }));
+
+    console.log('Fetched and formatted leads from Supabase:', formattedLeads);
+    return { leads: formattedLeads };
+  } catch (error) {
+    console.warn('Falling back to local storage/sample data:', error);
+    
+    // Fallback to local storage if Supabase fetch fails
+    const storedLeads = localStorage.getItem('relayLeads');
+    return {
+      leads: storedLeads ? JSON.parse(storedLeads) : sampleLeads,
+    };
+  }
+};
+
+// Helper functions for mapping data
+const mapLeadStatus = (status: string | null): Lead['status'] => {
+  const statusMap: Record<string, Lead['status']> = {
+    'new': 'New',
+    'contacted': 'Contacted',
+    'qualified': 'Qualified',
+    'proposal': 'Proposal',
+    'converted': 'Converted',
+    'lost': 'Lost'
   };
+  
+  return statusMap[status || 'new'] || 'New';
+};
+
+const determineLeadType = (lead: any): 'Mortgage' | 'Realtor' => {
+  if (lead.qualification_data && lead.qualification_data.length > 0) {
+    return 'Mortgage';
+  }
+  return 'Realtor'; // Default if we can't determine
+};
+
+const determineInterestType = (lead: any): string => {
+  if (lead.qualification_data && lead.qualification_data.length > 0) {
+    const qualification = lead.qualification_data[0];
+    if (qualification.loan_type) return qualification.loan_type;
+    if (qualification.property_type) return qualification.property_type;
+  }
+  return 'Unknown';
+};
+
+const determineLocation = (lead: any): string => {
+  // This would be filled in with real data from your schema
+  // For now returning a placeholder
+  return lead.location || 'Unknown';
+};
+
+const calculateLeadScore = (lead: any): number => {
+  // Simple scoring algorithm
+  let score = 50; // Start with average score
+  
+  // Increase score based on qualification data
+  if (lead.qualification_data && lead.qualification_data.length > 0) {
+    const qual = lead.qualification_data[0];
+    
+    // Credit score
+    if (qual.estimated_credit_score) {
+      if (qual.estimated_credit_score.includes('700')) score += 15;
+      else if (qual.estimated_credit_score.includes('600')) score += 10;
+    }
+    
+    // Income
+    if (qual.annual_income && qual.annual_income > 100000) score += 10;
+    
+    // Down payment
+    if (qual.down_payment_percentage && qual.down_payment_percentage > 20) score += 10;
+  }
+  
+  // Increase score if they've had conversations
+  if (lead.conversations && lead.conversations.length > 0) {
+    score += 5 * Math.min(lead.conversations.length, 5);
+  }
+  
+  // Cap score at 0-100
+  return Math.max(0, Math.min(100, score));
 };
 
 const Leads = () => {
@@ -68,39 +173,145 @@ const Leads = () => {
     }
   }, [leadsData]);
 
+  const handleLeadSave = async (updatedLead: Lead) => {
+    try {
+      if (leadsData?.leads) {
+        let updatedLeads: Lead[];
+        
+        if (selectedLead) {
+          // Update existing lead
+          updatedLeads = leadsData.leads.map(lead => 
+            lead.id === updatedLead.id ? updatedLead : lead
+          );
+          
+          // Update in Supabase
+          const { error } = await supabase
+            .from('leads')
+            .update({
+              first_name: updatedLead.name.split(' ')[0],
+              last_name: updatedLead.name.split(' ').slice(1).join(' '),
+              email: updatedLead.email,
+              phone: updatedLead.phone,
+              status: updatedLead.status.toLowerCase(),
+              source: updatedLead.source,
+              notes: updatedLead.notes,
+              // Add other fields as needed
+            })
+            .eq('id', updatedLead.id);
+          
+          if (error) {
+            console.error('Error updating lead in Supabase:', error);
+            toast({
+              title: 'Update Error',
+              description: 'Failed to update lead in database. Changes saved locally only.',
+              variant: 'destructive',
+            });
+          }
+        } else {
+          // Create new lead
+          const { data: newLeadData, error } = await supabase
+            .from('leads')
+            .insert({
+              first_name: updatedLead.name.split(' ')[0],
+              last_name: updatedLead.name.split(' ').slice(1).join(' '),
+              email: updatedLead.email,
+              phone: updatedLead.phone,
+              status: updatedLead.status.toLowerCase(),
+              source: updatedLead.source,
+              notes: updatedLead.notes,
+              // Add other fields as needed
+            })
+            .select()
+            .single();
+          
+          if (error) {
+            console.error('Error creating lead in Supabase:', error);
+            toast({
+              title: 'Creation Error',
+              description: 'Failed to create lead in database. Changes saved locally only.',
+              variant: 'destructive',
+            });
+            // Fall back to local update
+            updatedLeads = [...leadsData.leads, updatedLead];
+          } else {
+            // Use the new lead with the ID from Supabase
+            const newLead: Lead = {
+              ...updatedLead,
+              id: newLeadData.id,
+              createdAt: newLeadData.created_at
+            };
+            updatedLeads = [...leadsData.leads, newLead];
+          }
+        }
+        
+        setLeadsData({ leads: updatedLeads });
+        localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
+        setSelectedLead(undefined);
+      }
+    } catch (error) {
+      console.error('Error saving lead:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred while saving the lead.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const handleAssignLead = async (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
+    try {
+      if (leadsData?.leads) {
+        const updatedLeads = leadsData.leads.map(lead => {
+          if (lead.id === leadId) {
+            return {
+              ...lead,
+              assignedTo: agentId,
+              lastContact: new Date().toISOString()
+            };
+          }
+          return lead;
+        });
+        
+        // Update in Supabase
+        const { error } = await supabase
+          .from('leads')
+          .update({
+            assigned_to: agentId,
+            last_contacted: new Date().toISOString()
+          })
+          .eq('id', leadId);
+        
+        if (error) {
+          console.error('Error updating lead assignment in Supabase:', error);
+          toast({
+            title: 'Assignment Error',
+            description: 'Failed to update lead assignment in database. Changes saved locally only.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Lead Assigned',
+            description: 'Lead has been successfully assigned.',
+          });
+        }
+        
+        localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
+        setLeadsData({ leads: updatedLeads });
+        setSelectedLead(undefined);
+      }
+    } catch (error) {
+      console.error('Error assigning lead:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred while assigning the lead.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
   const handleSelectLead = (lead: Lead) => {
     setSelectedLead(lead);
     setShowLeadForm(true);
-  };
-  
-  const handleLeadSave = (updatedLead: Lead) => {
-    if (leadsData?.leads) {
-      const updatedLeads = selectedLead 
-        ? leadsData.leads.map(lead => lead.id === updatedLead.id ? updatedLead : lead)
-        : [...leadsData.leads, updatedLead];
-      
-      setLeadsData({ leads: updatedLeads });
-      setSelectedLead(undefined);
-    }
-  };
-  
-  const handleAssignLead = (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
-    if (leadsData?.leads) {
-      const updatedLeads = leadsData.leads.map(lead => {
-        if (lead.id === leadId) {
-          return {
-            ...lead,
-            assignedTo: agentId,
-            lastContact: new Date().toISOString()
-          };
-        }
-        return lead;
-      });
-      
-      localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
-      setLeadsData({ leads: updatedLeads });
-      setSelectedLead(undefined);
-    }
   };
   
   const handleOpenAssignmentModal = (lead: Lead) => {

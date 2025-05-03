@@ -13,8 +13,47 @@ interface RecentLeadsProps {
   onRefresh?: number;
 }
 
+// Define interfaces for better type safety
+interface QualificationData {
+  loan_type?: string;
+  property_type?: string;
+  estimated_credit_score?: string;
+  loan_amount?: number;
+  down_payment_percentage?: number;
+  time_frame?: string;
+  debt_to_income_ratio?: number;
+  property_use?: string;
+  annual_income?: number;
+  is_self_employed?: boolean;
+  has_co_borrower?: boolean;
+  qualifying_notes?: string;
+  id?: string;
+  created_at?: string;
+}
+
+interface EnrichedLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: string;
+  source: string;
+  time: string;
+  interest?: string;
+  propertyPreferences: {
+    type: string;
+    bedrooms: string;
+    location: string;
+  };
+  mortgageDetails: {
+    status: string;
+    amount: string;
+    type: string;
+  };
+}
+
 export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
-  const [leads, setLeads] = useState<any[]>([]);
+  const [leads, setLeads] = useState<EnrichedLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -81,7 +120,10 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
       
       // Transform and enrich data
       const enrichedLeads = data.map(lead => {
-        const qualification = lead.qualification_data?.[0] || {};
+        // Make sure qualification_data is not undefined and get the first item safely
+        const qualificationArray = lead.qualification_data || [];
+        const qualification: QualificationData = qualificationArray.length > 0 ? qualificationArray[0] : {};
+        
         return {
           id: lead.id,
           name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
@@ -90,16 +132,16 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
           status: lead.status,
           source: lead.source || 'Unknown',
           time: formatTime(lead.created_at),
-          interest: qualification.loan_type || 'Mortgage',
+          interest: qualification?.loan_type || 'Mortgage',
           propertyPreferences: {
-            type: qualification.property_type || 'Unknown',
+            type: qualification?.property_type || 'Unknown',
             bedrooms: '3-4', // Default as this isn't in the schema
             location: 'Unknown' // Default as this isn't in the schema
           },
           mortgageDetails: {
-            status: qualification.estimated_credit_score ? 'Pre-qualified' : 'Needs Review',
-            amount: qualification.loan_amount ? `$${qualification.loan_amount.toLocaleString()}` : 'Unknown',
-            type: qualification.loan_type || 'Unknown'
+            status: qualification?.estimated_credit_score ? 'Pre-qualified' : 'Needs Review',
+            amount: qualification?.loan_amount ? `$${qualification.loan_amount.toLocaleString()}` : 'Unknown',
+            type: qualification?.loan_type || 'Unknown'
           }
         };
       });

@@ -4,7 +4,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TestVAPIClient } from '@/components/vapi/TestVAPIClient';
-import { ArrowRight, Check, Phone, RefreshCw } from 'lucide-react';
+import { ArrowRight, Check, Phone, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,28 +21,92 @@ const Dashboard = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [debugMode, setDebugMode] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const { toast } = useToast();
+
+  const checkDatabaseConnection = useCallback(async () => {
+    try {
+      setConnectionStatus('checking');
+      console.log('🔄 Checking database connection...');
+      
+      const { data, error } = await supabase.from('leads').select('id').limit(1);
+      
+      if (error) {
+        console.error('❌ Database connection error:', error);
+        setConnectionStatus('error');
+        return false;
+      }
+      
+      console.log('✅ Database connection successful, received:', data);
+      setConnectionStatus('connected');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to check database connection:', error);
+      setConnectionStatus('error');
+      return false;
+    }
+  }, []);
 
   const fetchStats = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { count: totalLeads } = await supabase
+      console.log('📊 Dashboard: Fetching stats...');
+      
+      // First check connection
+      const isConnected = await checkDatabaseConnection();
+      if (!isConnected) {
+        throw new Error('Database connection failed');
+      }
+      
+      console.log('📊 Dashboard: Fetching totalLeads count');
+      const { count: totalLeads, error: totalError } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true });
         
-      const { count: newLeads } = await supabase
+      if (totalError) {
+        console.error('❌ Error fetching total leads:', totalError);
+        throw totalError;
+      }
+      
+      console.log('📊 Dashboard: Fetching newLeads count');
+      const { count: newLeads, error: newError } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'new');
         
-      const { count: qualifiedLeads } = await supabase
+      if (newError) {
+        console.error('❌ Error fetching new leads:', newError);
+        throw newError;
+      }
+      
+      console.log('📊 Dashboard: Fetching qualifiedLeads count');
+      const { count: qualifiedLeads, error: qualifiedError } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'qualified');
         
-      const { count: totalCalls } = await supabase
+      if (qualifiedError) {
+        console.error('❌ Error fetching qualified leads:', qualifiedError);
+        throw qualifiedError;
+      }
+      
+      console.log('📊 Dashboard: Fetching totalCalls count');
+      const { count: totalCalls, error: callsError } = await supabase
         .from('conversations')
         .select('*', { count: 'exact', head: true });
+        
+      if (callsError) {
+        console.error('❌ Error fetching total calls:', callsError);
+        throw callsError;
+      }
+      
+      console.log('📊 Dashboard: Stats fetched successfully:', {
+        totalLeads,
+        newLeads,
+        qualifiedLeads,
+        totalCalls
+      });
         
       setStats({
         totalLeads: totalLeads || 0,
@@ -50,8 +114,21 @@ const Dashboard = () => {
         qualifiedLeads: qualifiedLeads || 0,
         totalCalls: totalCalls || 0
       });
+      
+      // Double check by fetching actual lead records
+      console.log('🧪 Dashboard: Verifying by fetching actual lead records');
+      const { data: actualLeads, error: verifyError } = await supabase
+        .from('leads')
+        .select('id')
+        .limit(5);
+        
+      if (verifyError) {
+        console.error('❌ Error verifying leads:', verifyError);
+      } else {
+        console.log('✅ Verification complete, found leads:', actualLeads);
+      }
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error('❌ Error fetching dashboard stats:', error);
       toast({
         title: 'Error',
         description: 'Failed to load dashboard statistics',
@@ -60,7 +137,7 @@ const Dashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, checkDatabaseConnection]);
 
   // Initial data fetch
   useEffect(() => {
@@ -76,31 +153,139 @@ const Dashboard = () => {
           schema: 'public',
           table: 'leads'
         },
-        () => {
-          console.log('Lead data changed, refreshing stats...');
+        (payload) => {
+          console.log('🔔 Dashboard: Lead data changed, payload:', payload);
+          console.log('🔄 Dashboard: Refreshing stats...');
           fetchStats();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Dashboard: Subscription status:', status);
+      });
 
     return () => {
+      console.log('🧹 Dashboard: Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   }, [fetchStats]);
 
   // This will force a refresh when navigating to this component
   useEffect(() => {
-    const refreshTimeout = setTimeout(fetchStats, 300); // Short delay to ensure navigation is complete
+    const refreshTimeout = setTimeout(() => {
+      console.log('🔄 Dashboard: Refresh timeout triggered');
+      fetchStats();
+    }, 300); // Short delay to ensure navigation is complete
     return () => clearTimeout(refreshTimeout);
   }, [fetchStats, lastRefresh]);
 
   const handleManualRefresh = () => {
+    console.log('🔄 Dashboard: Manual refresh triggered');
     setLastRefresh(Date.now());
     fetchStats();
     toast({
       title: 'Refreshed',
       description: 'Dashboard data has been refreshed',
     });
+  };
+
+  // Debug function to directly check database tables
+  const runDiagnostics = async () => {
+    try {
+      console.log('🔍 Running diagnostics...');
+      
+      // Check leads table
+      const { data: leadsData, error: leadsError } = await supabase
+        .from('leads')
+        .select('*');
+      
+      if (leadsError) {
+        console.error('❌ Leads diagnostics error:', leadsError);
+        toast({
+          title: 'Leads Error',
+          description: `Error accessing leads: ${leadsError.message}`,
+          variant: 'destructive',
+        });
+      } else {
+        console.log('📋 Leads diagnostics:', leadsData);
+        toast({
+          title: 'Leads Check',
+          description: `Found ${leadsData.length} leads in database`,
+        });
+      }
+      
+      // Check conversations table
+      const { data: convsData, error: convsError } = await supabase
+        .from('conversations')
+        .select('*');
+      
+      if (convsError) {
+        console.error('❌ Conversations diagnostics error:', convsError);
+      } else {
+        console.log('📋 Conversations diagnostics:', convsData);
+      }
+      
+      // Check qualification_data table
+      const { data: qualData, error: qualError } = await supabase
+        .from('qualification_data')
+        .select('*');
+      
+      if (qualError) {
+        console.error('❌ Qualification data diagnostics error:', qualError);
+      } else {
+        console.log('📋 Qualification data diagnostics:', qualData);
+      }
+    } catch (error) {
+      console.error('❌ Diagnostics failed:', error);
+      toast({
+        title: 'Diagnostics Failed',
+        description: 'Error running diagnostics',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Function to insert a test lead directly
+  const insertTestLead = async () => {
+    try {
+      console.log('🧪 Inserting test lead directly...');
+      
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({
+          first_name: 'Test',
+          last_name: `User ${new Date().toLocaleTimeString()}`,
+          email: `test${Date.now()}@example.com`,
+          phone: '555-123-4567',
+          status: 'new',
+          source: 'manual-test'
+        })
+        .select();
+      
+      if (error) {
+        console.error('❌ Test lead insertion failed:', error);
+        toast({
+          title: 'Test Failed',
+          description: `Could not insert test lead: ${error.message}`,
+          variant: 'destructive',
+        });
+      } else {
+        console.log('✅ Test lead inserted successfully:', data);
+        toast({
+          title: 'Test Lead Added',
+          description: 'A test lead was successfully added to the database',
+        });
+        
+        // Immediately refresh stats
+        fetchStats();
+      }
+    } catch (error) {
+      console.error('❌ Error inserting test lead:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to insert test lead',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -111,17 +296,61 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold">Relay Dashboard</h1>
             <p className="text-muted-foreground">Your mortgage lead management platform</p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleManualRefresh} 
-            disabled={isLoading}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleManualRefresh} 
+              disabled={isLoading}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </Button>
+            
+            {connectionStatus === 'error' && (
+              <Badge variant="destructive" className="flex gap-1">
+                <AlertTriangle className="h-3 w-3" /> Connection Error
+              </Badge>
+            )}
+            
+            {/* Debug mode toggle */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setDebugMode(!debugMode)}
+              className="text-xs"
+            >
+              {debugMode ? 'Hide Debug' : 'Debug'}
+            </Button>
+          </div>
         </div>
+        
+        {debugMode && (
+          <Card className="bg-slate-50 border-slate-300">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm font-medium">Debugging Tools</CardTitle>
+            </CardHeader>
+            <CardContent className="py-3 space-y-2">
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={runDiagnostics}>
+                  Run Diagnostics
+                </Button>
+                <Button size="sm" variant="outline" onClick={insertTestLead}>
+                  Insert Test Lead
+                </Button>
+                <Button size="sm" variant="outline" onClick={checkDatabaseConnection}>
+                  Check Connection
+                </Button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Connection Status: <span className={connectionStatus === 'connected' ? 'text-green-500' : connectionStatus === 'error' ? 'text-red-500' : 'text-amber-500'}>
+                  {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'error' ? 'Error' : 'Checking...'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>

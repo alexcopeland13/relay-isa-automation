@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw } from 'lucide-react';
+import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,8 @@ interface EnrichedLead {
 export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
   const [leads, setLeads] = useState<EnrichedLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
+  const [hasError, setHasError] = useState(false);
   const { toast } = useToast();
 
   // Get badge color based on status
@@ -99,7 +101,14 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
 
   const fetchLeads = useCallback(async () => {
     setIsLoading(true);
+    setHasError(false);
     try {
+      console.log('🔄 RecentLeads: Fetching data from Supabase...');
+      
+      // Test direct database connection first
+      const testResult = await supabase.from('leads').select('id').limit(1);
+      console.log('🧪 Connection test result:', testResult);
+      
       // Fetch leads with qualification data and conversations
       const { data, error } = await supabase
         .from('leads')
@@ -112,11 +121,20 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         .limit(4);
 
       if (error) {
-        console.error('Error fetching recent leads:', error);
+        console.error('❌ Error fetching recent leads:', error);
+        setHasError(true);
         throw error;
       }
 
-      console.log('Fetched recent leads:', data);
+      console.log('📋 RecentLeads: Raw data from Supabase:', data);
+      console.log('📋 RecentLeads: Number of leads found:', data?.length || 0);
+      
+      if (!data || data.length === 0) {
+        console.warn('⚠️ No leads found in the database');
+        setLeads([]);
+        setLastLoadTime(new Date());
+        return;
+      }
       
       // Transform and enrich data
       const enrichedLeads = data.map(lead => {
@@ -126,10 +144,10 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         
         return {
           id: lead.id,
-          name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
+          name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unnamed Lead',
           email: lead.email || '',
           phone: lead.phone || '',
-          status: lead.status,
+          status: lead.status || 'new',
           source: lead.source || 'Unknown',
           time: formatTime(lead.created_at),
           interest: qualification?.loan_type || 'Mortgage',
@@ -146,12 +164,15 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         };
       });
 
+      console.log('✅ RecentLeads: Processed enriched leads:', enrichedLeads);
       setLeads(enrichedLeads);
+      setLastLoadTime(new Date());
     } catch (error) {
-      console.error('Error in fetchLeads:', error);
+      console.error('❌ RecentLeads: Error in fetchLeads:', error);
+      setHasError(true);
       toast({
         title: 'Error',
-        description: 'Failed to load recent leads',
+        description: 'Failed to load recent leads. Please try refreshing.',
         variant: 'destructive',
       });
     } finally {
@@ -181,6 +202,7 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
 
   // Initial data fetch
   useEffect(() => {
+    console.log('🔄 RecentLeads: Initial fetch or dependency changed');
     fetchLeads();
     
     // Subscribe to real-time updates for leads table
@@ -193,14 +215,32 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
           schema: 'public',
           table: 'leads'
         },
-        () => {
-          console.log('Lead data changed, refreshing recent leads...');
+        (payload) => {
+          console.log('🔔 RecentLeads: Lead data changed, payload:', payload);
+          console.log('🔄 RecentLeads: Refreshing recent leads...');
           fetchLeads();
+          
+          // Show toast notification for data changes
+          const eventType = payload.eventType;
+          if (eventType === 'INSERT') {
+            toast({
+              title: 'New Lead Added',
+              description: 'A new lead has been added to the database',
+            });
+          } else if (eventType === 'UPDATE') {
+            toast({
+              title: 'Lead Updated',
+              description: 'Lead information has been updated',
+            });
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 RecentLeads: Subscription status:', status);
+      });
 
     return () => {
+      console.log('🧹 RecentLeads: Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   }, [fetchLeads]);
@@ -208,6 +248,7 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
   // Refresh data when onRefresh changes
   useEffect(() => {
     if (onRefresh) {
+      console.log('🔄 RecentLeads: onRefresh triggered:', onRefresh);
       fetchLeads();
     }
   }, [onRefresh, fetchLeads]);
@@ -221,12 +262,20 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
             variant="ghost" 
             size="sm" 
             className="h-8 w-8 p-0" 
-            onClick={fetchLeads}
+            onClick={() => {
+              console.log('🔄 Manual refresh clicked');
+              fetchLeads();
+            }}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="sr-only">Refresh</span>
           </Button>
+          {lastLoadTime && (
+            <span className="text-xs text-muted-foreground">
+              Last updated: {lastLoadTime.toLocaleTimeString()}
+            </span>
+          )}
           <Link to="/leads" className="text-sm text-emmblue hover:underline flex items-center">
             View all <ArrowUpRight className="ml-1" size={14} />
           </Link>
@@ -236,6 +285,22 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         {isLoading ? (
           <div className="p-4 text-center text-muted-foreground">
             Loading recent leads...
+          </div>
+        ) : hasError ? (
+          <div className="p-4 text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+            <div className="text-red-500 font-medium">Error loading leads</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Could not connect to the database
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="mt-3"
+              onClick={fetchLeads}
+            >
+              Try Again
+            </Button>
           </div>
         ) : leads.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">

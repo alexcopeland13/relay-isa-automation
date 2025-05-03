@@ -7,7 +7,7 @@ interface AsyncDataState<T> {
   error: Error | null;
   isError: boolean;
   retry: () => void;
-  refresh: () => void; // Added refresh method
+  refresh: () => void;
 }
 
 export function useAsyncData<T>(
@@ -26,13 +26,13 @@ export function useAsyncData<T>(
     setError(null);
     
     try {
+      console.log('🔄 Fetching data...');
       const result = await fetchFn();
       
-      // Only update state if component is still mounted
+      console.log('✅ Data fetched successfully:', result);
       setData(result);
-      console.log('Fetched data successfully:', result);
     } catch (err) {
-      console.error('Error fetching data:', err);
+      console.error('❌ Error fetching data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsLoading(false);
@@ -40,11 +40,12 @@ export function useAsyncData<T>(
   }, [fetchFn]);
 
   const retry = useCallback(() => {
+    console.log('🔄 Retrying data fetch...');
     setRetryCount(prev => prev + 1);
   }, []);
 
   const refresh = useCallback(() => {
-    console.log('Manual refresh triggered');
+    console.log('🔄 Manual refresh triggered');
     setRefreshTimestamp(Date.now());
   }, []);
 
@@ -57,14 +58,16 @@ export function useAsyncData<T>(
       setError(null);
       
       try {
+        console.log('📊 Loading data with dependencies:', deps, 'retry:', retryCount, 'refresh:', refreshTimestamp);
         const result = await fetchFn();
         
         // Only update state if component is still mounted
         if (isMounted) {
+          console.log('📊 Data loaded, updating state with:', result);
           setData(result);
         }
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('❌ Error loading data:', err);
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
         }

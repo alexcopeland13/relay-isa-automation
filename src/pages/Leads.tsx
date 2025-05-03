@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const fetchLeadsData = async () => {
   try {
-    console.log('Fetching leads data from Supabase...');
+    console.log('📞 Fetching leads data from Supabase...');
     // Try to fetch from Supabase first
     const { data: supabaseLeads, error } = await supabase
       .from('leads')
@@ -44,11 +44,17 @@ const fetchLeadsData = async () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Supabase fetch error:', error);
-      throw new Error('Failed to fetch leads from Supabase');
+      console.error('❌ Supabase fetch error:', error);
+      throw new Error(`Failed to fetch leads from Supabase: ${error.message}`);
     }
 
-    console.log('Supabase returned data:', supabaseLeads);
+    console.log('📋 Supabase returned data:', supabaseLeads);
+    console.log('📋 Number of leads found:', supabaseLeads?.length || 0);
+
+    if (!supabaseLeads || supabaseLeads.length === 0) {
+      console.warn('⚠️ No leads found in Supabase, checking if this is expected...');
+      // You might want to check if this is expected or add diagnostic info here
+    }
 
     // Convert Supabase data to match the Lead type
     const formattedLeads: Lead[] = supabaseLeads.map(lead => ({
@@ -70,13 +76,28 @@ const fetchLeadsData = async () => {
       conversations: lead.conversations
     }));
 
-    console.log('Fetched and formatted leads from Supabase:', formattedLeads);
+    console.log('🔄 Fetched and formatted leads from Supabase:', formattedLeads);
     return { leads: formattedLeads };
   } catch (error) {
-    console.warn('Falling back to local storage/sample data:', error);
+    console.warn('⚠️ Error with Supabase, falling back to local storage/sample data:', error);
     
     // Fallback to local storage if Supabase fetch fails
     const storedLeads = localStorage.getItem('relayLeads');
+    
+    // Log diagnostic information
+    if (storedLeads) {
+      console.log('🔄 Using leads from localStorage as fallback');
+      try {
+        const parsedLeads = JSON.parse(storedLeads);
+        console.log('🔄 Number of leads in localStorage:', parsedLeads.length);
+        return { leads: parsedLeads };
+      } catch (parseError) {
+        console.error('❌ Error parsing localStorage leads:', parseError);
+      }
+    } else {
+      console.log('🔄 No leads in localStorage, using sample data');
+    }
+    
     return {
       leads: storedLeads ? JSON.parse(storedLeads) : sampleLeads,
     };

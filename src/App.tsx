@@ -1,5 +1,6 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import Dashboard from '@/pages/Dashboard';
 import Leads from '@/pages/Leads';
 import Agents from '@/pages/Agents';
@@ -21,7 +22,7 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -41,7 +42,7 @@ function App() {
         <Route path="/team-lead-controls" element={<TeamLeadControls />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 

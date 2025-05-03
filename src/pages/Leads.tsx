@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const fetchLeadsData = async () => {
   try {
+    console.log('Fetching leads data from Supabase...');
     // Try to fetch from Supabase first
     const { data: supabaseLeads, error } = await supabase
       .from('leads')
@@ -47,10 +48,12 @@ const fetchLeadsData = async () => {
       throw new Error('Failed to fetch leads from Supabase');
     }
 
+    console.log('Supabase returned data:', supabaseLeads);
+
     // Convert Supabase data to match the Lead type
     const formattedLeads: Lead[] = supabaseLeads.map(lead => ({
       id: lead.id,
-      name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim(),
+      name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unnamed Lead',
       email: lead.email || '',
       phone: lead.phone || '',
       status: mapLeadStatus(lead.status),
@@ -62,7 +65,9 @@ const fetchLeadsData = async () => {
       interestType: determineInterestType(lead),
       location: determineLocation(lead),
       score: calculateLeadScore(lead),
-      notes: lead.notes || ''
+      notes: lead.notes || '',
+      qualification_data: lead.qualification_data,
+      conversations: lead.conversations
     }));
 
     console.log('Fetched and formatted leads from Supabase:', formattedLeads);
@@ -109,8 +114,6 @@ const determineInterestType = (lead: any): string => {
 };
 
 const determineLocation = (lead: any): string => {
-  // This would be filled in with real data from your schema
-  // For now returning a placeholder
   return lead.location || 'Unknown';
 };
 
@@ -150,28 +153,80 @@ const Leads = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
   const { toast } = useToast();
   
   const { 
     data, 
     isLoading, 
     error, 
-    retry
-  } = useAsyncData(fetchLeadsData, null, []);
+    retry,
+    refresh
+  } = useAsyncData(fetchLeadsData, null, [refreshTrigger]);
 
   const [leadsData, setLeadsData] = useState<{ leads: Lead[] } | null>(null);
   
+  // Effect to update state when data changes
   useEffect(() => {
     if (data) {
+      console.log("Setting leads data:", data);
       setLeadsData(data);
+      
+      // Store in localStorage as fallback
+      localStorage.setItem('relayLeads', JSON.stringify(data.leads));
     }
   }, [data]);
   
+  // Force refresh on mount and when refreshTrigger changes
   useEffect(() => {
-    if (leadsData?.leads && !localStorage.getItem('relayLeads')) {
-      localStorage.setItem('relayLeads', JSON.stringify(leadsData.leads));
-    }
-  }, [leadsData]);
+    // Add a slight delay to ensure navigation is complete
+    const refreshTimeout = setTimeout(() => {
+      refresh();
+    }, 300);
+    
+    // Set up a realtime subscription to changes in the leads table
+    const channel = supabase
+      .channel('schema-db-changes-leads')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads'
+        },
+        (payload) => {
+          console.log('Lead data changed:', payload);
+          refresh();
+          
+          const eventType = payload.eventType;
+          if (eventType === 'INSERT') {
+            toast({
+              title: 'New Lead',
+              description: 'A new lead has been added to the system',
+            });
+          } else if (eventType === 'UPDATE') {
+            toast({
+              title: 'Lead Updated',
+              description: 'A lead has been updated',
+            });
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      clearTimeout(refreshTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [refresh, refreshTrigger, toast]);
+
+  const handleManualRefresh = useCallback(() => {
+    toast({
+      title: 'Refreshing Data',
+      description: 'Fetching the latest leads...',
+    });
+    setRefreshTrigger(Date.now());
+  }, [toast]);
 
   const handleLeadSave = async (updatedLead: Lead) => {
     try {
@@ -205,6 +260,11 @@ const Leads = () => {
               title: 'Update Error',
               description: 'Failed to update lead in database. Changes saved locally only.',
               variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Lead Updated',
+              description: 'Lead has been successfully updated.',
             });
           }
         } else {
@@ -241,12 +301,19 @@ const Leads = () => {
               createdAt: newLeadData.created_at
             };
             updatedLeads = [...leadsData.leads, newLead];
+            toast({
+              title: 'Lead Created',
+              description: 'New lead has been successfully created.',
+            });
           }
         }
         
         setLeadsData({ leads: updatedLeads });
         localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
         setSelectedLead(undefined);
+        
+        // Trigger a refresh to ensure data consistency
+        setRefreshTrigger(Date.now());
       }
     } catch (error) {
       console.error('Error saving lead:', error);
@@ -298,6 +365,9 @@ const Leads = () => {
         localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
         setLeadsData({ leads: updatedLeads });
         setSelectedLead(undefined);
+        
+        // Trigger a refresh
+        setRefreshTrigger(Date.now());
       }
     } catch (error) {
       console.error('Error assigning lead:', error);
@@ -447,6 +517,16 @@ const Leads = () => {
           </div>
           
           <div className="flex items-center gap-2 mt-4 sm:mt-0">
+            <Button 
+              variant="outline" 
+              size="icon"
+              title="Refresh data" 
+              onClick={handleManualRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          
             <ExportMenu 
               data={leads}
               filename="relay_leads"

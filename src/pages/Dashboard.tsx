@@ -1,13 +1,15 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TestVAPIClient } from '@/components/vapi/TestVAPIClient';
-import { ArrowRight, Check, Phone } from 'lucide-react';
+import { ArrowRight, Check, Phone, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { RecentLeads } from '@/components/dashboard/RecentLeads';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -18,50 +20,107 @@ const Dashboard = () => {
   });
   
   const [isLoading, setIsLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const { toast } = useToast();
 
+  const fetchStats = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { count: totalLeads } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true });
+        
+      const { count: newLeads } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'new');
+        
+      const { count: qualifiedLeads } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'qualified');
+        
+      const { count: totalCalls } = await supabase
+        .from('conversations')
+        .select('*', { count: 'exact', head: true });
+        
+      setStats({
+        totalLeads: totalLeads || 0,
+        newLeads: newLeads || 0,
+        qualifiedLeads: qualifiedLeads || 0,
+        totalCalls: totalCalls || 0
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load dashboard statistics',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  // Initial data fetch
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const { count: totalLeads } = await supabase
-          .from('leads')
-          .select('*', { count: 'exact', head: true });
-          
-        const { count: newLeads } = await supabase
-          .from('leads')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'new');
-          
-        const { count: qualifiedLeads } = await supabase
-          .from('leads')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'qualified');
-          
-        const { count: totalCalls } = await supabase
-          .from('conversations')
-          .select('*', { count: 'exact', head: true });
-          
-        setStats({
-          totalLeads: totalLeads || 0,
-          newLeads: newLeads || 0,
-          qualifiedLeads: qualifiedLeads || 0,
-          totalCalls: totalCalls || 0
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchStats();
-  }, []);
+    
+    // Subscribe to real-time updates for leads table
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads'
+        },
+        () => {
+          console.log('Lead data changed, refreshing stats...');
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchStats]);
+
+  // This will force a refresh when navigating to this component
+  useEffect(() => {
+    const refreshTimeout = setTimeout(fetchStats, 300); // Short delay to ensure navigation is complete
+    return () => clearTimeout(refreshTimeout);
+  }, [fetchStats, lastRefresh]);
+
+  const handleManualRefresh = () => {
+    setLastRefresh(Date.now());
+    fetchStats();
+    toast({
+      title: 'Refreshed',
+      description: 'Dashboard data has been refreshed',
+    });
+  };
 
   return (
     <PageLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Relay Dashboard</h1>
-          <p className="text-muted-foreground">Your mortgage lead management platform</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Relay Dashboard</h1>
+            <p className="text-muted-foreground">Your mortgage lead management platform</p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleManualRefresh} 
+            disabled={isLoading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Loading...' : 'Refresh'}
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -101,6 +160,9 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Recent Leads component with refresh capabilities */}
+        <RecentLeads onRefresh={lastRefresh} />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="md:col-span-1">

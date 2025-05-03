@@ -18,6 +18,7 @@ import ConversionOutcomes from '@/pages/ConversionOutcomes';
 import NotFound from '@/pages/NotFound';
 import Index from '@/pages/Index';
 import TeamLeadControls from '@/pages/TeamLeadControls';
+import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
         <Route path="/team-lead-controls" element={<TeamLeadControls />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

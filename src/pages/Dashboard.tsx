@@ -1,10 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TestVAPIClient } from '@/components/vapi/TestVAPIClient';
-import { ArrowRight, Check, Phone, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Check, Phone, RefreshCw, AlertTriangle, DatabaseIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +28,10 @@ const Dashboard = () => {
     try {
       setConnectionStatus('checking');
       console.log('🔄 Checking database connection...');
+      
+      // Get Supabase URL and key for debug logging
+      const url = supabase.supabaseUrl;
+      console.log('🔌 Connection details - URL:', url, 'Has valid key:', !!supabase.supabaseKey);
       
       const { data, error } = await supabase.from('leads').select('id').limit(1);
       
@@ -249,16 +252,32 @@ const Dashboard = () => {
     try {
       console.log('🧪 Inserting test lead directly...');
       
+      // Verify connection first
+      const isConnected = await checkDatabaseConnection();
+      if (!isConnected) {
+        toast({
+          title: 'Connection Error',
+          description: 'Cannot connect to database. Please check your connection.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Log the request we're about to make for debugging
+      const testLead = {
+        first_name: 'Test',
+        last_name: `User ${new Date().toLocaleTimeString()}`,
+        email: `test${Date.now()}@example.com`,
+        phone: '555-123-4567',
+        status: 'new',
+        source: 'manual-test'
+      };
+      
+      console.log('📝 Test lead to insert:', testLead);
+      
       const { data, error } = await supabase
         .from('leads')
-        .insert({
-          first_name: 'Test',
-          last_name: `User ${new Date().toLocaleTimeString()}`,
-          email: `test${Date.now()}@example.com`,
-          phone: '555-123-4567',
-          status: 'new',
-          source: 'manual-test'
-        })
+        .insert(testLead)
         .select();
       
       if (error) {
@@ -275,6 +294,21 @@ const Dashboard = () => {
           description: 'A test lead was successfully added to the database',
         });
         
+        // Try to verify the lead was actually inserted
+        setTimeout(async () => {
+          const { data: verifyData, error: verifyError } = await supabase
+            .from('leads')
+            .select('*')
+            .eq('email', testLead.email)
+            .single();
+            
+          if (verifyError) {
+            console.error('❌ Could not verify lead was inserted:', verifyError);
+          } else {
+            console.log('✅ Lead verified in database:', verifyData);
+          }
+        }, 1000);
+        
         // Immediately refresh stats
         fetchStats();
       }
@@ -283,6 +317,54 @@ const Dashboard = () => {
       toast({
         title: 'Error',
         description: 'Failed to insert test lead',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Add a function to check specifically for leads
+  const checkLeadsTable = async () => {
+    try {
+      console.log('🔍 Checking leads table directly...');
+      toast({
+        title: 'Checking Leads',
+        description: 'Querying the leads table directly...',
+      });
+      
+      // Try to list all leads with a more detailed query
+      const { data, error, count } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact' });
+      
+      if (error) {
+        console.error('❌ Error querying leads table:', error);
+        toast({
+          title: 'Database Error',
+          description: `Error querying leads: ${error.message}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      console.log('📋 Leads check result:', { data, count });
+      
+      toast({
+        title: 'Leads Check',
+        description: `Found ${count || 0} leads in database`,
+      });
+      
+      // Try another approach with a different query method
+      const rawQuery = await supabase.rpc('get_leads_needing_followup', {
+        follow_up_date: new Date().toISOString()
+      });
+      
+      console.log('🔍 Raw RPC query result:', rawQuery);
+      
+    } catch (error) {
+      console.error('❌ Error checking leads table:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to check leads table',
         variant: 'destructive',
       });
     }
@@ -331,7 +413,7 @@ const Dashboard = () => {
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-medium">Debugging Tools</CardTitle>
             </CardHeader>
-            <CardContent className="py-3 space-y-2">
+            <CardContent className="py-3 space-y-4">
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={runDiagnostics}>
                   Run Diagnostics
@@ -342,11 +424,21 @@ const Dashboard = () => {
                 <Button size="sm" variant="outline" onClick={checkDatabaseConnection}>
                   Check Connection
                 </Button>
+                <Button size="sm" variant="outline" onClick={checkLeadsTable}>
+                  Check Leads Table
+                </Button>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Connection Status: <span className={connectionStatus === 'connected' ? 'text-green-500' : connectionStatus === 'error' ? 'text-red-500' : 'text-amber-500'}>
-                  {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'error' ? 'Error' : 'Checking...'}
-                </span>
+              <div className="text-xs space-y-1">
+                <div>
+                  Connection Status: <span className={connectionStatus === 'connected' ? 'text-green-500' : connectionStatus === 'error' ? 'text-red-500' : 'text-amber-500'}>
+                    {connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'error' ? 'Error' : 'Checking...'}
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <DatabaseIcon className="h-3 w-3 mr-1" />
+                  Database URL: <span className="ml-1 font-mono text-xs opacity-70">{supabase.supabaseUrl}</span>
+                </div>
+                <div>API Key: {supabase.supabaseKey ? '✓ Present' : '✗ Missing'}</div>
               </div>
             </CardContent>
           </Card>

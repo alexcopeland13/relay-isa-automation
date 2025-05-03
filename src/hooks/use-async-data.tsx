@@ -26,14 +26,23 @@ export function useAsyncData<T>(
     setError(null);
     
     try {
-      console.log('🔄 Fetching data...');
-      const result = await fetchFn();
+      console.log('🔄 Fetching data...', { functionName: fetchFn.name || 'anonymous function' });
+      
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout after 10s')), 10000);
+      });
+      
+      // Race between actual fetch and timeout
+      const result = await Promise.race([fetchFn(), timeoutPromise]) as T;
       
       console.log('✅ Data fetched successfully:', result);
       setData(result);
+      return result;
     } catch (err) {
       console.error('❌ Error fetching data:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
+      return null;
     } finally {
       setIsLoading(false);
     }

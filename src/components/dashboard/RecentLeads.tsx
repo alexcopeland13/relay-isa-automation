@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
+import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw, AlertCircle, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 interface RecentLeadsProps {
   onRefresh?: number;
@@ -57,6 +58,17 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
   const [hasError, setHasError] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    lastQueryTime: string | null;
+    rawDataCount: number;
+    errorDetails: string | null;
+    hasRun: boolean;
+  }>({
+    lastQueryTime: null,
+    rawDataCount: 0,
+    errorDetails: null,
+    hasRun: false
+  });
   const { toast } = useToast();
 
   // Get badge color based on status
@@ -102,15 +114,24 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
   const fetchLeads = useCallback(async () => {
     setIsLoading(true);
     setHasError(false);
+    const queryStartTime = new Date();
+    
     try {
       console.log('🔄 RecentLeads: Fetching data from Supabase...');
       
-      // Test direct database connection first
-      const testResult = await supabase.from('leads').select('id').limit(1);
-      console.log('🧪 Connection test result:', testResult);
+      // Perform direct test on database connection
+      const { data: testData, error: testError } = await supabase
+        .from('leads')
+        .select('count')
+        .limit(1);
+        
+      if (testError) {
+        console.error('❌ Connection test failed:', testError);
+        throw new Error(`Connection test failed: ${testError.message}`);
+      }
       
       // Fetch leads with qualification data and conversations
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('leads')
         .select(`
           *,
@@ -122,12 +143,25 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
 
       if (error) {
         console.error('❌ Error fetching recent leads:', error);
+        setDebugInfo(prev => ({
+          ...prev,
+          lastQueryTime: queryStartTime.toISOString(),
+          errorDetails: error.message,
+          hasRun: true
+        }));
         setHasError(true);
         throw error;
       }
 
       console.log('📋 RecentLeads: Raw data from Supabase:', data);
       console.log('📋 RecentLeads: Number of leads found:', data?.length || 0);
+      
+      setDebugInfo({
+        lastQueryTime: queryStartTime.toISOString(),
+        rawDataCount: data?.length || 0,
+        errorDetails: null,
+        hasRun: true
+      });
       
       if (!data || data.length === 0) {
         console.warn('⚠️ No leads found in the database');
@@ -170,6 +204,12 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
     } catch (error) {
       console.error('❌ RecentLeads: Error in fetchLeads:', error);
       setHasError(true);
+      setDebugInfo(prev => ({
+        ...prev,
+        lastQueryTime: queryStartTime.toISOString(),
+        errorDetails: error instanceof Error ? error.message : String(error),
+        hasRun: true
+      }));
       toast({
         title: 'Error',
         description: 'Failed to load recent leads. Please try refreshing.',
@@ -197,6 +237,47 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
       return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     } else {
       return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    }
+  };
+
+  // Check database directly for debugging
+  const checkDatabase = async () => {
+    try {
+      toast({
+        title: 'Checking Database',
+        description: 'Directly querying the leads table...'
+      });
+      
+      console.log('🔍 RecentLeads: Direct database check...');
+      
+      const { data, error, count } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact' });
+        
+      if (error) {
+        console.error('❌ Database check error:', error);
+        toast({
+          title: 'Database Error',
+          description: error.message,
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      console.log('📊 Direct database check result:', { data, count });
+      
+      toast({
+        title: 'Database Check',
+        description: `Found ${count || 0} leads in the database`
+      });
+      
+      // If we found leads but they're not showing up in the component,
+      // manually refresh to see if that helps
+      if (count && count > 0) {
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error('❌ Error checking database:', err);
     }
   };
 
@@ -243,7 +324,7 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
       console.log('🧹 RecentLeads: Cleaning up subscription');
       supabase.removeChannel(channel);
     };
-  }, [fetchLeads]);
+  }, [fetchLeads, toast]);
 
   // Refresh data when onRefresh changes
   useEffect(() => {
@@ -254,7 +335,7 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
   }, [onRefresh, fetchLeads]);
 
   return (
-    <Card>
+    <Card className="overflow-visible">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle>Recent Leads</CardTitle>
         <div className="flex items-center gap-2">
@@ -271,6 +352,17 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="sr-only">Refresh</span>
           </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-muted-foreground"
+            onClick={checkDatabase}
+          >
+            <Database className="h-3 w-3 mr-1" />
+            Check DB
+          </Button>
+          
           {lastLoadTime && (
             <span className="text-xs text-muted-foreground">
               Last updated: {lastLoadTime.toLocaleTimeString()}
@@ -281,6 +373,27 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
           </Link>
         </div>
       </CardHeader>
+      
+      {debugInfo.hasRun && (
+        <div className="mx-6 mb-1 p-2 bg-slate-50 rounded-sm border border-slate-200 text-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="font-medium">Debug Info:</span>
+            <Badge variant="outline" className={debugInfo.errorDetails ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}>
+              {debugInfo.errorDetails ? 'Error' : 'Success'}
+            </Badge>
+          </div>
+          <div>Raw leads count: <span className="font-mono">{debugInfo.rawDataCount}</span></div>
+          {debugInfo.errorDetails && (
+            <div className="text-red-600 font-mono truncate" title={debugInfo.errorDetails}>
+              Error: {debugInfo.errorDetails}
+            </div>
+          )}
+          <div className="text-muted-foreground">
+            Query time: {debugInfo.lastQueryTime ? new Date(debugInfo.lastQueryTime).toLocaleTimeString() : 'N/A'}
+          </div>
+        </div>
+      )}
+      
       <CardContent className="px-0 py-1">
         {isLoading ? (
           <div className="p-4 text-center text-muted-foreground">
@@ -293,18 +406,58 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
             <p className="text-sm text-muted-foreground mt-1">
               Could not connect to the database
             </p>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="mt-3"
-              onClick={fetchLeads}
-            >
-              Try Again
-            </Button>
+            <div className="mt-3 space-y-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={fetchLeads}
+              >
+                Try Again
+              </Button>
+              
+              <div className="text-xs text-muted-foreground pt-2">
+                <Separator className="my-2" />
+                <p>If problems persist, check:</p>
+                <ul className="list-disc pl-5 pt-1 space-y-1">
+                  <li>Database connection settings</li>
+                  <li>Supabase service is operational</li>
+                  <li>Network connectivity</li>
+                </ul>
+              </div>
+            </div>
           </div>
         ) : leads.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">
-            No leads found. Create new leads using the VAPI integration or add leads manually.
+          <div className="p-4 text-center">
+            <div className="text-muted-foreground">
+              No leads found. Create new leads using the VAPI integration or add leads manually.
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                console.log('🧪 Leads test requested');
+                // Dummy test - this will trigger a notification for any connected components
+                supabase
+                  .channel('test')
+                  .on('broadcast', { event: 'test' }, payload => {
+                    console.log('Broadcast received:', payload);
+                  })
+                  .subscribe()
+                  .send({
+                    type: 'broadcast',
+                    event: 'test',
+                    payload: { message: 'Testing system' }
+                  });
+                  
+                toast({
+                  title: 'Testing System',
+                  description: 'Broadcasting a test message to all clients'
+                });
+              }}
+              className="mt-3"
+            >
+              Test System
+            </Button>
           </div>
         ) : (
           <div className="divide-y">

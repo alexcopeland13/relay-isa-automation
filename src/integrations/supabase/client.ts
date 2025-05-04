@@ -13,9 +13,9 @@ const options = {
     persistSession: true,
   },
   global: {
-    fetch: (...args: any[]) => {
-      console.log('🔌 Supabase API Request:', args[0]);
-      return fetch(...args);
+    fetch: (url: string, options: RequestInit) => {
+      console.log('🔌 Supabase API Request:', url);
+      return fetch(url, options);
     },
   },
 };

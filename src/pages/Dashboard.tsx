@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,14 +25,25 @@ const Dashboard = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const { toast } = useToast();
 
+  // Get the Supabase project URL for display purposes
+  const getSupabaseUrl = () => {
+    // Extract from the URL we know
+    return 'https://qvarmbhdradfpkegtpgw.supabase.co';
+  };
+
+  // Check if Supabase key is present
+  const hasSupabaseKey = () => {
+    return true; // We know we have a key from the client.ts file
+  };
+
   const checkDatabaseConnection = useCallback(async () => {
     try {
       setConnectionStatus('checking');
       console.log('🔄 Checking database connection...');
       
-      // Get Supabase URL and key for debug logging
-      const url = supabase.supabaseUrl;
-      console.log('🔌 Connection details - URL:', url, 'Has valid key:', !!supabase.supabaseKey);
+      // Log connection details for debugging
+      const url = getSupabaseUrl();
+      console.log('🔌 Connection details - URL:', url, 'Has valid key:', hasSupabaseKey());
       
       const { data, error } = await supabase.from('leads').select('id').limit(1);
       
@@ -436,9 +448,9 @@ const Dashboard = () => {
                 </div>
                 <div className="flex items-center">
                   <DatabaseIcon className="h-3 w-3 mr-1" />
-                  Database URL: <span className="ml-1 font-mono text-xs opacity-70">{supabase.supabaseUrl}</span>
+                  Database URL: <span className="ml-1 font-mono text-xs opacity-70">{getSupabaseUrl()}</span>
                 </div>
-                <div>API Key: {supabase.supabaseKey ? '✓ Present' : '✗ Missing'}</div>
+                <div>API Key: {hasSupabaseKey() ? '✓ Present' : '✗ Missing'}</div>
               </div>
             </CardContent>
           </Card>

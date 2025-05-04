@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw, AlertCircle, Database } from 'lucide-react';
+import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw, AlertCircle, Database, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,11 +61,13 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
   const [debugInfo, setDebugInfo] = useState<{
     lastQueryTime: string | null;
     rawDataCount: number;
+    rawData: any[] | null;
     errorDetails: string | null;
     hasRun: boolean;
   }>({
     lastQueryTime: null,
     rawDataCount: 0,
+    rawData: null,
     errorDetails: null,
     hasRun: false
   });
@@ -73,7 +75,10 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
 
   // Get badge color based on status
   const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+    // Normalize status to lowercase for consistent comparison
+    const normalizedStatus = status?.toLowerCase() || '';
+    
+    switch (normalizedStatus) {
       case 'new':
         return 'bg-blue-100 text-blue-800';
       case 'contacted':
@@ -130,7 +135,21 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         throw new Error(`Connection test failed: ${testError.message}`);
       }
       
-      // Fetch leads with qualification data and conversations
+      // Log the full query for debugging
+      console.log('🔍 RecentLeads: Executing query: leads with qualification_data and conversations');
+      
+      // Fetch ALL leads first for deeper debugging (no limit yet)
+      const { data: allData, error: allError } = await supabase
+        .from('leads')
+        .select('*');
+        
+      if (allError) {
+        console.error('❌ Error fetching all leads:', allError);
+      } else {
+        console.log('📊 RecentLeads: All leads in database:', allData);
+      }
+      
+      // Now fetch leads with qualification data and conversations
       const { data, error, count } = await supabase
         .from('leads')
         .select(`
@@ -159,6 +178,7 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
       setDebugInfo({
         lastQueryTime: queryStartTime.toISOString(),
         rawDataCount: data?.length || 0,
+        rawData: data || [],
         errorDetails: null,
         hasRun: true
       });
@@ -250,9 +270,10 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
       
       console.log('🔍 RecentLeads: Direct database check...');
       
-      const { data, error, count } = await supabase
+      // Query ALL data without any filters to see what's actually there
+      const { data, error } = await supabase
         .from('leads')
-        .select('*', { count: 'exact' });
+        .select('*');
         
       if (error) {
         console.error('❌ Database check error:', error);
@@ -264,16 +285,26 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         return;
       }
       
-      console.log('📊 Direct database check result:', { data, count });
+      console.log('📊 Direct database check result:', { data, count: data?.length });
+      
+      // Update debug info with raw data for deeper inspection
+      setDebugInfo(prev => ({
+        ...prev,
+        lastQueryTime: new Date().toISOString(),
+        rawDataCount: data?.length || 0,
+        rawData: data || [],
+        errorDetails: null,
+        hasRun: true
+      }));
       
       toast({
         title: 'Database Check',
-        description: `Found ${count || 0} leads in the database`
+        description: `Found ${data?.length || 0} leads in the database`
       });
       
       // If we found leads but they're not showing up in the component,
       // manually refresh to see if that helps
-      if (count && count > 0) {
+      if (data?.length && data.length > 0) {
         fetchLeads();
       }
     } catch (err) {
@@ -391,6 +422,38 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
           <div className="text-muted-foreground">
             Query time: {debugInfo.lastQueryTime ? new Date(debugInfo.lastQueryTime).toLocaleTimeString() : 'N/A'}
           </div>
+          
+          {/* Add raw data viewer for debugging */}
+          {debugInfo.rawData && debugInfo.rawData.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="font-medium flex items-center">
+                  <Search className="h-3 w-3 mr-1" />Raw Data:
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-5 text-xs p-0 px-1"
+                  onClick={() => setDebugInfo(prev => ({
+                    ...prev, 
+                    rawData: null
+                  }))}
+                >
+                  Hide
+                </Button>
+              </div>
+              <div className="mt-1 p-1 bg-slate-100 rounded text-xs font-mono overflow-x-auto max-h-32">
+                {debugInfo.rawData.map((lead, i) => (
+                  <div key={i} className="mb-1 pb-1 border-b border-slate-200 last:border-0">
+                    ID: {lead.id}<br/>
+                    Name: {lead.first_name} {lead.last_name}<br/>
+                    Status: "{lead.status}"<br/>
+                    Created: {new Date(lead.created_at).toLocaleString()}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       
@@ -431,32 +494,23 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
             <div className="text-muted-foreground">
               No leads found. Create new leads using the VAPI integration or add leads manually.
             </div>
+            <div className="mt-2">
+              {debugInfo.rawDataCount > 0 ? (
+                <div className="p-2 mb-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-sm">
+                  <AlertTriangle className="h-4 w-4 inline-block mr-1 text-amber-600" />
+                  Data found in database ({debugInfo.rawDataCount} leads) but couldn't be processed.
+                  Check status values and case sensitivity.
+                </div>
+              ) : null}
+            </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                console.log('🧪 Leads test requested');
-                // Dummy test - this will trigger a notification for any connected components
-                supabase
-                  .channel('test')
-                  .on('broadcast', { event: 'test' }, payload => {
-                    console.log('Broadcast received:', payload);
-                  })
-                  .subscribe()
-                  .send({
-                    type: 'broadcast',
-                    event: 'test',
-                    payload: { message: 'Testing system' }
-                  });
-                  
-                toast({
-                  title: 'Testing System',
-                  description: 'Broadcasting a test message to all clients'
-                });
-              }}
+              onClick={checkDatabase}
               className="mt-3"
             >
-              Test System
+              <Database className="h-4 w-4 mr-2" />
+              Check Database
             </Button>
           </div>
         ) : (

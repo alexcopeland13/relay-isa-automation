@@ -1,13 +1,12 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TestVAPIClient } from '@/components/vapi/TestVAPIClient';
-import { ArrowRight, Check, Phone, RefreshCw, AlertTriangle, DatabaseIcon } from 'lucide-react';
+import { ArrowRight, Check, Phone, RefreshCw, AlertTriangle, DatabaseIcon, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, diagnoseDatabaseConnection, insertTestLead } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RecentLeads } from '@/components/dashboard/RecentLeads';
 
@@ -23,6 +22,7 @@ const Dashboard = () => {
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [debugMode, setDebugMode] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
+  const [rawTableData, setRawTableData] = useState<any>(null);
   const { toast } = useToast();
 
   // Get the Supabase project URL for display purposes
@@ -74,6 +74,7 @@ const Dashboard = () => {
         throw new Error('Database connection failed');
       }
       
+      // Query without case sensitivity for more reliable results
       console.log('📊 Dashboard: Fetching totalLeads count');
       const { count: totalLeads, error: totalError } = await supabase
         .from('leads')
@@ -84,22 +85,22 @@ const Dashboard = () => {
         throw totalError;
       }
       
-      console.log('📊 Dashboard: Fetching newLeads count');
+      console.log('📊 Dashboard: Fetching newLeads count - case insensitive');
       const { count: newLeads, error: newError } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'new');
+        .ilike('status', '%new%'); // Case insensitive match
         
       if (newError) {
         console.error('❌ Error fetching new leads:', newError);
         throw newError;
       }
       
-      console.log('📊 Dashboard: Fetching qualifiedLeads count');
+      console.log('📊 Dashboard: Fetching qualifiedLeads count - case insensitive');
       const { count: qualifiedLeads, error: qualifiedError } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'qualified');
+        .ilike('status', '%qualified%'); // Case insensitive match
         
       if (qualifiedError) {
         console.error('❌ Error fetching qualified leads:', qualifiedError);
@@ -208,46 +209,23 @@ const Dashboard = () => {
     try {
       console.log('🔍 Running diagnostics...');
       
-      // Check leads table
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('leads')
-        .select('*');
+      // Run comprehensive diagnostics
+      const diagResult = await diagnoseDatabaseConnection();
+      setRawTableData(diagResult);
       
-      if (leadsError) {
-        console.error('❌ Leads diagnostics error:', leadsError);
+      if (diagResult.success) {
+        console.log('📊 Raw database data:', diagResult);
         toast({
-          title: 'Leads Error',
-          description: `Error accessing leads: ${leadsError.message}`,
+          title: 'Database Diagnostics',
+          description: `Found ${diagResult.count} leads with status values: ${diagResult.statusValues?.join(', ') || 'none'}`,
+        });
+      } else {
+        console.error('❌ Database diagnostics error:', diagResult.error);
+        toast({
+          title: 'Diagnostics Error',
+          description: diagResult.message || 'Unknown error checking database',
           variant: 'destructive',
         });
-      } else {
-        console.log('📋 Leads diagnostics:', leadsData);
-        toast({
-          title: 'Leads Check',
-          description: `Found ${leadsData.length} leads in database`,
-        });
-      }
-      
-      // Check conversations table
-      const { data: convsData, error: convsError } = await supabase
-        .from('conversations')
-        .select('*');
-      
-      if (convsError) {
-        console.error('❌ Conversations diagnostics error:', convsError);
-      } else {
-        console.log('📋 Conversations diagnostics:', convsData);
-      }
-      
-      // Check qualification_data table
-      const { data: qualData, error: qualError } = await supabase
-        .from('qualification_data')
-        .select('*');
-      
-      if (qualError) {
-        console.error('❌ Qualification data diagnostics error:', qualError);
-      } else {
-        console.log('📋 Qualification data diagnostics:', qualData);
       }
     } catch (error) {
       console.error('❌ Diagnostics failed:', error);
@@ -260,7 +238,7 @@ const Dashboard = () => {
   };
 
   // Function to insert a test lead directly
-  const insertTestLead = async () => {
+  const handleInsertTestLead = async () => {
     try {
       console.log('🧪 Inserting test lead directly...');
       
@@ -275,54 +253,26 @@ const Dashboard = () => {
         return;
       }
       
-      // Log the request we're about to make for debugging
-      const testLead = {
-        first_name: 'Test',
-        last_name: `User ${new Date().toLocaleTimeString()}`,
-        email: `test${Date.now()}@example.com`,
-        phone: '555-123-4567',
-        status: 'new',
-        source: 'manual-test'
-      };
+      // Use the standardized function to insert a test lead
+      const result = await insertTestLead();
       
-      console.log('📝 Test lead to insert:', testLead);
-      
-      const { data, error } = await supabase
-        .from('leads')
-        .insert(testLead)
-        .select();
-      
-      if (error) {
-        console.error('❌ Test lead insertion failed:', error);
+      if (result.error) {
+        console.error('❌ Test lead insertion failed:', result.error);
         toast({
           title: 'Test Failed',
-          description: `Could not insert test lead: ${error.message}`,
+          description: `Could not insert test lead: ${result.error.message}`,
           variant: 'destructive',
         });
       } else {
-        console.log('✅ Test lead inserted successfully:', data);
+        console.log('✅ Test lead inserted successfully:', result.data);
         toast({
           title: 'Test Lead Added',
           description: 'A test lead was successfully added to the database',
         });
         
-        // Try to verify the lead was actually inserted
-        setTimeout(async () => {
-          const { data: verifyData, error: verifyError } = await supabase
-            .from('leads')
-            .select('*')
-            .eq('email', testLead.email)
-            .single();
-            
-          if (verifyError) {
-            console.error('❌ Could not verify lead was inserted:', verifyError);
-          } else {
-            console.log('✅ Lead verified in database:', verifyData);
-          }
-        }, 1000);
-        
-        // Immediately refresh stats
+        // Immediately refresh stats and run diagnostics
         fetchStats();
+        runDiagnostics(); // Also run diagnostics to confirm lead is visible
       }
     } catch (error) {
       console.error('❌ Error inserting test lead:', error);
@@ -334,44 +284,17 @@ const Dashboard = () => {
     }
   };
 
-  // Add a function to check specifically for leads
+  // Add a function to check specifically for leads with a detailed query
   const checkLeadsTable = async () => {
     try {
-      console.log('🔍 Checking leads table directly...');
+      console.log('🔍 Checking leads table directly with detailed query...');
       toast({
         title: 'Checking Leads',
-        description: 'Querying the leads table directly...',
+        description: 'Performing detailed analysis of the leads table...',
       });
       
-      // Try to list all leads with a more detailed query
-      const { data, error, count } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact' });
-      
-      if (error) {
-        console.error('❌ Error querying leads table:', error);
-        toast({
-          title: 'Database Error',
-          description: `Error querying leads: ${error.message}`,
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      console.log('📋 Leads check result:', { data, count });
-      
-      toast({
-        title: 'Leads Check',
-        description: `Found ${count || 0} leads in database`,
-      });
-      
-      // Try another approach with a different query method
-      const rawQuery = await supabase.rpc('get_leads_needing_followup', {
-        follow_up_date: new Date().toISOString()
-      });
-      
-      console.log('🔍 Raw RPC query result:', rawQuery);
-      
+      // Run full diagnostics
+      await runDiagnostics();
     } catch (error) {
       console.error('❌ Error checking leads table:', error);
       toast({
@@ -426,11 +349,11 @@ const Dashboard = () => {
               <CardTitle className="text-sm font-medium">Debugging Tools</CardTitle>
             </CardHeader>
             <CardContent className="py-3 space-y-4">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={runDiagnostics}>
                   Run Diagnostics
                 </Button>
-                <Button size="sm" variant="outline" onClick={insertTestLead}>
+                <Button size="sm" variant="outline" onClick={handleInsertTestLead}>
                   Insert Test Lead
                 </Button>
                 <Button size="sm" variant="outline" onClick={checkDatabaseConnection}>
@@ -452,6 +375,31 @@ const Dashboard = () => {
                 </div>
                 <div>API Key: {hasSupabaseKey() ? '✓ Present' : '✗ Missing'}</div>
               </div>
+              
+              {/* Display raw table data when available */}
+              {rawTableData && (
+                <div className="mt-3 p-3 bg-slate-100 rounded-md overflow-auto max-h-64">
+                  <div className="font-medium text-xs mb-2 flex items-center">
+                    <Search className="h-3 w-3 mr-1" /> Raw Database Results:
+                  </div>
+                  <div className="text-xs font-mono">
+                    {rawTableData.success ? (
+                      <>
+                        <div className="text-green-600 font-medium">✓ Success</div>
+                        <div>Found {rawTableData.count || 0} leads</div>
+                        <div>Status values: {rawTableData.statusValues?.join(', ') || 'none'}</div>
+                        <pre className="mt-2 p-2 bg-slate-200 rounded text-xs overflow-auto max-h-40">
+                          {JSON.stringify(rawTableData.data, null, 2)}
+                        </pre>
+                      </>
+                    ) : (
+                      <div className="text-red-600">
+                        Error: {rawTableData.message || 'Unknown error'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -494,7 +442,7 @@ const Dashboard = () => {
           </Card>
         </div>
         
-        {/* Recent Leads component with refresh capabilities */}
+        {/* Recent Leads component with refresh capabilities and fixed status handling */}
         <RecentLeads onRefresh={lastRefresh} />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

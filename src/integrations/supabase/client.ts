@@ -32,14 +32,67 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Add a diagnostic function for convenience
 export const diagnoseDatabaseConnection = async () => {
   try {
-    const { data, error } = await supabase.from('leads').select('count');
-    if (error) {
-      console.error('❌ Database connection error:', error);
-      return { success: false, error, message: error.message };
+    // First try a basic connection test
+    const { data: connectionTest, error: connectionError } = await supabase.from('leads').select('count');
+    if (connectionError) {
+      console.error('❌ Database connection error:', connectionError);
+      return { success: false, error: connectionError, message: connectionError.message };
     }
-    return { success: true, data };
+    
+    // Then get detailed information about the leads table
+    console.log('🔍 Checking leads table content...');
+    
+    // Get all leads without filtering to see what's actually there
+    const { data: allLeads, error: leadsError } = await supabase
+      .from('leads')
+      .select('*');
+      
+    if (leadsError) {
+      console.error('❌ Error fetching leads:', leadsError);
+      return { success: false, error: leadsError, message: leadsError.message };
+    }
+    
+    // Log all found leads for debugging
+    console.log('📊 All leads in database:', allLeads);
+    
+    // Check specifically for status values to debug case sensitivity issues
+    const statusValues = allLeads?.map(lead => lead.status) || [];
+    console.log('📊 Status values found in database:', statusValues);
+    
+    return { 
+      success: true, 
+      data: allLeads,
+      count: allLeads?.length || 0,
+      statusValues 
+    };
   } catch (err) {
     console.error('❌ Unexpected database error:', err);
+    return { success: false, error: err, message: err instanceof Error ? err.message : String(err) };
+  }
+};
+
+// Add a function to insert a test lead with standardized values
+export const insertTestLead = async () => {
+  try {
+    const testLead = {
+      first_name: 'Test',
+      last_name: `User ${new Date().toLocaleTimeString()}`,
+      email: `test${Date.now()}@example.com`,
+      phone: '555-123-4567',
+      status: 'new', // Ensure lowercase status to match our queries
+      source: 'manual-test'
+    };
+    
+    console.log('🧪 Inserting test lead:', testLead);
+    
+    const { data, error } = await supabase
+      .from('leads')
+      .insert(testLead)
+      .select();
+      
+    return { success: !error, data, error };
+  } catch (err) {
+    console.error('❌ Error inserting test lead:', err);
     return { success: false, error: err, message: err instanceof Error ? err.message : String(err) };
   }
 };

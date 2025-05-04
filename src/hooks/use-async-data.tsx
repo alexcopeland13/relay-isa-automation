@@ -8,6 +8,7 @@ interface AsyncDataState<T> {
   isError: boolean;
   retry: () => void;
   refresh: () => void;
+  timestamp: number; // Add timestamp to track when data was last fetched
 }
 
 export function useAsyncData<T>(
@@ -20,13 +21,18 @@ export function useAsyncData<T>(
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState<number>(0);
   const [refreshTimestamp, setRefreshTimestamp] = useState<number>(Date.now());
+  const [fetchTimestamp, setFetchTimestamp] = useState<number>(0);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    const startTime = Date.now();
     
     try {
-      console.log('🔄 Fetching data...', { functionName: fetchFn.name || 'anonymous function' });
+      console.log('🔄 Fetching data...', { 
+        functionName: fetchFn.name || 'anonymous function',
+        startTime: new Date(startTime).toISOString()
+      });
       
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -35,13 +41,29 @@ export function useAsyncData<T>(
       
       // Race between actual fetch and timeout
       const result = await Promise.race([fetchFn(), timeoutPromise]) as T;
+      const endTime = Date.now();
       
-      console.log('✅ Data fetched successfully:', result);
+      console.log('✅ Data fetched successfully in ' + (endTime - startTime) + 'ms:', result);
       setData(result);
+      setFetchTimestamp(endTime);
       return result;
     } catch (err) {
-      console.error('❌ Error fetching data:', err);
-      setError(err instanceof Error ? err : new Error(String(err)));
+      const endTime = Date.now();
+      console.error('❌ Error fetching data after ' + (endTime - startTime) + 'ms:', err);
+      
+      // Extract more useful error information
+      let errorMessage = 'Unknown error';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        errorMessage = JSON.stringify(err);
+      } else {
+        errorMessage = String(err);
+      }
+      
+      // Create error with better details
+      const enhancedError = new Error(`Fetch failed: ${errorMessage}`);
+      setError(enhancedError);
       return null;
     } finally {
       setIsLoading(false);
@@ -74,11 +96,24 @@ export function useAsyncData<T>(
         if (isMounted) {
           console.log('📊 Data loaded, updating state with:', result);
           setData(result);
+          setFetchTimestamp(Date.now());
         }
       } catch (err) {
         console.error('❌ Error loading data:', err);
         if (isMounted) {
-          setError(err instanceof Error ? err : new Error(String(err)));
+          // Enhanced error handling with better logging
+          let errorObj: Error;
+          if (err instanceof Error) {
+            errorObj = err;
+          } else {
+            errorObj = new Error(typeof err === 'string' ? err : 'Unknown error occurred');
+            if (typeof err === 'object' && err !== null) {
+              // Attach original error data for debugging
+              (errorObj as any).originalError = err;
+            }
+          }
+          
+          setError(errorObj);
         }
       } finally {
         if (isMounted) {
@@ -102,6 +137,7 @@ export function useAsyncData<T>(
     error,
     isError: error !== null,
     retry,
-    refresh
+    refresh,
+    timestamp: fetchTimestamp
   };
 }

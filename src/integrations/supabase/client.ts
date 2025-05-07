@@ -39,8 +39,16 @@ export const diagnoseDatabaseConnection = async () => {
       return { success: false, error: connectionError, message: connectionError.message };
     }
     
-    // Then get detailed information about the leads table
-    console.log('🔍 Checking leads table content...');
+    // Then get detailed information about the leads table structure
+    console.log('🔍 Checking leads table structure...');
+    const { data: tableInfo, error: tableError } = await supabase
+      .rpc('get_table_info', { table_name: 'leads' });
+      
+    if (tableError) {
+      console.log('⚠️ Could not get table info, but this is non-critical. Continuing...');
+    } else {
+      console.log('📋 Leads table columns:', tableInfo);
+    }
     
     // Get all leads without filtering to see what's actually there
     const { data: allLeads, error: leadsError } = await supabase
@@ -71,7 +79,7 @@ export const diagnoseDatabaseConnection = async () => {
   }
 };
 
-// Add a function to insert a test lead with standardized values
+// Function to insert a test lead with standardized values
 export const insertTestLead = async () => {
   try {
     const testLead = {
@@ -79,7 +87,7 @@ export const insertTestLead = async () => {
       last_name: `User ${new Date().toLocaleTimeString()}`,
       email: `test${Date.now()}@example.com`,
       phone: '555-123-4567',
-      status: 'new', // Ensure lowercase status to match our queries
+      status: 'new', // Use lowercase status consistently
       source: 'manual-test'
     };
     
@@ -94,5 +102,23 @@ export const insertTestLead = async () => {
   } catch (err) {
     console.error('❌ Error inserting test lead:', err);
     return { success: false, error: err, message: err instanceof Error ? err.message : String(err) };
+  }
+};
+
+// Add a function to create a stored procedure for table info
+export const setupDatabaseHelpers = async () => {
+  try {
+    // Create utility function to get table information
+    const { error } = await supabase.rpc('create_get_table_info_function');
+    
+    if (error) {
+      console.error('❌ Could not create database helpers:', error);
+      return { success: false, error };
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error('❌ Error setting up database helpers:', err);
+    return { success: false, error: err };
   }
 };

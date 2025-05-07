@@ -1,5 +1,5 @@
 
 project_id = "qvarmbhdradfpkegtpgw"
 
-[functions.insert-lead]
+[functions.utility-functions]
 verify_jwt = false

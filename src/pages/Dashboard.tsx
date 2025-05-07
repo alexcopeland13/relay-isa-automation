@@ -6,7 +6,7 @@ import { TestVAPIClient } from '@/components/vapi/TestVAPIClient';
 import { ArrowRight, Check, Phone, RefreshCw, AlertTriangle, DatabaseIcon, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { supabase, diagnoseDatabaseConnection, insertTestLead } from '@/integrations/supabase/client';
+import { supabase, diagnoseDatabaseConnection, insertTestLead, setupDatabaseHelpers } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RecentLeads } from '@/components/dashboard/RecentLeads';
 
@@ -24,6 +24,15 @@ const Dashboard = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [rawTableData, setRawTableData] = useState<any>(null);
   const { toast } = useToast();
+
+  // Initialize database helpers on component mount
+  useEffect(() => {
+    const initializeHelpers = async () => {
+      await setupDatabaseHelpers();
+    };
+    
+    initializeHelpers().catch(console.error);
+  }, []);
 
   // Get the Supabase project URL for display purposes
   const getSupabaseUrl = () => {

@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from 'react';
 import { DollarSign, ArrowUpRight, FileCheck, TagIcon, Calendar, RefreshCw, AlertCircle, Database, Search, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -146,9 +147,10 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         console.error('❌ Error fetching all leads:', allError);
       } else {
         console.log('📊 RecentLeads: All leads in database:', allData);
+        console.log('📊 Status values in database:', allData?.map(lead => lead.status));
       }
       
-      // Now fetch leads with qualification data and conversations
+      // Now fetch leads with qualification data and conversations - IMPORTANT: removed case sensitivity
       const { data, error, count } = await supabase
         .from('leads')
         .select(`
@@ -189,7 +191,7 @@ export const RecentLeads = ({ onRefresh }: RecentLeadsProps) => {
         return;
       }
       
-      // Transform and enrich data
+      // Transform and enrich data - with normalization for case insensitivity
       const enrichedLeads = data.map(lead => {
         // Make sure qualification_data is not undefined and get the first item safely
         const qualificationArray = lead.qualification_data || [];

@@ -21,7 +21,7 @@ serve(async (req) => {
     )
 
     // Create the function to get table information
-    const { data, error } = await supabase.rpc('create_get_table_info_function')
+    const { error } = await supabase.rpc('create_get_table_info_function')
 
     if (error) throw error
 

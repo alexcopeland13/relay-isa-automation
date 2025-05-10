@@ -3,3 +3,6 @@ project_id = "qvarmbhdradfpkegtpgw"
 
 [functions.utility-functions]
 verify_jwt = false
+
+[functions.create-get-table-info-function]
+verify_jwt = false

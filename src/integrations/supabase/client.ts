@@ -41,7 +41,8 @@ export const diagnoseDatabaseConnection = async () => {
     
     // Then get detailed information about the leads table structure
     console.log('🔍 Checking leads table structure...');
-    const { data: tableInfo, error: tableError } = await supabase
+    // Use type casting to bypass TypeScript checking for custom RPC functions
+    const { data: tableInfo, error: tableError } = await (supabase as any)
       .rpc('get_table_info', { table_name: 'leads' });
       
     if (tableError) {
@@ -109,7 +110,8 @@ export const insertTestLead = async () => {
 export const setupDatabaseHelpers = async () => {
   try {
     // Create utility function to get table information
-    const { error } = await supabase.rpc('create_get_table_info_function');
+    // Use type casting to bypass TypeScript checking for custom RPC functions
+    const { error } = await (supabase as any).rpc('create_get_table_info_function');
     
     if (error) {
       console.error('❌ Could not create database helpers:', error);

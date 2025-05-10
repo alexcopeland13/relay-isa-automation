@@ -20,6 +20,7 @@ import Index from '@/pages/Index';
 import TeamLeadControls from '@/pages/TeamLeadControls';
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
+import Diagnostics from '@/pages/Diagnostics';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
         <Route path="/pending-followups" element={<PendingFollowups />} />
         <Route path="/conversion-outcomes" element={<ConversionOutcomes />} />
         <Route path="/team-lead-controls" element={<TeamLeadControls />} />
+        <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />

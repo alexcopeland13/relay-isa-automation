@@ -1,4 +1,5 @@
 
+// This edge function creates utility functions in the database
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -33,12 +34,15 @@ serve(async (req) => {
       conversationData 
     } = requestData;
     
-    console.log("Received lead data from VAPI:", { leadInfo });
+    console.log("Received lead data:", { leadInfo });
 
     // Validate required fields
     if (!leadInfo || !leadInfo.firstName || !leadInfo.email) {
       throw new Error('Missing required lead information (firstName, email)');
     }
+
+    // Always normalize status to lowercase for consistency
+    const status = leadInfo.status ? leadInfo.status.toLowerCase() : 'new';
 
     // Insert lead
     const { data: leadData, error: leadError } = await supabase
@@ -49,7 +53,7 @@ serve(async (req) => {
         email: leadInfo.email,
         phone: leadInfo.phone || null,
         source: leadInfo.source || 'VAPI Voice Agent',
-        status: 'new',
+        status: status,
         next_follow_up: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Default follow-up 24h later
         notes: leadInfo.notes || null
       })
@@ -61,6 +65,7 @@ serve(async (req) => {
     }
 
     const leadId = leadData.id;
+    console.log(`Successfully created lead with ID: ${leadId} and status: ${status}`);
 
     // Optional: Insert qualification data if provided
     if (qualificationData) {
@@ -107,13 +112,25 @@ serve(async (req) => {
       }
     }
 
-    console.log("Successfully processed lead with ID:", leadId);
+    // Verify the lead was inserted by fetching it again
+    const { data: verifyLead, error: verifyError } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('id', leadId)
+      .single();
+      
+    if (verifyError) {
+      console.error("Warning: Could not verify lead insertion:", verifyError);
+    } else {
+      console.log("Lead verification successful:", verifyLead);
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         leadId: leadId,
-        message: "Lead data successfully inserted"
+        message: "Lead data successfully inserted",
+        verification: verifyLead || null
       }),
       { 
         headers: { 
@@ -128,7 +145,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        message: error.message
+        message: error instanceof Error ? error.message : 'Unknown error'
       }),
       { 
         status: 400, 

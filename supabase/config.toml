@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.create-get-table-info-function]
 verify_jwt = false
+
+[functions.diagnose-connection]
+verify_jwt = false

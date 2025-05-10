@@ -61,7 +61,8 @@ export function DiagnosticPanel() {
   const insertTestLead = async () => {
     try {
       setIsLoading(true);
-      const { success, error } = await supabase.functions.invoke('insert-lead', {
+      // Fix: Check the response structure properly
+      const response = await supabase.functions.invoke('insert-lead', {
         body: {
           leadInfo: {
             firstName: 'Diagnostic',
@@ -73,7 +74,8 @@ export function DiagnosticPanel() {
         }
       });
       
-      if (error) throw new Error(error);
+      // Safely access response properties
+      if (response.error) throw new Error(response.error.message);
       
       // Run diagnostics again after inserting
       await runDiagnostics();
@@ -159,10 +161,11 @@ export function DiagnosticPanel() {
                 <div>
                   <h3 className="font-medium mb-2">Connection Status</h3>
                   <div className="flex items-center gap-2">
-                    <Badge variant={diagnosticData.environment.supabaseUrl ? "success" : "destructive"}>
+                    {/* Fix: Use valid Badge variants - 'default' or 'outline' instead of 'success' */}
+                    <Badge variant={diagnosticData.environment.supabaseUrl ? "default" : "destructive"}>
                       Supabase URL {diagnosticData.environment.supabaseUrl ? "✓" : "✗"}
                     </Badge>
-                    <Badge variant={diagnosticData.environment.hasServiceKey ? "success" : "destructive"}>
+                    <Badge variant={diagnosticData.environment.hasServiceKey ? "default" : "destructive"}>
                       Service Key {diagnosticData.environment.hasServiceKey ? "✓" : "✗"}
                     </Badge>
                   </div>
@@ -188,7 +191,7 @@ export function DiagnosticPanel() {
                       {Object.values(diagnosticData.errors).some(e => e !== null) ? (
                         <AlertTriangle className="h-4 w-4 text-destructive" />
                       ) : (
-                        <CheckCircle className="h-4 w-4 text-success" />
+                        <CheckCircle className="h-4 w-4 text-green-500" />
                       )}
                     </div>
                   </AccordionTrigger>
@@ -205,10 +208,11 @@ export function DiagnosticPanel() {
                           <TableRow key={key}>
                             <TableCell>{key}</TableCell>
                             <TableCell>
+                              {/* Fix: Convert unknown type to string */}
                               {value ? (
-                                <span className="text-destructive">{value}</span>
+                                <span className="text-destructive">{String(value)}</span>
                               ) : (
-                                <span className="text-success">No error</span>
+                                <span className="text-green-500">No error</span>
                               )}
                             </TableCell>
                           </TableRow>
@@ -222,7 +226,7 @@ export function DiagnosticPanel() {
 
             <TabsContent value="leads">
               <h3 className="font-medium mb-2">Lead Statuses (Check for case sensitivity)</h3>
-              {diagnosticData.leadStatuses.length > 0 ? (
+              {diagnosticData.leadStatuses?.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>

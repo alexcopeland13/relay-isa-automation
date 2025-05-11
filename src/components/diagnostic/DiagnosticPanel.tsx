@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { RetellTestClient } from './RetellTestClient';
 
 export function DiagnosticPanel() {
   const [diagnosticData, setDiagnosticData] = useState<any>(null);
@@ -89,6 +90,12 @@ export function DiagnosticPanel() {
     }
   };
 
+  const handleRetellLeadCreated = async () => {
+    // After a Retell test lead is created, refresh our diagnostics
+    await runDiagnostics();
+    await checkDirectLeadsCount();
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -97,7 +104,7 @@ export function DiagnosticPanel() {
           {error && <AlertTriangle className="h-5 w-5 text-destructive" />}
         </CardTitle>
         <CardDescription>
-          Troubleshoot data flow between VAPI, Supabase, and the frontend
+          Troubleshoot data flow between VAPI, Retell, Supabase, and the frontend
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -146,6 +153,34 @@ export function DiagnosticPanel() {
             </AlertDescription>
           </Alert>
         )}
+
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <RetellTestClient onLeadCreated={handleRetellLeadCreated} />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Integration Testing</CardTitle>
+              <CardDescription>
+                Test direct integrations with voice agents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Use these tools to test different voice agent integrations with your Relay CRM.
+              </p>
+              
+              <div className="flex flex-col gap-2">
+                <Button 
+                  onClick={insertTestLead}
+                  variant="outline"
+                  disabled={isLoading}
+                >
+                  Test VAPI Integration
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {diagnosticData && (
           <Tabs defaultValue="overview">
@@ -232,6 +267,7 @@ export function DiagnosticPanel() {
                     <TableRow>
                       <TableHead>Lead ID</TableHead>
                       <TableHead>Status (exact value)</TableHead>
+                      <TableHead>Source</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -241,6 +277,11 @@ export function DiagnosticPanel() {
                         <TableCell>
                           <Badge variant="outline" className="font-mono">
                             "{lead.status}"
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {lead.source || 'Unknown'}
                           </Badge>
                         </TableCell>
                       </TableRow>

@@ -1,107 +1,149 @@
 
-// This edge function helps diagnose connection issues between Supabase and the frontend
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.0'
+// This edge function performs a comprehensive diagnosis of Supabase connectivity and data flow
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get the Supabase URL and service role key from environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    // Collect diagnostics about Supabase environment
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://qvarmbhdradfpkegtpgw.supabase.co';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get a count of all leads
-    const { data: leadsCount, error: countError } = await supabase
-      .from('leads')
-      .select('*', { count: 'exact' });
-
-    if (countError) {
-      throw new Error(`Error counting leads: ${countError.message}`);
-    }
-
-    // Get the most recent lead
-    const { data: recentLead, error: recentError } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (recentError && recentError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is ok
-      console.error('Error fetching most recent lead:', recentError);
-    }
-
-    // Get the statuses of all leads to check for case sensitivity issues
-    const { data: statuses, error: statusesError } = await supabase
-      .from('leads')
-      .select('id, status')
-      .order('created_at', { ascending: false });
-
-    if (statusesError) {
-      console.error('Error fetching statuses:', statusesError);
-    }
-
-    // Get table info to verify structure
-    const { data: tableInfo, error: tableInfoError } = await supabase
-      .rpc('get_table_info', { table_name: 'leads' });
-
-    if (tableInfoError) {
-      console.error('Error fetching table info:', tableInfoError);
-    }
-
-    // Send back all diagnostic information
-    const diagnosticData = {
-      timestamp: new Date().toISOString(),
+    // Create diagnostics result object
+    const diagnosticResult = {
       environment: {
-        supabaseUrl: supabaseUrl,
-        hasServiceKey: !!supabaseKey,
+        supabaseUrl: Boolean(supabaseUrl),
+        hasServiceKey: Boolean(supabaseServiceKey),
+        timestamp: new Date().toISOString()
       },
-      leadsCount: leadsCount?.length || 0,
-      recentLead: recentLead || null,
-      leadStatuses: statuses || [],
-      tableInfo: tableInfo || null,
       errors: {
-        countError: countError?.message || null,
-        recentError: recentError?.code === 'PGRST116' ? 'No leads found' : recentError?.message || null,
-        statusesError: statusesError?.message || null,
-        tableInfoError: tableInfoError?.message || null,
+        connection: null,
+        tableInfo: null,
+        leadsQuery: null,
+        specificsQuery: null
+      },
+      leadsCount: 0,
+      tableInfo: null,
+      leadStatuses: [],
+      recentLead: null,
+      agentSources: {
+        vapiCount: 0,
+        retellCount: 0,
+        otherCount: 0
       }
     };
+    
+    // Check for missing configuration
+    if (!supabaseUrl || !supabaseServiceKey) {
+      if (!supabaseUrl) diagnosticResult.errors.connection = "Missing SUPABASE_URL";
+      if (!supabaseServiceKey) diagnosticResult.errors.connection = "Missing SUPABASE_SERVICE_ROLE_KEY";
+      
+      return new Response(
+        JSON.stringify(diagnosticResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    try {
+      // Try to get table info for the leads table
+      const { data: tableData, error: tableError } = await supabase.rpc('get_table_info', { table_name: 'leads' });
+      
+      if (tableError) {
+        console.error("Error getting table info:", tableError);
+        diagnosticResult.errors.tableInfo = tableError.message;
+      } else {
+        diagnosticResult.tableInfo = tableData;
+      }
+    } catch (tableInfoErr) {
+      console.error("Exception getting table info:", tableInfoErr);
+      diagnosticResult.errors.tableInfo = tableInfoErr instanceof Error ? tableInfoErr.message : String(tableInfoErr);
+    }
+
+    try {
+      // Get basic leads count
+      const { data: leadsData, error: leadsError, count } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact' });
+      
+      if (leadsError) {
+        console.error("Error getting leads:", leadsError);
+        diagnosticResult.errors.leadsQuery = leadsError.message;
+      } else {
+        diagnosticResult.leadsCount = count || 0;
+        
+        // Get specifically status values to check for case sensitivity issues
+        const { data: statusesData, error: statusesError } = await supabase
+          .from('leads')
+          .select('id, status, source');
+        
+        if (statusesError) {
+          console.error("Error getting lead statuses:", statusesError);
+          diagnosticResult.errors.specificsQuery = statusesError.message;
+        } else {
+          diagnosticResult.leadStatuses = statusesData;
+          
+          // Count leads by agent source
+          if (statusesData) {
+            statusesData.forEach((lead) => {
+              const source = (lead.source || '').toLowerCase();
+              if (source.includes('vapi')) {
+                diagnosticResult.agentSources.vapiCount++;
+              } else if (source.includes('retell')) {
+                diagnosticResult.agentSources.retellCount++;
+              } else {
+                diagnosticResult.agentSources.otherCount++;
+              }
+            });
+          }
+        }
+        
+        // Get most recent lead
+        if (leadsData && leadsData.length > 0) {
+          const { data: recentData, error: recentError } = await supabase
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (!recentError && recentData) {
+            diagnosticResult.recentLead = recentData;
+          }
+        }
+      }
+    } catch (leadsQueryErr) {
+      console.error("Exception getting leads:", leadsQueryErr);
+      diagnosticResult.errors.leadsQuery = leadsQueryErr instanceof Error ? leadsQueryErr.message : String(leadsQueryErr);
+    }
 
     return new Response(
-      JSON.stringify(diagnosticData),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
+      JSON.stringify(diagnosticResult),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
-    console.error('Diagnostic error:', error);
+  } catch (err) {
+    console.error("Unexpected error during diagnostics:", err);
     
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error',
+      JSON.stringify({
+        error: err instanceof Error ? err.message : String(err),
         timestamp: new Date().toISOString()
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      { 
         status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

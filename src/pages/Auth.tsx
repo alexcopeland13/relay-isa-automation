@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -16,15 +17,35 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   
   const navigate = useNavigate();
   const location = useLocation();
   
   useEffect(() => {
+    // Check for existing session on component mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/dashboard');
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session) {
+          navigate('/dashboard');
+        }
+      }
+    );
+
     // Check if the URL contains signup parameter
     const params = new URLSearchParams(location.search);
     setIsSignUp(params.get('signup') === 'true');
-  }, [location]);
+
+    return () => subscription.unsubscribe();
+  }, [location, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,18 +73,36 @@ const Auth = () => {
         return;
       }
 
-      // Simulate auth for now - in a real app, this would connect to Supabase auth
-      // This is just a placeholder until we implement real authentication
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: isSignUp ? "Account created successfully" : "Logged in successfully",
-        description: "Redirecting to dashboard...",
-      });
+      if (isSignUp) {
+        // Sign up the user
+        const { data, error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName
+            }
+          }
+        });
 
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
+        if (error) throw error;
+        
+        toast({
+          title: "Account created successfully",
+          description: "You'll be redirected to the dashboard shortly.",
+        });
+
+      } else {
+        // Log in the user
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        toast({
+          title: "Logged in successfully",
+          description: "Redirecting to dashboard...",
+        });
+      }
 
     } catch (error) {
       toast({
@@ -118,6 +157,35 @@ const Auth = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {isSignUp && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input 
+                          id="firstName"
+                          type="text" 
+                          placeholder="John" 
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input 
+                          id="lastName"
+                          type="text" 
+                          placeholder="Doe" 
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 

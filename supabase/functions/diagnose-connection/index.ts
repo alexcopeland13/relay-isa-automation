@@ -58,14 +58,21 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
-      // Try to get table info for the leads table
-      const { data: tableData, error: tableError } = await supabase.rpc('get_table_info', { table_name: 'leads' });
+      // Try to get basic database information instead of using the get_table_info function
+      // This avoids the dependency on a function that may not exist
+      const { data: tablesData, error: tableError } = await supabase
+        .from('leads')
+        .select('count')
+        .limit(1);
       
       if (tableError) {
         console.error("Error getting table info:", tableError);
         diagnosticResult.errors.tableInfo = tableError.message;
       } else {
-        diagnosticResult.tableInfo = tableData;
+        diagnosticResult.tableInfo = {
+          exists: true,
+          message: "Table 'leads' exists and is accessible"
+        };
       }
     } catch (tableInfoErr) {
       console.error("Exception getting table info:", tableInfoErr);
@@ -93,7 +100,7 @@ serve(async (req) => {
           console.error("Error getting lead statuses:", statusesError);
           diagnosticResult.errors.specificsQuery = statusesError.message;
         } else {
-          diagnosticResult.leadStatuses = statusesData;
+          diagnosticResult.leadStatuses = statusesData || [];
           
           // Count leads by agent source
           if (statusesData) {

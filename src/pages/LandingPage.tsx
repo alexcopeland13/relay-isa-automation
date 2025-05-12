@@ -80,7 +80,11 @@ const LandingPage = () => {
                 </Button>
               </Link>
               <Link to="/diagnostics">
-                <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10">
+                <Button 
+                  size="lg" 
+                  variant="secondary" 
+                  className="bg-white/20 text-white border border-white hover:bg-white/30"
+                >
                   System Demo
                 </Button>
               </Link>

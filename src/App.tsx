@@ -25,19 +25,13 @@ import { Session } from '@supabase/supabase-js';
 import './App.css';
 import Diagnostics from '@/pages/Diagnostics';
 
-// Protected route wrapper component
+// Modified Protected route wrapper component - DEMO MODE (skips auth check)
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Set initial loading to false
 
   useEffect(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
+    // Still set up the auth state change handler for when auth is needed later
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -48,6 +42,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // DEMO MODE: Always render children without checking authentication
+  return <>{children}</>;
+
+  // Commented out original authentication code
+  /*
   // Show loading state while checking authentication
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -60,6 +59,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // If authenticated, render the protected content
   return <>{children}</>;
+  */
 };
 
 function App() {
@@ -70,7 +70,7 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
         
-        {/* Protected routes */}
+        {/* Protected routes - now accessible without authentication */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
         <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />

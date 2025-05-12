@@ -16,8 +16,8 @@ import CompletedTasks from '@/pages/CompletedTasks';
 import PendingFollowups from '@/pages/PendingFollowups';
 import ConversionOutcomes from '@/pages/ConversionOutcomes';
 import NotFound from '@/pages/NotFound';
-import Index from '@/pages/Index';
-import TeamLeadControls from '@/pages/TeamLeadControls';
+import LandingPage from '@/pages/LandingPage';
+import Auth from '@/pages/Auth';
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 import Diagnostics from '@/pages/Diagnostics';
@@ -26,7 +26,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/agents" element={<Agents />} />
@@ -41,7 +42,6 @@ function App() {
         <Route path="/completed-tasks" element={<CompletedTasks />} />
         <Route path="/pending-followups" element={<PendingFollowups />} />
         <Route path="/conversion-outcomes" element={<ConversionOutcomes />} />
-        <Route path="/team-lead-controls" element={<TeamLeadControls />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

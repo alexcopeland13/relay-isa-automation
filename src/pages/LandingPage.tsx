@@ -68,7 +68,7 @@ const LandingPage = () => {
           <div className="max-w-3xl text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
               AI-Powered Inside Sales Agents 
-              <span className="text-emmaccent"> for Real Estate & Mortgage</span>
+              <span className="text-emmaccent"> for Real Estate & Mortgage Industries</span>
             </h1>
             <p className="text-lg md:text-xl mb-10 text-white/90">
               Relay automates lead qualification, nurturing, and handoff so your team can focus on closing deals, not chasing leads.

@@ -568,12 +568,12 @@ const Leads = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <LeadDistribution leads={leads} />
+        <LeadDistribution leads={leads} className="lg:col-span-2" />
         
         <div className="bg-card p-4 rounded-lg border lg:col-span-1">
             <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
             <p>Total Leads: {leads.length}</p>
-            <p>New Leads (Today): 0</p> {/* Removed JSX comment from this line */}
+            <p>New Leads (Today): 0</p>
             {/* Placeholder for more quick stats */}
         </div>
       </div>

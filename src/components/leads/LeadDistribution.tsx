@@ -4,12 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Lead } from '@/types/lead';
+import { cn } from '@/lib/utils'; // Import cn utility
 
-interface LeadDistributionProps {
+interface LeadDistributionProps extends React.HTMLAttributes<HTMLDivElement> {
   leads: Lead[];
 }
 
-export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
+export const LeadDistribution = ({ leads, className, ...props }: LeadDistributionProps) => {
   const [viewType, setViewType] = useState<'status' | 'source' | 'type'>('status');
   
   // Ensure leads is always an array
@@ -45,7 +46,6 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     
     if (viewType === 'status') {
       const statusCounts = safeLeads.reduce((acc, lead) => {
-        // Add null check for lead and lead.status
         const status = lead && lead.status ? lead.status : 'Unknown';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
@@ -60,7 +60,6 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
     
     else if (viewType === 'source') {
       const sourceCounts = safeLeads.reduce((acc, lead) => {
-        // Add null check for lead and lead.source
         const source = lead && lead.source ? lead.source : 'Unknown';
         acc[source] = (acc[source] || 0) + 1;
         return acc;
@@ -73,9 +72,8 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
       }));
     }
     
-    else {
+    else { // type
       const typeCounts = safeLeads.reduce((acc, lead) => {
-        // Add null check for lead and lead.type
         const type = lead && lead.type ? lead.type : 'Unknown';
         acc[type] = (acc[type] || 0) + 1;
         return acc;
@@ -109,7 +107,7 @@ export const LeadDistribution = ({ leads }: LeadDistributionProps) => {
   };
   
   return (
-    <Card className="col-span-1 lg:col-span-2">
+    <Card className={cn("col-span-1 lg:col-span-2", className)} {...props}> {/* Apply className here and spread other props */}
       <CardHeader>
         <div className="flex flex-col space-y-2 md:flex-row md:justify-between md:space-y-0">
           <div>

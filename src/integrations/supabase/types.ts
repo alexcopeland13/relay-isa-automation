@@ -164,6 +164,7 @@ export type Database = {
       leads: {
         Row: {
           assigned_to: string | null
+          cinc_lead_id: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
@@ -173,11 +174,14 @@ export type Database = {
           next_follow_up: string | null
           notes: string | null
           phone: string | null
+          phone_e164: string | null
+          phone_raw: string | null
           source: string | null
           status: string | null
         }
         Insert: {
           assigned_to?: string | null
+          cinc_lead_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -187,11 +191,14 @@ export type Database = {
           next_follow_up?: string | null
           notes?: string | null
           phone?: string | null
+          phone_e164?: string | null
+          phone_raw?: string | null
           source?: string | null
           status?: string | null
         }
         Update: {
           assigned_to?: string | null
+          cinc_lead_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -201,6 +208,8 @@ export type Database = {
           next_follow_up?: string | null
           notes?: string | null
           phone?: string | null
+          phone_e164?: string | null
+          phone_raw?: string | null
           source?: string | null
           status?: string | null
         }
@@ -349,6 +358,30 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          event_id: string | null
+          id: string
+          payload: Json | null
+          provider: string | null
+          received_at: string | null
+        }
+        Insert: {
+          event_id?: string | null
+          id?: string
+          payload?: Json | null
+          provider?: string | null
+          received_at?: string | null
+        }
+        Update: {
+          event_id?: string | null
+          id?: string
+          payload?: Json | null
+          provider?: string | null
+          received_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -388,6 +421,7 @@ export type Database = {
         Args: { follow_up_date: string }
         Returns: {
           assigned_to: string | null
+          cinc_lead_id: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
@@ -397,6 +431,8 @@ export type Database = {
           next_follow_up: string | null
           notes: string | null
           phone: string | null
+          phone_e164: string | null
+          phone_raw: string | null
           source: string | null
           status: string | null
         }[]
@@ -405,6 +441,7 @@ export type Database = {
         Args: { lead_uuid: string; new_status: string }
         Returns: {
           assigned_to: string | null
+          cinc_lead_id: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
@@ -414,6 +451,8 @@ export type Database = {
           next_follow_up: string | null
           notes: string | null
           phone: string | null
+          phone_e164: string | null
+          phone_raw: string | null
           source: string | null
           status: string | null
         }

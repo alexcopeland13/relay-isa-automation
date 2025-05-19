@@ -9,6 +9,9 @@ import { LeadMetrics } from '@/components/leads/LeadMetrics';
 import { LeadDistribution } from '@/components/leads/LeadDistribution';
 import { LeadFormModal } from '@/components/leads/LeadFormModal';
 import { LeadAssignmentModal } from '@/components/leads/LeadAssignmentModal';
+import { LeadsHeader } from '@/components/leads/LeadsHeader';
+import { LeadsStatsPanel } from '@/components/leads/LeadsStatsPanel';
+import { LeadsViewTabs } from '@/components/leads/LeadsViewTabs';
 import { 
   PlusCircle, 
   UserPlus, 
@@ -22,7 +25,7 @@ import { parsePhoneNumberWithError, PhoneNumber, CountryCode } from 'libphonenum
 import { sampleLeads } from '@/data/sampleLeadsData';
 import { useAsyncData } from '@/hooks/use-async-data';
 import { ErrorContainer } from '@/components/ui/error-container';
-import { ExportMenu, ExportOptions } from '@/components/ui/export-menu';
+import { ExportOptions } from '@/components/ui/export-menu';
 import { 
   TableSkeleton, 
   StatCardSkeleton, 
@@ -404,6 +407,11 @@ const Leads = () => {
     });
   };
   
+  const handleNewLeadClick = () => {
+    setSelectedLead(undefined);
+    setShowLeadForm(true);
+  };
+  
   const exportData = async (format: string, options: ExportOptions) => {
     setExporting(true);
     
@@ -501,102 +509,24 @@ const Leads = () => {
 
   return (
     <PageLayout>
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Leads Management</h1>
-            <p className="text-muted-foreground mt-1">View, filter, and manage all your leads in one place</p>
-          </div>
-          
-          <div className="flex items-center gap-2 mt-4 sm:mt-0">
-            <Button 
-              variant="outline" 
-              size="icon"
-              title="Refresh data" 
-              onClick={handleManualRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-          
-            <ExportMenu 
-              data={leads} 
-              filename="relay_leads_export"
-              exportableCols={['name', 'email', 'phone_raw', 'phone_e164', 'cinc_lead_id', 'status', 'source', 'type', 'score', 'createdAt', 'lastContact', 'assignedTo']}
-              supportedFormats={['csv', 'email']}
-              onExport={exportData}
-            />
-            
-            <Button className="gap-1" onClick={() => {
-              setSelectedLead(undefined); 
-              setShowLeadForm(true);
-            }}>
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">New Lead</span>
-            </Button>
-            
-            <Button variant="outline" size="icon" title="Import Leads (Coming Soon)" disabled>
-              <UploadCloud className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <LeadsHeader
+        isLoading={isLoading}
+        onManualRefresh={handleManualRefresh}
+        leads={leads}
+        onExportData={exportData}
+        onNewLeadClick={handleNewLeadClick}
+      />
       
-      <div className="mb-6">
-        <LeadMetrics leads={leads} />
-      </div>
+      <LeadsStatsPanel leads={leads} />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <LeadDistribution leads={leads} className="lg:col-span-2" />
-        
-        <div className="bg-card p-4 rounded-lg border lg:col-span-1">
-            <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
-            <p>Total Leads: {leads.length}</p>
-            <p>New Leads (Today): 0</p>
-            {/* Placeholder for more quick stats */}
-        </div>
-      </div>
-      
-      <div className="bg-card rounded-lg border border-border p-6">
-        <div className="flex justify-between items-center mb-4">
-          <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'list' | 'board')}>
-            <TabsList>
-              <TabsTrigger value="list">List View</TabsTrigger>
-              <TabsTrigger value="board">Board View</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-1" disabled>
-              <Filter className="h-4 w-4" />
-              <span>Filter</span>
-            </Button>
-            
-            <Button variant="outline" className="gap-1" disabled>
-              <ListFilter className="h-4 w-4" />
-              <span>Saved Filters</span>
-            </Button>
-          </div>
-        </div>
-        
-        <div>
-            <TabsContent value="list" className="mt-0" style={{ display: activeView === 'list' ? 'block' : 'none' }}>
-              <LeadsList 
-                leads={leads}
-                onSelectLead={handleSelectLead}
-                onAssignLead={handleOpenAssignmentModal}
-                onScheduleFollowUp={handleScheduleFollowUp}
-              />
-            </TabsContent>
-            
-            <TabsContent value="board" className="mt-0" style={{ display: activeView === 'board' ? 'block' : 'none' }}>
-              <LeadsBoard
-                leads={leads}
-                onSelectLead={handleSelectLead}
-              />
-            </TabsContent>
-        </div>
-      </div>
+      <LeadsViewTabs
+        leads={leads}
+        activeView={activeView}
+        onActiveViewChange={setActiveView}
+        onSelectLead={handleSelectLead}
+        onOpenAssignmentModal={handleOpenAssignmentModal}
+        onScheduleFollowUp={handleScheduleFollowUp}
+      />
       
       {showLeadForm && (
         <LeadFormModal 

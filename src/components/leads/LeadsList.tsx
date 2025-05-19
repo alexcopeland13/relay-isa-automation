@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { 
   Table, 
@@ -31,10 +32,16 @@ export const LeadsList = ({
   const [filterType, setFilterType] = useState<string>('all');
   
   const filteredLeads = leads.filter(lead => {
-    if (searchQuery && !lead.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !lead.email.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
+    const lowerSearchQuery = searchQuery.toLowerCase();
+    // Search by name, email, or phone numbers
+    const matchesSearch = !searchQuery || 
+      lead.name.toLowerCase().includes(lowerSearchQuery) ||
+      lead.email.toLowerCase().includes(lowerSearchQuery) ||
+      (lead.phone_raw && lead.phone_raw.toLowerCase().includes(lowerSearchQuery)) ||
+      (lead.phone_e164 && lead.phone_e164.toLowerCase().includes(lowerSearchQuery)) ||
+      (lead.phone && lead.phone.toLowerCase().includes(lowerSearchQuery)); // Fallback to old phone field
+
+    if (!matchesSearch) return false;
     
     if (filterStatus !== 'all' && lead.status !== filterStatus) {
       return false;
@@ -62,6 +69,11 @@ export const LeadsList = ({
         onFilterStatusChange={setFilterStatus}
         onFilterSourceChange={setFilterSource}
         onFilterTypeChange={setFilterType}
+        // Pass unique sources from leads for the filter dropdown
+        availableSources={[...new Set(leads.map(l => l.source))].filter(Boolean) as string[]}
+        availableStatuses={[...new Set(leads.map(l => l.status))].filter(Boolean) as Lead['status'][]}
+        availableTypes={[...new Set(leads.map(l => l.type))].filter(Boolean) as Lead['type'][]}
+
       />
       
       <div className="rounded-md border">
@@ -69,17 +81,19 @@ export const LeadsList = ({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[25%]">Lead Name</TableHead>
+              {/* Consider adding a phone column if important for quick view */}
+              {/* <TableHead className="w-[15%]">Phone</TableHead> */}
               <TableHead className="w-[12%]">Status</TableHead>
               <TableHead className="w-[12%]">Type</TableHead>
               <TableHead className="w-[15%]">Source</TableHead>
               <TableHead className="w-[10%]">Score</TableHead>
               <TableHead className="w-[15%]">Last Contact</TableHead>
-              <TableHead className="w-[11%]">Actions</TableHead>
+              <TableHead className="w-[11%] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredLeads.length === 0 ? (
-              <LeadEmptyState />
+              <LeadEmptyState colSpan={7} /> /* Adjusted colSpan */
             ) : (
               filteredLeads.map((lead) => (
                 <LeadTableRow 
@@ -97,3 +111,4 @@ export const LeadsList = ({
     </div>
   );
 };
+

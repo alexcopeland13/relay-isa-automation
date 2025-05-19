@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Filter
 } from 'lucide-react';
+import { parsePhoneNumberWithError, PhoneNumber, CountryCode } from 'libphonenumber-js/max';
 import { sampleLeads } from '@/data/sampleLeadsData';
 import { useAsyncData } from '@/hooks/use-async-data';
 import { ErrorContainer } from '@/components/ui/error-container';
@@ -61,7 +62,10 @@ const fetchLeadsData = async () => {
       id: lead.id,
       name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unnamed Lead',
       email: lead.email || '',
-      phone: lead.phone || '',
+      phone: lead.phone || '', // Keep for display if needed, but UI should prefer phone_raw/phone_e164
+      phone_raw: lead.phone_raw || lead.phone, // Fallback to old phone if phone_raw is not present
+      phone_e164: lead.phone_e164,
+      cinc_lead_id: lead.cinc_lead_id,
       status: mapLeadStatus(lead.status),
       source: lead.source || '',
       createdAt: lead.created_at,
@@ -69,11 +73,11 @@ const fetchLeadsData = async () => {
       assignedTo: lead.assigned_to || 'unassigned',
       type: determineLeadType(lead),
       interestType: determineInterestType(lead),
-      location: determineLocation(lead),
+      location: determineLocation(lead), // This was missing, added back
       score: calculateLeadScore(lead),
       notes: lead.notes || '',
-      qualification_data: lead.qualification_data,
-      conversations: lead.conversations
+      qualification_data: lead.qualification_data || [],
+      conversations: lead.conversations || []
     }));
 
     console.log('🔄 Fetched and formatted leads from Supabase:', formattedLeads);
@@ -115,14 +119,16 @@ const mapLeadStatus = (status: string | null): Lead['status'] => {
     'lost': 'Lost'
   };
   
-  return statusMap[status || 'new'] || 'New';
+  return statusMap[status?.toLowerCase() || 'new'] || 'New';
 };
 
 const determineLeadType = (lead: any): 'Mortgage' | 'Realtor' => {
   if (lead.qualification_data && lead.qualification_data.length > 0) {
     return 'Mortgage';
   }
-  return 'Realtor'; // Default if we can't determine
+  // Check source or other indicators if needed
+  if (lead.source?.toLowerCase().includes('realtor')) return 'Realtor';
+  return 'Mortgage'; // Default type
 };
 
 const determineInterestType = (lead: any): string => {
@@ -131,40 +137,33 @@ const determineInterestType = (lead: any): string => {
     if (qualification.loan_type) return qualification.loan_type;
     if (qualification.property_type) return qualification.property_type;
   }
-  return 'Unknown';
+  // Infer from other fields if possible, e.g. notes or source specific data
+  return lead.interest_type || 'Unknown'; // Assuming an interest_type field might exist
 };
 
 const determineLocation = (lead: any): string => {
-  return lead.location || 'Unknown';
+  // Assuming location might be part of lead object or qualification_data
+  return lead.location || (lead.qualification_data?.[0]?.property_location) || 'Unknown';
 };
 
 const calculateLeadScore = (lead: any): number => {
-  // Simple scoring algorithm
-  let score = 50; // Start with average score
-  
-  // Increase score based on qualification data
+  let score = 50;
   if (lead.qualification_data && lead.qualification_data.length > 0) {
     const qual = lead.qualification_data[0];
-    
-    // Credit score
     if (qual.estimated_credit_score) {
       if (qual.estimated_credit_score.includes('700')) score += 15;
       else if (qual.estimated_credit_score.includes('600')) score += 10;
     }
-    
-    // Income
     if (qual.annual_income && qual.annual_income > 100000) score += 10;
-    
-    // Down payment
     if (qual.down_payment_percentage && qual.down_payment_percentage > 20) score += 10;
   }
-  
-  // Increase score if they've had conversations
   if (lead.conversations && lead.conversations.length > 0) {
     score += 5 * Math.min(lead.conversations.length, 5);
   }
-  
-  // Cap score at 0-100
+  // Adjust score based on status
+  if (lead.status === 'Qualified') score += 10;
+  if (lead.status === 'Proposal') score += 5;
+
   return Math.max(0, Math.min(100, score));
 };
 
@@ -249,147 +248,126 @@ const Leads = () => {
     setRefreshTrigger(Date.now());
   }, [toast]);
 
-  const handleLeadSave = async (updatedLead: Lead) => {
+  const handleLeadSave = async (leadToSave: Lead) => { // leadToSave now comes from LeadFormModal with phone_raw and phone_e164
     try {
-      if (leadsData?.leads) {
-        let updatedLeads: Lead[];
+        const isNewLead = !leadToSave.id || !leadsData?.leads.find(l => l.id === leadToSave.id);
         
-        if (selectedLead) {
-          // Update existing lead
-          updatedLeads = leadsData.leads.map(lead => 
-            lead.id === updatedLead.id ? updatedLead : lead
-          );
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('leads')
-            .update({
-              first_name: updatedLead.name.split(' ')[0],
-              last_name: updatedLead.name.split(' ').slice(1).join(' '),
-              email: updatedLead.email,
-              phone: updatedLead.phone,
-              status: updatedLead.status.toLowerCase(),
-              source: updatedLead.source,
-              notes: updatedLead.notes,
-              // Add other fields as needed
-            })
-            .eq('id', updatedLead.id);
-          
-          if (error) {
-            console.error('Error updating lead in Supabase:', error);
+        // Prepare data for Supabase (snake_case, split name, etc.)
+        const nameParts = leadToSave.name.split(' ');
+        const first_name = nameParts[0] || '';
+        const last_name = nameParts.slice(1).join(' ') || '';
+
+        const supabaseLeadData = {
+            first_name: first_name,
+            last_name: last_name,
+            email: leadToSave.email,
+            phone: leadToSave.phone, // Keep old phone field for now if db schema still has it
+            phone_raw: leadToSave.phone_raw,
+            phone_e164: leadToSave.phone_e164,
+            status: leadToSave.status.toLowerCase(),
+            source: leadToSave.source,
+            notes: leadToSave.notes,
+            cinc_lead_id: leadToSave.cinc_lead_id,
+            // Add other mappable fields: location, type, interestType if they map to DB columns
+            // assigned_to: leadToSave.assignedTo, // Handled by assignment modal
+            last_contacted: new Date().toISOString(), // Update last contact on save
+        };
+
+        if (isNewLead) {
+            // Create new lead
+            const { data: newLeadData, error } = await supabase
+                .from('leads')
+                .insert(supabaseLeadData)
+                .select() // Select all fields of the new lead
+                .single();
+
+            if (error) {
+                console.error('Error creating lead in Supabase:', error);
+                toast({
+                    title: 'Creation Error',
+                    description: `Failed to create lead: ${error.message}.`,
+                    variant: 'destructive',
+                });
+                // Optionally, update locally as a fallback, but data will be out of sync
+                // const updatedLeads = [...(leadsData?.leads || []), leadToSave]; // This leadToSave might not have the DB ID
+                // setLeadsData({ leads: updatedLeads });
+                // localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
+                return; // Stop execution if create fails
+            }
             toast({
-              title: 'Update Error',
-              description: 'Failed to update lead in database. Changes saved locally only.',
-              variant: 'destructive',
+                title: 'Lead Created',
+                description: `${newLeadData.first_name} ${newLeadData.last_name} has been successfully created.`,
             });
-          } else {
-            toast({
-              title: 'Lead Updated',
-              description: 'Lead has been successfully updated.',
-            });
-          }
         } else {
-          // Create new lead
-          const { data: newLeadData, error } = await supabase
-            .from('leads')
-            .insert({
-              first_name: updatedLead.name.split(' ')[0],
-              last_name: updatedLead.name.split(' ').slice(1).join(' '),
-              email: updatedLead.email,
-              phone: updatedLead.phone,
-              status: updatedLead.status.toLowerCase(),
-              source: updatedLead.source,
-              notes: updatedLead.notes,
-              // Add other fields as needed
-            })
-            .select()
-            .single();
-          
-          if (error) {
-            console.error('Error creating lead in Supabase:', error);
+            // Update existing lead
+            const { data: updatedLeadData, error } = await supabase
+                .from('leads')
+                .update(supabaseLeadData)
+                .eq('id', leadToSave.id)
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('Error updating lead in Supabase:', error);
+                toast({
+                    title: 'Update Error',
+                    description: `Failed to update lead: ${error.message}.`,
+                    variant: 'destructive',
+                });
+                // Optionally, update locally as a fallback
+                return; // Stop execution if update fails
+            }
             toast({
-              title: 'Creation Error',
-              description: 'Failed to create lead in database. Changes saved locally only.',
-              variant: 'destructive',
+                title: 'Lead Updated',
+                description: `${updatedLeadData.first_name} ${updatedLeadData.last_name} has been successfully updated.`,
             });
-            // Fall back to local update
-            updatedLeads = [...leadsData.leads, updatedLead];
-          } else {
-            // Use the new lead with the ID from Supabase
-            const newLead: Lead = {
-              ...updatedLead,
-              id: newLeadData.id,
-              createdAt: newLeadData.created_at
-            };
-            updatedLeads = [...leadsData.leads, newLead];
-            toast({
-              title: 'Lead Created',
-              description: 'New lead has been successfully created.',
-            });
-          }
         }
         
-        setLeadsData({ leads: updatedLeads });
-        localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
-        setSelectedLead(undefined);
-        
-        // Trigger a refresh to ensure data consistency
-        setRefreshTrigger(Date.now());
-      }
+        // Refresh data from Supabase to get the latest state including any backend-generated fields
+        // This also updates local state and localStorage via the useEffect hook watching `data`
+        refresh(); 
+        setSelectedLead(undefined); // Clear selected lead after save
+
     } catch (error) {
-      console.error('Error saving lead:', error);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred while saving the lead.',
-        variant: 'destructive',
-      });
+        console.error('Error saving lead:', error);
+        toast({
+            title: 'Save Error',
+            description: 'An unexpected error occurred while saving the lead. Please check console.',
+            variant: 'destructive',
+        });
     }
   };
   
   const handleAssignLead = async (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
     try {
-      if (leadsData?.leads) {
-        const updatedLeads = leadsData.leads.map(lead => {
-          if (lead.id === leadId) {
-            return {
-              ...lead,
-              assignedTo: agentId,
-              lastContact: new Date().toISOString()
-            };
-          }
-          return lead;
+      // ... keep existing code for local update if desired, but Supabase update + refresh is better
+        
+      const { error } = await supabase
+        .from('leads')
+        .update({
+          assigned_to: agentId,
+          last_contacted: new Date().toISOString()
+          // You might want to add assignment notes to a separate table or a JSONB field in leads
+        })
+        .eq('id', leadId);
+      
+      if (error) {
+        console.error('Error updating lead assignment in Supabase:', error);
+        toast({
+          title: 'Assignment Error',
+          description: 'Failed to update lead assignment in database.',
+          variant: 'destructive',
         });
-        
-        // Update in Supabase
-        const { error } = await supabase
-          .from('leads')
-          .update({
-            assigned_to: agentId,
-            last_contacted: new Date().toISOString()
-          })
-          .eq('id', leadId);
-        
-        if (error) {
-          console.error('Error updating lead assignment in Supabase:', error);
-          toast({
-            title: 'Assignment Error',
-            description: 'Failed to update lead assignment in database. Changes saved locally only.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Lead Assigned',
-            description: 'Lead has been successfully assigned.',
-          });
-        }
-        
-        localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
-        setLeadsData({ leads: updatedLeads });
-        setSelectedLead(undefined);
-        
-        // Trigger a refresh
-        setRefreshTrigger(Date.now());
+      } else {
+        toast({
+          title: 'Lead Assigned',
+          description: 'Lead has been successfully assigned.',
+        });
+        refresh(); // Refresh data to reflect changes
       }
+      setSelectedLead(undefined); // Close assignment modal or clear selection
+      setShowAssignmentModal(false);
+
     } catch (error) {
       console.error('Error assigning lead:', error);
       toast({
@@ -421,15 +399,14 @@ const Leads = () => {
     setExporting(true);
     
     try {
+      // Simulate export process
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      if (format === 'csv') {
-        console.log(`Exporting ${format} data with options:`, options);
-      } else if (format === 'pdf') {
-        console.log(`Exporting ${format} data with options:`, options);
-      } else if (format === 'email') {
-        console.log(`Sending export via email to ${options.recipient} with options:`, options);
-      }
+      const dataToExport = leadsData?.leads || [];
+      // Actual export logic based on format (CSV, PDF) and options
+      // For CSV: convert dataToExport to CSV string and trigger download
+      // For Email: send dataToExport to a backend service that emails it
+      console.log(`Exporting ${dataToExport.length} leads as ${format} with options:`, options);
       
       toast({
         title: format === 'email' ? 'Export Sent' : 'Export Complete',
@@ -459,41 +436,33 @@ const Leads = () => {
           </div>
           
           <div className="flex gap-2 mt-4 sm:mt-0">
-            <StatCardSkeleton />
+            {/* Replace with actual component or remove if not needed */}
+            <Button variant="outline" disabled>Loading Actions...</Button>
           </div>
         </div>
       </div>
       
-      <div className="mb-6">
+      {/* Simplified loading state */}
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
+          {[...Array(4)].map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <ChartSkeleton />
-      </div>
-      
-      <div className="bg-card rounded-lg border border-border p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <StatCardSkeleton />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <ChartSkeleton className="lg:col-span-2" />
+          <ChartSkeleton />
         </div>
-        
-        <TableSkeleton rows={6} cols={5} />
+        <div className="bg-card rounded-lg border border-border p-6">
+          <TableSkeleton rows={6} cols={7} /> {/* Adjusted cols for new table structure */}
+        </div>
       </div>
     </PageLayout>
   );
 
-  if (isLoading) {
+  if (isLoading && !leadsData) { // Show loading only if no data is present yet
     return renderLoading();
   }
 
-  if (error) {
+  if (error && !leadsData) { // Show error only if no data could be fetched at all
     return (
       <PageLayout>
         <div className="mb-6">
@@ -501,23 +470,20 @@ const Leads = () => {
           <p className="text-muted-foreground mt-1">View, filter, and manage all your leads in one place</p>
         </div>
         
-        <div className="mb-6">
-          <ErrorContainer
-            title="Leads Data Error"
-            description="We couldn't load your leads data."
-            error={error}
-            onRetry={retry}
-            suggestions={[
-              "Check your internet connection",
-              "Verify your access permissions",
-              "Try refreshing the page",
-              "Contact support if the problem persists"
-            ]}
-          />
-        </div>
+        <ErrorContainer
+          title="Failed to Load Leads"
+          description="We couldn't retrieve your leads data. Please try again."
+          error={error} // Pass the actual error object
+          onRetry={handleManualRefresh} // Use manual refresh for retry
+          suggestions={[
+            "Check your internet connection.",
+            "Try refreshing the page.",
+            "If the problem persists, contact support.",
+          ]}
+        />
         
-        <div className="flex justify-end mb-6">
-          <Button onClick={retry} variant="outline" className="gap-2">
+        <div className="flex justify-end mt-4">
+          <Button onClick={handleManualRefresh} variant="outline" className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Retry
           </Button>
@@ -549,22 +515,23 @@ const Leads = () => {
             </Button>
           
             <ExportMenu 
-              data={leads}
-              filename="relay_leads"
-              exportableCols={['name', 'email', 'phone', 'status', 'source', 'date']}
-              supportedFormats={['csv', 'email']}
+              data={leads} // Pass current leads data
+              filename="relay_leads_export"
+              exportableCols={['name', 'email', 'phone_raw', 'phone_e164', 'status', 'source', 'createdAt', 'lastContact', 'assignedTo', 'cinc_lead_id']}
+              supportedFormats={['csv', 'email']} // Example formats
               onExport={exportData}
+              disabled={exporting || isLoading}
             />
             
             <Button className="gap-1" onClick={() => {
-              setSelectedLead(undefined);
+              setSelectedLead(undefined); // Clear selected lead for new form
               setShowLeadForm(true);
             }}>
               <UserPlus className="h-4 w-4" />
               <span className="hidden sm:inline">New Lead</span>
             </Button>
             
-            <Button variant="outline" size="icon" title="Import Leads">
+            <Button variant="outline" size="icon" title="Import Leads (Coming Soon)" disabled>
               <UploadCloud className="h-4 w-4" />
             </Button>
           </div>
@@ -576,7 +543,13 @@ const Leads = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <LeadDistribution leads={leads} />
+        <LeadDistribution leads={leads} className="lg:col-span-2" /> {/* Example of adjusting span */}
+        {/* You can add another chart or component here */}
+        <div className="bg-card p-4 rounded-lg border">
+            <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
+            <p>Total Leads: {leads.length}</p>
+            <p>New Leads (Today): {/* Logic to calculate new leads today */ 0}</p>
+        </div>
       </div>
       
       <div className="bg-card rounded-lg border border-border p-6">
@@ -589,12 +562,13 @@ const Leads = () => {
           </Tabs>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-1">
+            {/* Filter functionality can be expanded here */}
+            <Button variant="outline" className="gap-1" disabled>
               <Filter className="h-4 w-4" />
               <span>Filter</span>
             </Button>
             
-            <Button variant="outline" className="gap-1">
+            <Button variant="outline" className="gap-1" disabled>
               <ListFilter className="h-4 w-4" />
               <span>Saved Filters</span>
             </Button>
@@ -602,8 +576,8 @@ const Leads = () => {
         </div>
         
         <div>
-          <Tabs value={activeView}>
-            <TabsContent value="list" className="mt-0">
+          {/* Removed redundant Tabs wrapper, TabsContent is direct child of Tabs */}
+            <TabsContent value="list" className="mt-0" style={{ display: activeView === 'list' ? 'block' : 'none' }}>
               <LeadsList 
                 leads={leads}
                 onSelectLead={handleSelectLead}
@@ -612,13 +586,12 @@ const Leads = () => {
               />
             </TabsContent>
             
-            <TabsContent value="board" className="mt-0">
+            <TabsContent value="board" className="mt-0" style={{ display: activeView === 'board' ? 'block' : 'none' }}>
               <LeadsBoard
                 leads={leads}
                 onSelectLead={handleSelectLead}
               />
             </TabsContent>
-          </Tabs>
         </div>
       </div>
       
@@ -627,7 +600,7 @@ const Leads = () => {
           isOpen={showLeadForm}
           onClose={() => {
             setShowLeadForm(false);
-            setSelectedLead(undefined);
+            setSelectedLead(undefined); // Ensure selectedLead is cleared
           }}
           onSave={handleLeadSave}
           lead={selectedLead}
@@ -639,7 +612,7 @@ const Leads = () => {
           isOpen={showAssignmentModal}
           onClose={() => {
             setShowAssignmentModal(false);
-            setSelectedLead(undefined);
+            setSelectedLead(undefined); // Ensure selectedLead is cleared
           }}
           lead={selectedLead}
           onAssign={handleAssignLead}

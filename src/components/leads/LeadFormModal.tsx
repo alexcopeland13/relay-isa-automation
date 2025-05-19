@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,12 +31,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Lead } from '@/types/lead';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { parsePhoneNumberWithError, PhoneNumber, CountryCode } from 'libphonenumber-js/max'; // Using /max for all metadata
 
 // Form schema for lead creation/editing
 const leadFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  phone: z.string().min(10, { message: 'Please enter a valid phone number' }),
+  phone_raw: z.string().min(1, { message: 'Phone number is required' })
+    .refine(value => {
+      try {
+        const phoneNumber = parsePhoneNumberWithError(value, 'US' as CountryCode); // Assume US for validation
+        return phoneNumber.isValid();
+      } catch (error) {
+        return false;
+      }
+    }, { message: 'Please enter a valid phone number' }),
   status: z.string(),
   source: z.string(),
   type: z.string(),
@@ -50,7 +59,7 @@ type LeadFormValues = z.infer<typeof leadFormSchema>;
 interface LeadFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (lead: Lead) => void;
+  onSave: (lead: Lead) => void; // onSave expects the full Lead object with potentially new phone_e164
   lead?: Lead; // Optional - if provided, we're editing. If not, we're creating.
 }
 
@@ -59,14 +68,13 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = !!lead;
 
-  // Initialize form with lead data if editing, or empty values if creating
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead
       ? {
           name: lead.name,
           email: lead.email,
-          phone: lead.phone,
+          phone_raw: lead.phone_raw || lead.phone || '', // Use phone_raw, fallback to old phone
           status: lead.status,
           source: lead.source,
           type: lead.type,
@@ -77,7 +85,7 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
       : {
           name: '',
           email: '',
-          phone: '',
+          phone_raw: '',
           status: 'New',
           source: 'Manual Entry',
           type: 'Mortgage',
@@ -87,43 +95,88 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
         },
   });
 
-  const handleSubmit = async (values: z.infer<typeof leadFormSchema>) => {
+  // Reset form when lead data changes (e.g., opening modal for a different lead)
+  useEffect(() => {
+    if (lead) {
+      form.reset({
+        name: lead.name,
+        email: lead.email,
+        phone_raw: lead.phone_raw || lead.phone || '',
+        status: lead.status,
+        source: lead.source,
+        type: lead.type,
+        interestType: lead.interestType,
+        location: lead.location,
+        notes: lead.notes || '',
+      });
+    } else {
+      form.reset({
+        name: '',
+        email: '',
+        phone_raw: '',
+        status: 'New',
+        source: 'Manual Entry',
+        type: 'Mortgage',
+        interestType: 'Refinancing',
+        location: '',
+        notes: '',
+      });
+    }
+  }, [lead, form.reset, form]);
+
+  const handleSubmit = async (values: LeadFormValues) => {
     setIsSubmitting(true);
 
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    let phone_e164: string | undefined = undefined;
+    if (values.phone_raw) {
+      try {
+        const phoneNumberInstance = parsePhoneNumberWithError(values.phone_raw, 'US' as CountryCode); // Assume US
+        if (phoneNumberInstance && phoneNumberInstance.isValid()) {
+          phone_e164 = phoneNumberInstance.format('E.164');
+        }
+      } catch (e) {
+        console.warn("Could not parse phone number for E.164 format:", e);
+        // Optionally, you could set a form error here if E.164 is strictly required
+        // form.setError("phone_raw", { type: "manual", message: "Invalid phone number for international format." });
+        // setIsSubmitting(false);
+        // return;
+      }
+    }
 
-      // Create the lead object
-      const newLead: Lead = {
-        id: lead?.id || `lead-${Date.now()}`,
+    try {
+      // Simulate API call delay - remove if onSave handles actual async ops
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const leadToSave: Lead = {
+        id: lead?.id || `lead-${Date.now()}`, // ID generation should be handled by backend/onSave
         name: values.name,
         email: values.email,
-        phone: values.phone,
+        phone: values.phone_raw, // Keep original phone for backward compatibility if needed or remove
+        phone_raw: values.phone_raw,
+        phone_e164: phone_e164,
         interestType: values.interestType,
-        status: values.status as "New" | "Contacted" | "Qualified" | "Proposal" | "Converted" | "Lost",
-        type: values.type as "Mortgage" | "Realtor",
+        status: values.status as Lead['status'],
+        type: values.type as Lead['type'],
         location: values.location,
         source: values.source,
         notes: values.notes,
-        score: lead?.score || 50, // Default score if creating new lead
+        score: lead?.score || 50,
         lastContact: lead?.lastContact || new Date().toISOString(),
         createdAt: lead?.createdAt || new Date().toISOString(),
         assignedTo: lead?.assignedTo || 'unassigned',
+        cinc_lead_id: lead?.cinc_lead_id, // Preserve existing cinc_lead_id if editing
+        // Ensure all other Lead fields are present if they have defaults or come from `lead`
       };
 
-      // Call onSave callback with the new/updated lead
-      onSave(newLead);
+      onSave(leadToSave); // onSave should handle the actual DB interaction
 
-      // Show success toast
       toast({
         title: isEditMode ? 'Lead updated' : 'Lead created',
         description: isEditMode
-          ? `${newLead.name}'s information has been updated`
-          : `${newLead.name} has been added to your leads`,
+          ? `${leadToSave.name}'s information has been updated`
+          : `${leadToSave.name} has been added to your leads`,
       });
 
-      // Close the modal
       onClose();
     } catch (error) {
       console.error("Error saving lead:", error);
@@ -138,7 +191,12 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+        form.reset(); // Reset form on close
+      }
+    }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
@@ -182,7 +240,7 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
 
               <FormField
                 control={form.control}
-                name="phone"
+                name="phone_raw" // Changed from "phone" to "phone_raw"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
@@ -283,12 +341,14 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="CINC">CINC</SelectItem> {/* Added CINC */}
                         <SelectItem value="Website">Website</SelectItem>
                         <SelectItem value="Facebook Ad">Facebook Ad</SelectItem>
                         <SelectItem value="Google Ads">Google Ads</SelectItem>
                         <SelectItem value="Referral">Referral</SelectItem>
                         <SelectItem value="Direct">Direct</SelectItem>
                         <SelectItem value="Manual Entry">Manual Entry</SelectItem>
+                        {/* Add other sources as needed */}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -316,7 +376,10 @@ export function LeadFormModal({ isOpen, onClose, onSave, lead }: LeadFormModalPr
             />
 
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={onClose}>
+              <Button variant="outline" type="button" onClick={() => {
+                onClose();
+                form.reset(); // Reset form on cancel
+              }}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>

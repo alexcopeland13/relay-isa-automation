@@ -1,0 +1,15 @@
+
+{
+  "event_id": "evt_test_12345",
+  "event_type": "NEW_LEAD_WEBHOOK",
+  "data": {
+    "lead_id": "cincTest123",
+    "first_name": "Jane",
+    "last_name": "TestLead",
+    "email": "jane.testlead@example.com",
+    "phone1": "(555) 987-6543",
+    "source_type": "TestSource",
+    "pipeline_status": "New",
+    "note": "This is a test lead from the webhook."
+  }
+}

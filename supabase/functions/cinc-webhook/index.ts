@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { parsePhoneNumberWithError, PhoneNumber } from 'https://esm.sh/libphonenumber-js@1.12.8/max';
@@ -43,7 +42,8 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-function normalizePhoneNumber(phone: string | undefined | null, country: string = 'US'): { phone_raw?: string, phone_e164?: string } {
+// Export normalizePhoneNumber for testing
+export function normalizePhoneNumber(phone: string | undefined | null, country: string = 'US'): { phone_raw?: string, phone_e164?: string } {
   if (!phone) {
     return { phone_raw: undefined, phone_e164: undefined };
   }
@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '', // Using anon key for webhooks for now, consider service_role for direct DB writes
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     { global: { headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}` } } }
   );
 
@@ -95,9 +95,8 @@ serve(async (req: Request) => {
     const payload = await req.json();
     console.log('Received CINC webhook payload:', JSON.stringify(payload, null, 2));
 
-    const eventId = payload.event_id || payload.data?.event_id || `${payload.event_type}-${Date.now()}`; // Ensure some unique event_id
+    const eventId = payload.event_id || payload.data?.event_id || `${payload.event_type}-${Date.now()}`;
 
-    // Store the raw event for auditing and idempotency
     const { error: eventError } = await supabaseClient
       .from('webhook_events')
       .insert({
@@ -112,7 +111,7 @@ serve(async (req: Request) => {
     }
     
     const eventType = payload.event_type;
-    const leadData = payload.data?.buyer || payload.data; // CINC structure can vary
+    const leadData = payload.data?.buyer || payload.data;
 
     if (!leadData) {
         console.error('No lead data found in payload:', payload);
@@ -122,7 +121,7 @@ serve(async (req: Request) => {
         });
     }
 
-    const cincLeadId = String(leadData.lead_id || leadData.id); // Ensure cincLeadId is a string
+    const cincLeadId = String(leadData.lead_id || leadData.id);
 
     if (!cincLeadId) {
       console.error('CINC Lead ID missing from payload data:', leadData);
@@ -142,11 +141,9 @@ serve(async (req: Request) => {
         email: leadData.email,
         phone_raw: phone_raw,
         phone_e164: phone_e164,
-        source: leadData.source_type || 'CINC', // Default to CINC if not specified
-        status: leadData.pipeline_status?.toLowerCase() || 'new', // Map CINC status if available
-        notes: leadData.note || leadData.remarks, // Check multiple fields for notes
-        // Add other fields from CINC payload as needed
-        // e.g., leadData.price_min, leadData.price_max (ensure these are in your 'leads' table schema)
+        source: leadData.source_type || 'CINC',
+        status: leadData.pipeline_status?.toLowerCase() || 'new',
+        notes: leadData.note || leadData.remarks,
       };
 
       console.log('Attempting to upsert lead:', JSON.stringify(leadRecord, null, 2));
@@ -171,8 +168,7 @@ serve(async (req: Request) => {
       });
 
     } else if (eventType === CINC_WEBHOOK_EVENT_TYPE_NOTE_ADDED) {
-        // Handle note added event if necessary
-        // For example, find the lead by cinc_lead_id and append the note
+      // Handle note added event if necessary
         const noteContent = leadData.note_text || leadData.note;
         if (cincLeadId && noteContent) {
             const { data: existingLead, error: fetchError } = await supabaseClient

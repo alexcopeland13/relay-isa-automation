@@ -546,7 +546,6 @@ const Leads = () => {
               exportableCols={['name', 'email', 'phone_raw', 'phone_e164', 'cinc_lead_id', 'status', 'source', 'type', 'score', 'createdAt', 'lastContact', 'assignedTo']}
               supportedFormats={['csv', 'email']}
               onExport={exportData}
-              // removed disabled={exporting || isLoading} as it's not a valid prop for ExportMenu
             />
             
             <Button className="gap-1" onClick={() => {
@@ -565,16 +564,16 @@ const Leads = () => {
       </div>
       
       <div className="mb-6">
-        <LeadMetrics leads={leads} /> {/* Removed className prop */}
+        <LeadMetrics leads={leads} />
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <LeadDistribution leads={leads} /> {/* Removed className and lg:col-span-2 props */}
+        <LeadDistribution leads={leads} />
         
-        <div className="bg-card p-4 rounded-lg border lg:col-span-1"> {/* Ensured this takes up 1 span if LeadDistribution took 2 before */}
+        <div className="bg-card p-4 rounded-lg border lg:col-span-1">
             <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
             <p>Total Leads: {leads.length}</p>
-            <p>New Leads (Today): {/* Logic to calculate new leads today */ 0}</p>
+            <p>New Leads (Today): 0</p> {/* Removed JSX comment from this line */}
             {/* Placeholder for more quick stats */}
         </div>
       </div>

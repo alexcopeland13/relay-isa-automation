@@ -180,8 +180,7 @@ const Leads = () => {
     data, 
     isLoading, 
     error, 
-    retry,
-    refresh
+    refresh // Removed retry as it's not used directly, refresh is used.
   } = useAsyncData(fetchLeadsData, null, [refreshTrigger]);
 
   const [leadsData, setLeadsData] = useState<{ leads: Lead[] } | null>(null);
@@ -199,12 +198,10 @@ const Leads = () => {
   
   // Force refresh on mount and when refreshTrigger changes
   useEffect(() => {
-    // Add a slight delay to ensure navigation is complete
     const refreshTimeout = setTimeout(() => {
       refresh();
     }, 300);
     
-    // Set up a realtime subscription to changes in the leads table
     const channel = supabase
       .channel('schema-db-changes-leads')
       .on(
@@ -214,29 +211,58 @@ const Leads = () => {
           schema: 'public',
           table: 'leads'
         },
-        (payload) => {
-          console.log('Lead data changed:', payload);
+        (payload: any) => { // Use any for payload if specific type is complex
+          console.log('Lead data changed via Supabase real-time:', payload);
           refresh();
           
           const eventType = payload.eventType;
+          let leadName = 'A lead';
+          if (payload.new && (payload.new.first_name || payload.new.last_name)) {
+            leadName = `${payload.new.first_name || ''} ${payload.new.last_name || ''}`.trim();
+          } else if (payload.old && (payload.old.first_name || payload.old.last_name)) {
+            // For DELETE events, use old data if available
+            leadName = `${payload.old.first_name || ''} ${payload.old.last_name || ''}`.trim();
+          }
+
+
           if (eventType === 'INSERT') {
             toast({
-              title: 'New Lead',
-              description: 'A new lead has been added to the system',
+              title: 'New Lead Added',
+              description: `${leadName} has been added to the system.`,
             });
           } else if (eventType === 'UPDATE') {
             toast({
               title: 'Lead Updated',
-              description: 'A lead has been updated',
+              description: `${leadName} has been updated.`,
+            });
+          } else if (eventType === 'DELETE') {
+             toast({
+              title: 'Lead Deleted',
+              description: `${leadName} has been removed from the system.`,
+              variant: 'destructive' 
             });
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('📢 Successfully subscribed to leads table changes!');
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
+          console.error('❌ Realtime subscription error:', status, err);
+          toast({
+            title: "Realtime Error",
+            description: "Could not connect to live updates. Data may be stale.",
+            variant: "destructive"
+          });
+        }
+      });
     
     return () => {
       clearTimeout(refreshTimeout);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channel)
+        .then(() => console.log("📢 Unsubscribed from leads table changes."))
+        .catch(err => console.error("Error unsubscribing from channel:", err));
     };
   }, [refresh, refreshTrigger, toast]);
 
@@ -515,16 +541,16 @@ const Leads = () => {
             </Button>
           
             <ExportMenu 
-              data={leads} // Pass current leads data
+              data={leads} 
               filename="relay_leads_export"
-              exportableCols={['name', 'email', 'phone_raw', 'phone_e164', 'status', 'source', 'createdAt', 'lastContact', 'assignedTo', 'cinc_lead_id']}
-              supportedFormats={['csv', 'email']} // Example formats
+              exportableCols={['name', 'email', 'phone_raw', 'phone_e164', 'cinc_lead_id', 'status', 'source', 'type', 'score', 'createdAt', 'lastContact', 'assignedTo']}
+              supportedFormats={['csv', 'email']}
               onExport={exportData}
-              disabled={exporting || isLoading}
+              // removed disabled={exporting || isLoading} as it's not a valid prop for ExportMenu
             />
             
             <Button className="gap-1" onClick={() => {
-              setSelectedLead(undefined); // Clear selected lead for new form
+              setSelectedLead(undefined); 
               setShowLeadForm(true);
             }}>
               <UserPlus className="h-4 w-4" />
@@ -539,16 +565,17 @@ const Leads = () => {
       </div>
       
       <div className="mb-6">
-        <LeadMetrics leads={leads} />
+        <LeadMetrics leads={leads} /> {/* Removed className prop */}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <LeadDistribution leads={leads} className="lg:col-span-2" /> {/* Example of adjusting span */}
-        {/* You can add another chart or component here */}
-        <div className="bg-card p-4 rounded-lg border">
+        <LeadDistribution leads={leads} /> {/* Removed className and lg:col-span-2 props */}
+        
+        <div className="bg-card p-4 rounded-lg border lg:col-span-1"> {/* Ensured this takes up 1 span if LeadDistribution took 2 before */}
             <h3 className="text-lg font-semibold mb-2">Quick Stats</h3>
             <p>Total Leads: {leads.length}</p>
             <p>New Leads (Today): {/* Logic to calculate new leads today */ 0}</p>
+            {/* Placeholder for more quick stats */}
         </div>
       </div>
       
@@ -562,7 +589,6 @@ const Leads = () => {
           </Tabs>
           
           <div className="flex items-center gap-2">
-            {/* Filter functionality can be expanded here */}
             <Button variant="outline" className="gap-1" disabled>
               <Filter className="h-4 w-4" />
               <span>Filter</span>
@@ -576,7 +602,6 @@ const Leads = () => {
         </div>
         
         <div>
-          {/* Removed redundant Tabs wrapper, TabsContent is direct child of Tabs */}
             <TabsContent value="list" className="mt-0" style={{ display: activeView === 'list' ? 'block' : 'none' }}>
               <LeadsList 
                 leads={leads}
@@ -590,6 +615,7 @@ const Leads = () => {
               <LeadsBoard
                 leads={leads}
                 onSelectLead={handleSelectLead}
+                // Pass other necessary props if LeadsBoard requires them
               />
             </TabsContent>
         </div>
@@ -600,7 +626,7 @@ const Leads = () => {
           isOpen={showLeadForm}
           onClose={() => {
             setShowLeadForm(false);
-            setSelectedLead(undefined); // Ensure selectedLead is cleared
+            setSelectedLead(undefined);
           }}
           onSave={handleLeadSave}
           lead={selectedLead}
@@ -612,10 +638,11 @@ const Leads = () => {
           isOpen={showAssignmentModal}
           onClose={() => {
             setShowAssignmentModal(false);
-            setSelectedLead(undefined); // Ensure selectedLead is cleared
+            setSelectedLead(undefined);
           }}
           lead={selectedLead}
           onAssign={handleAssignLead}
+          // Add any other required props for LeadAssignmentModal
         />
       )}
     </PageLayout>

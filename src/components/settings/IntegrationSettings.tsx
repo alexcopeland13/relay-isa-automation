@@ -19,7 +19,9 @@ import {
   ArrowRight,
   Clock,
   Home,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  KeyRound // Added for webhook secret icon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CincIntegrationModal } from "@/components/integrations/CincIntegrationModal";
@@ -298,6 +300,17 @@ export const IntegrationSettings = () => {
     }
   };
 
+  const relayCincWebhookUrl = "https://qvarmbhdradfpkegtpgw.supabase.co/functions/v1/cinc-webhook";
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied to clipboard!", description: text });
+    }).catch(err => {
+      toast({ title: "Failed to copy", description: "Could not copy text to clipboard.", variant: "destructive" });
+      console.error('Failed to copy text: ', err);
+    });
+  };
+
   return (
     <>
       {showCincModal && (
@@ -394,7 +407,9 @@ export const IntegrationSettings = () => {
                     </div>
                     <h3 className="font-medium">SimplyRETS</h3>
                   </div>
-                  <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50">Disconnected</Badge>
+                  <Badge variant="outline" className={integrations.simplyrets?.connected ? "text-green-500 border-green-200 bg-green-50" : "text-red-500 border-red-200 bg-red-50"}>
+                    {integrations.simplyrets?.connected ? "Connected" : "Disconnected"}
+                  </Badge>
                 </div>
                 
                 {integrations.simplyrets?.connected && integrations.simplyrets.lastSync && (
@@ -412,9 +427,9 @@ export const IntegrationSettings = () => {
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <Label htmlFor="api-key">API Key</Label>
+                        <Label htmlFor="simplyrets-api-key">API Key</Label>
                         <Input 
-                          id="api-key" 
+                          id="simplyrets-api-key" 
                           type="password" 
                           placeholder="Enter your SimplyRETS API key"
                           value={simplyRETSForm.apiKey}
@@ -424,9 +439,9 @@ export const IntegrationSettings = () => {
                       </div>
                       
                       <div className="space-y-1">
-                        <Label htmlFor="api-secret">API Secret</Label>
+                        <Label htmlFor="simplyrets-api-secret">API Secret</Label>
                         <Input 
-                          id="api-secret" 
+                          id="simplyrets-api-secret" 
                           type="password" 
                           placeholder="Enter your SimplyRETS API secret"
                           value={simplyRETSForm.apiSecret}
@@ -436,12 +451,12 @@ export const IntegrationSettings = () => {
                       </div>
                       
                       <div className="space-y-1">
-                        <Label htmlFor="mls-selection">MLS Selection</Label>
+                        <Label htmlFor="simplyrets-mls-selection">MLS Selection</Label>
                         <Select 
                           value={simplyRETSForm.mlsSelection} 
                           onValueChange={(value) => handleSimplyRETSChange('mlsSelection', value)}
                         >
-                          <SelectTrigger id="mls-selection">
+                          <SelectTrigger id="simplyrets-mls-selection">
                             <SelectValue placeholder="Select your MLS" />
                           </SelectTrigger>
                           <SelectContent>
@@ -516,22 +531,12 @@ export const IntegrationSettings = () => {
                       variant="outline" 
                       className="flex-1" 
                       onClick={() => {
-                        // Disconnect SimplyRETS integration
                         setIntegrations(prev => ({
                           ...prev,
                           simplyrets: { name: "SimplyRETS", connected: false }
                         }));
-                        
-                        // Clear form data
-                        setSimplyRETSForm({
-                          apiKey: "",
-                          apiSecret: "",
-                          mlsSelection: ""
-                        });
-                        
-                        // Reset connection tested status
+                        setSimplyRETSForm({ apiKey: "", apiSecret: "", mlsSelection: "" });
                         setIsConnectionTested(false);
-                        
                         toast({
                           title: "SimplyRETS disconnected",
                           description: "SimplyRETS integration has been disconnected.",
@@ -566,7 +571,7 @@ export const IntegrationSettings = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="h-6 w-6 bg-[#9b87f5] rounded-md flex items-center justify-center text-white font-bold text-xs">CI</div>
                     <h3 className="font-medium">CINC</h3>
@@ -588,39 +593,97 @@ export const IntegrationSettings = () => {
                   </div>
                 )}
                 
-                {cincConfig && (
-                  <div className="mb-4 text-xs text-muted-foreground">
-                    <p><strong>Sync:</strong> {cincConfig.syncFrequency === 'realtime' ? 'Real-time' : cincConfig.syncFrequency === 'hourly' ? 'Hourly' : 'Daily'}</p>
-                    <p><strong>Filter:</strong> {cincConfig.filterOption === 'all' ? 'All Leads' : cincConfig.filterOption === 'new' ? 'New Leads Only' : 'Active Leads Only'}</p>
-                  </div>
-                )}
-                
-                <p className="text-sm text-muted-foreground mb-4">Sync leads and property information from CINC's real estate lead generation platform.</p>
-                
-                {integrations.cinc.connected ? (
-                  <div className="flex gap-2">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Sync leads and property information from CINC's real estate lead generation platform.
+                </p>
+
+                <Separator className="my-4" />
+
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Outgoing Integration (Fetch from CINC)</h4>
+                  {cincConfig && (
+                    <div className="mb-3 text-xs text-muted-foreground">
+                      <p><strong>Sync:</strong> {cincConfig.syncFrequency === 'realtime' ? 'Real-time' : cincConfig.syncFrequency === 'hourly' ? 'Hourly' : 'Daily'}</p>
+                      <p><strong>Filter:</strong> {cincConfig.filterOption === 'all' ? 'All Leads' : cincConfig.filterOption === 'new' ? 'New Leads Only' : 'Active Leads Only'}</p>
+                    </div>
+                  )}
+                  {integrations.cinc.connected ? (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1" 
+                        onClick={() => handleDisconnect('CINC')}
+                      >
+                        Disconnect
+                      </Button>
+                      <Button 
+                        className="flex-1" 
+                        onClick={() => setShowCincModal(true)}
+                      >
+                        Settings
+                      </Button>
+                    </div>
+                  ) : (
                     <Button 
-                      variant="outline" 
-                      className="flex-1" 
-                      onClick={() => handleDisconnect('CINC')}
+                      className="w-full" 
+                      onClick={() => handleConnect('CINC')}
                     >
-                      Disconnect
+                      Connect to CINC
                     </Button>
-                    <Button 
-                      className="flex-1" 
-                      onClick={() => setShowCincModal(true)}
-                    >
-                      Settings
-                    </Button>
+                  )}
+                </div>
+
+                <Separator className="my-6" />
+
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Incoming Webhook (Receive from CINC)</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    To enable CINC to send leads to Relay in real-time, configure a webhook in your CINC account using the URL and secret below.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="cinc-webhook-url" className="text-xs">Relay Webhook URL</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input 
+                          id="cinc-webhook-url" 
+                          type="text" 
+                          value={relayCincWebhookUrl} 
+                          readOnly 
+                          className="text-xs"
+                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => copyToClipboard(relayCincWebhookUrl)}>
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy URL</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Webhook Signing Secret</Label>
+                       <p className="text-xs text-muted-foreground mt-1 mb-2">
+                        This secret is used to verify that incoming requests are genuinely from CINC. Set this secret here, and ensure the same secret is configured in your CINC webhook settings.
+                      </p>
+                      <Button 
+                        variant="outline"
+                        className="w-full gap-2"
+                        data-lov-action_id="cinc_webhook_secret_form" /* Links to lov-action */
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        Configure CINC Webhook Secret
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleConnect('CINC')}
-                  >
-                    Connect
-                  </Button>
-                )}
+                </div>
+
               </div>
             </div>
           </CardContent>
@@ -765,10 +828,10 @@ export const IntegrationSettings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
+              <Label htmlFor="api-key-display">API Key</Label>
               <div className="flex gap-2">
                 <Input 
-                  id="api-key" 
+                  id="api-key-display" 
                   value={apiSettings.apiKey} 
                   onChange={(e) => setApiSettings(prev => ({ ...prev, apiKey: e.target.value }))}
                   readOnly 
@@ -777,13 +840,10 @@ export const IntegrationSettings = () => {
                 <Button 
                   variant="outline"
                   onClick={() => {
-                    // Generate a new API key
                     const newKey = Array.from({ length: 32 }, () => 
                       Math.floor(Math.random() * 36).toString(36)
                     ).join('');
-                    
                     setApiSettings(prev => ({ ...prev, apiKey: newKey }));
-                    
                     toast({
                       title: "New API key generated",
                       description: "Your API key has been regenerated. Save changes to apply."
@@ -799,9 +859,9 @@ export const IntegrationSettings = () => {
             <Separator className="my-4" />
             
             <div className="space-y-2">
-              <Label htmlFor="webhook-url">Webhook URL</Label>
+              <Label htmlFor="webhook-url-input">Webhook URL</Label>
               <Input 
-                id="webhook-url" 
+                id="webhook-url-input" 
                 placeholder="https://your-service.com/webhook" 
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}

@@ -180,7 +180,7 @@ const Leads = () => {
     data, 
     isLoading, 
     error, 
-    refresh // Removed retry as it's not used directly, refresh is used.
+    refresh 
   } = useAsyncData(fetchLeadsData, null, [refreshTrigger]);
 
   const [leadsData, setLeadsData] = useState<{ leads: Lead[] } | null>(null);
@@ -211,7 +211,7 @@ const Leads = () => {
           schema: 'public',
           table: 'leads'
         },
-        (payload: any) => { // Use any for payload if specific type is complex
+        (payload: any) => { 
           console.log('Lead data changed via Supabase real-time:', payload);
           refresh();
           
@@ -220,10 +220,8 @@ const Leads = () => {
           if (payload.new && (payload.new.first_name || payload.new.last_name)) {
             leadName = `${payload.new.first_name || ''} ${payload.new.last_name || ''}`.trim();
           } else if (payload.old && (payload.old.first_name || payload.old.last_name)) {
-            // For DELETE events, use old data if available
             leadName = `${payload.old.first_name || ''} ${payload.old.last_name || ''}`.trim();
           }
-
 
           if (eventType === 'INSERT') {
             toast({
@@ -274,11 +272,10 @@ const Leads = () => {
     setRefreshTrigger(Date.now());
   }, [toast]);
 
-  const handleLeadSave = async (leadToSave: Lead) => { // leadToSave now comes from LeadFormModal with phone_raw and phone_e164
+  const handleLeadSave = async (leadToSave: Lead) => { 
     try {
         const isNewLead = !leadToSave.id || !leadsData?.leads.find(l => l.id === leadToSave.id);
         
-        // Prepare data for Supabase (snake_case, split name, etc.)
         const nameParts = leadToSave.name.split(' ');
         const first_name = nameParts[0] || '';
         const last_name = nameParts.slice(1).join(' ') || '';
@@ -287,24 +284,21 @@ const Leads = () => {
             first_name: first_name,
             last_name: last_name,
             email: leadToSave.email,
-            phone: leadToSave.phone, // Keep old phone field for now if db schema still has it
+            phone: leadToSave.phone, 
             phone_raw: leadToSave.phone_raw,
             phone_e164: leadToSave.phone_e164,
             status: leadToSave.status.toLowerCase(),
             source: leadToSave.source,
             notes: leadToSave.notes,
             cinc_lead_id: leadToSave.cinc_lead_id,
-            // Add other mappable fields: location, type, interestType if they map to DB columns
-            // assigned_to: leadToSave.assignedTo, // Handled by assignment modal
-            last_contacted: new Date().toISOString(), // Update last contact on save
+            last_contacted: new Date().toISOString(),
         };
 
         if (isNewLead) {
-            // Create new lead
             const { data: newLeadData, error } = await supabase
                 .from('leads')
                 .insert(supabaseLeadData)
-                .select() // Select all fields of the new lead
+                .select() 
                 .single();
 
             if (error) {
@@ -314,18 +308,13 @@ const Leads = () => {
                     description: `Failed to create lead: ${error.message}.`,
                     variant: 'destructive',
                 });
-                // Optionally, update locally as a fallback, but data will be out of sync
-                // const updatedLeads = [...(leadsData?.leads || []), leadToSave]; // This leadToSave might not have the DB ID
-                // setLeadsData({ leads: updatedLeads });
-                // localStorage.setItem('relayLeads', JSON.stringify(updatedLeads));
-                return; // Stop execution if create fails
+                return; 
             }
             toast({
                 title: 'Lead Created',
                 description: `${newLeadData.first_name} ${newLeadData.last_name} has been successfully created.`,
             });
         } else {
-            // Update existing lead
             const { data: updatedLeadData, error } = await supabase
                 .from('leads')
                 .update(supabaseLeadData)
@@ -340,8 +329,7 @@ const Leads = () => {
                     description: `Failed to update lead: ${error.message}.`,
                     variant: 'destructive',
                 });
-                // Optionally, update locally as a fallback
-                return; // Stop execution if update fails
+                return; 
             }
             toast({
                 title: 'Lead Updated',
@@ -349,10 +337,8 @@ const Leads = () => {
             });
         }
         
-        // Refresh data from Supabase to get the latest state including any backend-generated fields
-        // This also updates local state and localStorage via the useEffect hook watching `data`
         refresh(); 
-        setSelectedLead(undefined); // Clear selected lead after save
+        setSelectedLead(undefined);
 
     } catch (error) {
         console.error('Error saving lead:', error);
@@ -366,14 +352,11 @@ const Leads = () => {
   
   const handleAssignLead = async (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
     try {
-      // ... keep existing code for local update if desired, but Supabase update + refresh is better
-        
       const { error } = await supabase
         .from('leads')
         .update({
           assigned_to: agentId,
           last_contacted: new Date().toISOString()
-          // You might want to add assignment notes to a separate table or a JSONB field in leads
         })
         .eq('id', leadId);
       
@@ -389,9 +372,9 @@ const Leads = () => {
           title: 'Lead Assigned',
           description: 'Lead has been successfully assigned.',
         });
-        refresh(); // Refresh data to reflect changes
+        refresh(); 
       }
-      setSelectedLead(undefined); // Close assignment modal or clear selection
+      setSelectedLead(undefined); 
       setShowAssignmentModal(false);
 
     } catch (error) {
@@ -425,13 +408,9 @@ const Leads = () => {
     setExporting(true);
     
     try {
-      // Simulate export process
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const dataToExport = leadsData?.leads || [];
-      // Actual export logic based on format (CSV, PDF) and options
-      // For CSV: convert dataToExport to CSV string and trigger download
-      // For Email: send dataToExport to a backend service that emails it
       console.log(`Exporting ${dataToExport.length} leads as ${format} with options:`, options);
       
       toast({
@@ -462,33 +441,33 @@ const Leads = () => {
           </div>
           
           <div className="flex gap-2 mt-4 sm:mt-0">
-            {/* Replace with actual component or remove if not needed */}
             <Button variant="outline" disabled>Loading Actions...</Button>
           </div>
         </div>
       </div>
       
-      {/* Simplified loading state */}
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <ChartSkeleton className="lg:col-span-2" />
+          <div className="lg:col-span-2"> {/* Wrap ChartSkeleton */}
+            <ChartSkeleton />
+          </div>
           <ChartSkeleton />
         </div>
         <div className="bg-card rounded-lg border border-border p-6">
-          <TableSkeleton rows={6} cols={7} /> {/* Adjusted cols for new table structure */}
+          <TableSkeleton rows={6} cols={7} />
         </div>
       </div>
     </PageLayout>
   );
 
-  if (isLoading && !leadsData) { // Show loading only if no data is present yet
+  if (isLoading && !leadsData) {
     return renderLoading();
   }
 
-  if (error && !leadsData) { // Show error only if no data could be fetched at all
+  if (error && !leadsData) {
     return (
       <PageLayout>
         <div className="mb-6">
@@ -499,8 +478,8 @@ const Leads = () => {
         <ErrorContainer
           title="Failed to Load Leads"
           description="We couldn't retrieve your leads data. Please try again."
-          error={error} // Pass the actual error object
-          onRetry={handleManualRefresh} // Use manual refresh for retry
+          error={error}
+          onRetry={handleManualRefresh}
           suggestions={[
             "Check your internet connection.",
             "Try refreshing the page.",
@@ -614,7 +593,6 @@ const Leads = () => {
               <LeadsBoard
                 leads={leads}
                 onSelectLead={handleSelectLead}
-                // Pass other necessary props if LeadsBoard requires them
               />
             </TabsContent>
         </div>
@@ -641,7 +619,6 @@ const Leads = () => {
           }}
           lead={selectedLead}
           onAssign={handleAssignLead}
-          // Add any other required props for LeadAssignmentModal
         />
       )}
     </PageLayout>

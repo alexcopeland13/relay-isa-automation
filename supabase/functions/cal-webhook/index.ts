@@ -2,35 +2,42 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Database } from '../_shared/database.types.ts';
 
-// Define Cal.com webhook payload structure
+// Define Cal.com webhook payload structure based on user's new request
 interface CalWebhookPayload {
-  type: 'BOOKING_CREATED' | 'BOOKING_RESCHEDULED' | 'BOOKING_CANCELLED'; // Based on user's input: "type":"booking.created"|...
-                                                                      // Cal.com usually uses "triggerEvent" for this. We will adapt to "type".
-                                                                      // Also, Cal.com standard types are BOOKING_CREATED, BOOKING_RESCHEDULED, BOOKING_CANCELLED.
-                                                                      // User specified booking.created. Assuming they meant the part after booking.*
-                                                                      // Let's use user's specified "booking.created" type format.
-  // Renaming to match user's request { "type":"booking.created"|... , "payload":{...}}.
-  // type: 'booking.created' | 'booking.rescheduled' | 'booking.cancelled';
+  type: 'booking.created' | 'booking.rescheduled' | 'booking.canceled';
   payload: {
-    startTime?: string; // ISO 8601 string
-    endTime?: string;   // ISO 8601 string
-    uid: string;       // This is the cal_booking_id
+    booking?: CalBooking; // New structure where booking might be nested
+    // Allow other properties if payload is booking itself
+    id?: string;
+    startTime?: string;
+    endTime?: string;
+    notes?: string;
     metadata?: {
       lead_id?: string;
     };
-    // other fields from Cal.com payload might exist
-    [key: string]: any; // Allow other properties
+    [key: string]: any;
   };
 }
 
+interface CalBooking {
+  id: string;          // This is the cal_booking_id
+  startTime: string;   // ISO 8601 string
+  endTime: string;     // ISO 8601 string
+  notes?: string | null;
+  metadata?: {
+    lead_id?: string;
+  };
+  // other fields from Cal.com payload might exist
+  [key: string]: any; 
+}
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Adjust to Cal.com's IP or a more restrictive origin in production
+  'Access-Control-Allow-Origin': '*', 
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cal-secret',
 };
 
-// Helper function to validate UUID
+// Helper function to validate UUID (can be kept if lead_id needs validation, though user snippet doesn't explicitly validate)
 function isValidUUID(uuid: string): boolean {
   if (!uuid) return false;
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -45,6 +52,24 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Verify secret header
+  const calSecret = Deno.env.get("CAL_SECRET");
+  if (!calSecret) {
+    console.error('cal-webhook: CAL_SECRET is not configured in environment variables.');
+    return new Response(JSON.stringify({ error: 'Server configuration error: Missing secret.' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
+  }
+  const providedSecret = req.headers.get("x-cal-secret");
+  if (providedSecret !== calSecret) {
+    console.warn('cal-webhook: Forbidden - Invalid X-Cal-Secret header.');
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 403,
+    });
+  }
+
   if (req.method !== 'POST') {
     console.warn('cal-webhook: Method not allowed:', req.method);
     return new Response(JSON.stringify({ error: 'Method not allowed. Please use POST.' }), {
@@ -56,20 +81,18 @@ serve(async (req: Request) => {
   let supabaseClient: SupabaseClient<Database>;
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY'); // Service role key for sensitive operations if needed
+    // Use SUPABASE_SERVICE_ROLE_KEY as per user's new snippet
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); 
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('cal-webhook: Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error('cal-webhook: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
       return new Response(JSON.stringify({ error: 'Server configuration error.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
-    // Use anon key for webhooks unless specific elevated privileges are required for writes,
-    // in which case service_role key should be used CAREFULLY.
-    // For now, anon key is fine as RLS is not being changed for this.
-    supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
-    console.log('cal-webhook: Supabase client initialized.');
+    supabaseClient = createClient<Database>(supabaseUrl, supabaseServiceRoleKey);
+    console.log('cal-webhook: Supabase client initialized with service role key.');
   } catch (e) {
     console.error('cal-webhook: Failed to initialize Supabase client:', e);
     return new Response(JSON.stringify({ error: 'Failed to initialize Supabase client.' }), {
@@ -92,82 +115,74 @@ serve(async (req: Request) => {
       });
     }
     
-    if (!payload.uid) {
-        console.warn('cal-webhook: Missing cal_booking_id (payload.uid).', payload);
-        return new Response(JSON.stringify({ error: 'Missing cal_booking_id (payload.uid).' }), {
+    // Supports both { payload: { booking: { ... } } } and { payload: { ... directly booking fields } }
+    const booking: CalBooking | undefined = payload?.booking || payload;
+
+    if (!booking || !booking.id || !booking.startTime || !booking.endTime) {
+      console.warn('cal-webhook: Invalid booking data. Missing id, startTime, or endTime.', booking);
+      return new Response(JSON.stringify({ error: 'Invalid booking data in payload.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
+    // Validate start and end times before calculation
+    const startTimeMs = new Date(booking.startTime).getTime();
+    const endTimeMs = new Date(booking.endTime).getTime();
+
+    if (isNaN(startTimeMs) || isNaN(endTimeMs)) {
+        console.warn('cal-webhook: Invalid startTime or endTime format.', booking);
+        return new Response(JSON.stringify({ error: 'Invalid startTime or endTime format.' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+        });
+    }
+    
+    const durationMinutes = (endTimeMs - startTimeMs) / 60000;
+    if (durationMinutes <= 0 && type !== 'booking.canceled') { // Duration can be irrelevant for cancel
+        console.warn('cal-webhook: Invalid duration (must be positive).', { startTime: booking.startTime, endTime: booking.endTime });
+        return new Response(JSON.stringify({ error: 'Invalid duration: endTime must be after startTime.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });
     }
 
-    const calBookingId = payload.uid;
+    const appointmentData: Partial<Database['public']['Tables']['appointments']['Insert']> = {
+      cal_booking_id: booking.id,
+      scheduled_at: new Date(booking.startTime).toISOString(),
+      duration: durationMinutes,
+      appointment_type: "phone_call",
+      notes: booking.notes ?? null,
+      lead_id: booking.metadata?.lead_id ?? null, // DB foreign key will validate lead_id if present
+    };
 
-    if (type === 'BOOKING_CREATED') {
-      console.log(`cal-webhook: Handling BOOKING_CREATED for ${calBookingId}`);
-      if (!payload.metadata?.lead_id || !isValidUUID(payload.metadata.lead_id)) {
-        console.warn('cal-webhook: Missing or invalid lead_id for BOOKING_CREATED.', payload.metadata);
-        return new Response(JSON.stringify({ error: 'Missing or invalid lead_id (must be a UUID).' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-      if (!payload.startTime || isNaN(new Date(payload.startTime).getTime())) {
-        console.warn('cal-webhook: Missing or invalid startTime for BOOKING_CREATED.', payload);
-        return new Response(JSON.stringify({ error: 'Missing or invalid startTime.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-      if (!payload.endTime || isNaN(new Date(payload.endTime).getTime())) {
-        console.warn('cal-webhook: Missing or invalid endTime for BOOKING_CREATED.', payload);
-        return new Response(JSON.stringify({ error: 'Missing or invalid endTime.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
+    if (appointmentData.lead_id && !isValidUUID(appointmentData.lead_id)) {
+        console.warn('cal-webhook: Invalid lead_id UUID format.', booking.metadata);
+        // According to user snippet, lead_id is optional (?? null). If present, it should be valid.
+        // If your DB has a FK constraint on lead_id, inserting an invalid non-null UUID will fail.
+        // If it's null, it's fine. Let's proceed and let DB handle FK, or add specific error if required.
+        // For now, just logging, as user's snippet doesn't block on this.
+    }
 
-      const leadId = payload.metadata.lead_id;
-      const scheduledAt = new Date(payload.startTime).toISOString();
-      const endTime = new Date(payload.endTime).toISOString();
-      const durationMinutes = (new Date(endTime).getTime() - new Date(scheduledAt).getTime()) / (1000 * 60);
-
-      if (durationMinutes <= 0) {
-        console.warn('cal-webhook: Invalid duration (must be positive) for BOOKING_CREATED.', { scheduledAt, endTime });
-        return new Response(JSON.stringify({ error: 'Invalid duration: endTime must be after startTime.' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-        });
-      }
-
-      const appointmentToInsert: Database['public']['Tables']['appointments']['Insert'] = {
-        lead_id: leadId,
-        scheduled_at: scheduledAt,
-        duration: durationMinutes,
-        appointment_type: 'phone_call', // As per requirement
-        status: 'scheduled',           // As per requirement
-        cal_booking_id: calBookingId,
-        notes: `Booked via Cal.com. Title: ${payload.title || 'N/A'}` // Optional: add title as note
-      };
-
-      console.log('cal-webhook: Inserting appointment:', appointmentToInsert);
-      const { data, error } = await supabaseClient
+    if (type === 'booking.created') {
+      console.log(`cal-webhook: Handling booking.created for ${booking.id}`);
+      const { error } = await supabaseClient
         .from('appointments')
-        .insert(appointmentToInsert)
-        .select()
-        .single();
+        .insert({
+          ...appointmentData,
+          status: "scheduled",
+        } as Database['public']['Tables']['appointments']['Insert']) // Cast to ensure all required fields if any
+        .select() // Keep select to potentially check for errors, even if using onConflict.ignore
+        .maybeSingle(); // Use maybeSingle with onConflict.ignore or handle potential null data
 
       if (error) {
-        console.error('cal-webhook: Supabase error on insert:', error);
-        if (error.code === '23505' && error.message.includes('appointments_cal_booking_id_key')) {
-            return new Response(JSON.stringify({ error: `Booking with cal_booking_id ${calBookingId} already exists.` }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 409, // Conflict
-            });
-        }
+        console.error('cal-webhook: Supabase error on insert (booking.created):', error);
+         // If onConflict().ignore() is used, an error for duplicate key (23505) shouldn't occur for cal_booking_id.
+         // However, other errors like invalid lead_id (23503) can still happen.
         if (error.code === '23503' && error.details?.includes('lead_id')) {
-            return new Response(JSON.stringify({ error: `Invalid lead_id: ${leadId} does not exist.` }), {
+            return new Response(JSON.stringify({ error: `Invalid lead_id: ${appointmentData.lead_id} does not exist.` }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
+                status: 400, // Bad request due to invalid lead_id
             });
         }
         return new Response(JSON.stringify({ error: 'Failed to create appointment.', details: error.message }), {
@@ -175,55 +190,25 @@ serve(async (req: Request) => {
           status: 500,
         });
       }
-      console.log('cal-webhook: Appointment created:', data);
+      console.log('cal-webhook: Appointment creation processed for cal_booking_id:', booking.id);
 
-    } else if (type === 'BOOKING_RESCHEDULED') {
-      console.log(`cal-webhook: Handling BOOKING_RESCHEDULED for ${calBookingId}`);
-      if (!payload.startTime || isNaN(new Date(payload.startTime).getTime())) {
-         console.warn('cal-webhook: Missing or invalid startTime for BOOKING_RESCHEDULED.', payload);
-        return new Response(JSON.stringify({ error: 'Missing or invalid new startTime.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-       if (!payload.endTime || isNaN(new Date(payload.endTime).getTime())) {
-        console.warn('cal-webhook: Missing or invalid endTime for BOOKING_RESCHEDULED.', payload);
-        return new Response(JSON.stringify({ error: 'Missing or invalid new endTime.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-
-      const newScheduledAt = new Date(payload.startTime).toISOString();
-      const newEndTime = new Date(payload.endTime).toISOString();
-      const newDurationMinutes = (new Date(newEndTime).getTime() - new Date(newScheduledAt).getTime()) / (1000 * 60);
-
-      if (newDurationMinutes <= 0) {
-        console.warn('cal-webhook: Invalid duration for BOOKING_RESCHEDULED.', { newScheduledAt, newEndTime });
-        return new Response(JSON.stringify({ error: 'Invalid duration: new endTime must be after new startTime.' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-        });
-      }
-
-      const appointmentToUpdate: Database['public']['Tables']['appointments']['Update'] = {
-        scheduled_at: newScheduledAt,
-        duration: newDurationMinutes,
-        status: 'scheduled', // Ensure status is reset to scheduled on reschedule
-      };
-
-      console.log('cal-webhook: Updating appointment:', calBookingId, appointmentToUpdate);
+    } else if (type === 'booking.rescheduled') {
+      console.log(`cal-webhook: Handling booking.rescheduled for ${booking.id}`);
       const { data, error } = await supabaseClient
         .from('appointments')
-        .update(appointmentToUpdate)
-        .eq('cal_booking_id', calBookingId)
+        .update({ 
+          scheduled_at: appointmentData.scheduled_at,
+          duration: appointmentData.duration, // Also update duration on reschedule
+          status: "rescheduled" // As per user's new spec
+        })
+        .eq('cal_booking_id', booking.id)
         .select()
-        .single();
+        .single(); // Expect one row to be updated
 
       if (error) {
-        console.error('cal-webhook: Supabase error on update (reschedule):', error);
+        console.error('cal-webhook: Supabase error on update (booking.rescheduled):', error);
          if (error.code === 'PGRST204') { // PostgREST code for no rows found
-          return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${calBookingId} not found.` }), {
+          return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${booking.id} not found to reschedule.` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 404,
           });
@@ -233,33 +218,28 @@ serve(async (req: Request) => {
           status: 500,
         });
       }
-      if (!data) { // Should be caught by PGRST204, but as a safeguard
-         console.warn(`cal-webhook: No appointment found with cal_booking_id ${calBookingId} to reschedule.`);
-         return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${calBookingId} not found.` }), {
+       if (!data) { 
+         console.warn(`cal-webhook: No appointment found with cal_booking_id ${booking.id} to reschedule (should be caught by PGRST204).`);
+         return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${booking.id} not found.` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 404,
          });
       }
       console.log('cal-webhook: Appointment rescheduled:', data);
 
-    } else if (type === 'BOOKING_CANCELLED') {
-      console.log(`cal-webhook: Handling BOOKING_CANCELLED for ${calBookingId}`);
-      const appointmentToUpdate: Database['public']['Tables']['appointments']['Update'] = {
-        status: 'canceled',
-      };
-
-      console.log('cal-webhook: Updating appointment (cancel):', calBookingId, appointmentToUpdate);
+    } else if (type === 'booking.canceled') {
+      console.log(`cal-webhook: Handling booking.canceled for ${booking.id}`);
       const { data, error } = await supabaseClient
         .from('appointments')
-        .update(appointmentToUpdate)
-        .eq('cal_booking_id', calBookingId)
+        .update({ status: "canceled" })
+        .eq('cal_booking_id', booking.id)
         .select()
-        .single();
+        .single(); // Expect one row to be updated
       
       if (error) {
-        console.error('cal-webhook: Supabase error on update (cancel):', error);
-        if (error.code === 'PGRST204') { // PostgREST code for no rows found
-          return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${calBookingId} not found.` }), {
+        console.error('cal-webhook: Supabase error on update (booking.canceled):', error);
+        if (error.code === 'PGRST204') { 
+          return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${booking.id} not found to cancel.` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 404,
           });
@@ -269,9 +249,9 @@ serve(async (req: Request) => {
           status: 500,
         });
       }
-       if (!data) { // Should be caught by PGRST204, but as a safeguard
-         console.warn(`cal-webhook: No appointment found with cal_booking_id ${calBookingId} to cancel.`);
-         return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${calBookingId} not found.` }), {
+       if (!data) { 
+         console.warn(`cal-webhook: No appointment found with cal_booking_id ${booking.id} to cancel (should be caught by PGRST204).`);
+         return new Response(JSON.stringify({ error: `Appointment with cal_booking_id ${booking.id} not found.` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 404,
          });
@@ -280,13 +260,18 @@ serve(async (req: Request) => {
 
     } else {
       console.warn('cal-webhook: Unknown event type received:', type);
-      return new Response(JSON.stringify({ error: `Unknown event type: ${type}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
+      // This case should ideally not be reached if `type` is strictly one of the three.
+      // However, as a safeguard:
+      const knownTypes: string[] = ['booking.created', 'booking.rescheduled', 'booking.canceled'];
+      if (!knownTypes.includes(type)) {
+        return new Response(JSON.stringify({ error: `Unknown event type: ${type}` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
     }
 
-    console.log('cal-webhook: Successfully processed event:', type, calBookingId);
+    console.log('cal-webhook: Successfully processed event:', type, booking.id);
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
@@ -294,14 +279,14 @@ serve(async (req: Request) => {
 
   } catch (e) {
     console.error('cal-webhook: Error processing request:', e);
-    if (e instanceof SyntaxError) { // JSON parsing error
+    if (e instanceof SyntaxError) { 
         console.warn('cal-webhook: Invalid JSON payload.');
         return new Response(JSON.stringify({ error: 'Invalid JSON payload.' }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });
     }
-    return new Response(JSON.stringify({ error: 'An unexpected error occurred.', details: e.message }), {
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred.', details: e.message || String(e) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

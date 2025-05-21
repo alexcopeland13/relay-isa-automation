@@ -1,3 +1,4 @@
+
 // This file should contain the 'Database' type definition from your main project's Supabase types.
 // For example, copy the relevant parts from 'src/integrations/supabase/types.ts'.
 // Make sure this is kept in sync with your actual database schema.
@@ -67,6 +68,7 @@ export interface Database {
       appointments: {
         Row: {
           appointment_type: string | null
+          cal_booking_id: string | null // Added this field
           created_at: string | null
           duration: number | null
           google_calendar_event_id: string | null
@@ -78,7 +80,8 @@ export interface Database {
           status: string | null
         }
         Insert: {
-          appointment_type?: string | null // Now constrained by DB check
+          appointment_type?: string | null
+          cal_booking_id?: string | null // Added this field
           created_at?: string | null
           duration?: number | null
           google_calendar_event_id?: string | null
@@ -91,6 +94,7 @@ export interface Database {
         }
         Update: {
           appointment_type?: string | null
+          cal_booking_id?: string | null // Added this field
           created_at?: string | null
           duration?: number | null
           google_calendar_event_id?: string | null

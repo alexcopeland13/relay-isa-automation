@@ -63,6 +63,7 @@ export type Database = {
       appointments: {
         Row: {
           appointment_type: string | null
+          cal_booking_id: string | null
           created_at: string | null
           duration: number | null
           google_calendar_event_id: string | null
@@ -75,6 +76,7 @@ export type Database = {
         }
         Insert: {
           appointment_type?: string | null
+          cal_booking_id?: string | null
           created_at?: string | null
           duration?: number | null
           google_calendar_event_id?: string | null
@@ -87,6 +89,7 @@ export type Database = {
         }
         Update: {
           appointment_type?: string | null
+          cal_booking_id?: string | null
           created_at?: string | null
           duration?: number | null
           google_calendar_event_id?: string | null

@@ -17,7 +17,10 @@ verify_jwt = false
 verify_jwt = false # Secured by x-cinc-signature
 
 [functions.lead-lookup]
-# verify_jwt = true by default, assuming this might be called by authenticated app users or other internal services
-# If it needs to be public and unauthenticated, set verify_jwt = false
-# For now, let's assume it's called by an authenticated part of your system or another function.
-# If it's for a Retell LLM Agent, it might need service_role key access, hence verify_jwt = true is fine if called from backend.
+# verify_jwt = true by default
+
+[functions.schedule-callback] # Added this function in a previous step
+verify_jwt = false
+
+[functions.cal-webhook] # Newly added function
+verify_jwt = false # Public webhook endpoint

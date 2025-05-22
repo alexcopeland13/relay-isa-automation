@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, MessageSquare, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast'; // Assuming this is from use-toast.ts not shadcn/ui/use-toast
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { routeAfterLogin } from '@/lib/routeAfterLogin'; // Import the new routing function
+import { routeAfterLogin } from '@/lib/routeAfterLogin';
 
 type UserRole = 'team_lead' | 'showing_agent' | 'lo_assistant';
 
@@ -44,8 +44,6 @@ const Auth = () => {
         if (session) {
           await routeAfterLogin(supabase, navigate, session.user.id);
         } else {
-          // If session becomes null (logout), navigate to auth page or home
-          // This part handles logout redirection if needed, or can be left to ProtectedRoute
           if (location.pathname !== '/auth' && location.pathname !== '/') {
              navigate('/auth');
           }
@@ -92,8 +90,6 @@ const Auth = () => {
             data: {
               first_name: firstName,
               last_name: lastName
-              // role is not part of raw_user_meta_data for direct profile population via trigger in this setup
-              // We will upsert it to profiles table after signup
             }
           }
         });
@@ -105,7 +101,7 @@ const Auth = () => {
             .from('profiles')
             .upsert({ 
               id: signUpData.user.id, 
-              email: signUpData.user.email, // Good to keep email consistent
+              email: signUpData.user.email,
               first_name: firstName,
               last_name: lastName,
               role: role 
@@ -116,9 +112,8 @@ const Auth = () => {
             toast({
               title: "Profile update failed",
               description: `Could not set user role: ${profileError.message}. Please contact support.`,
-              variant: "warning" // Changed to warning as signup was successful
+              variant: "default"
             });
-            // The onAuthStateChange will still fire and attempt to route.
           } else {
              toast({
               title: "Account created successfully!",
@@ -130,15 +125,13 @@ const Auth = () => {
             toast({
                 title: "Sign up issue",
                 description: "Account created, but user data not immediately available. Please try logging in.",
-                variant: "warning"
+                variant: "default"
             });
             setLoading(false);
             return;
         }
-        // onAuthStateChange will handle routing
 
       } else {
-        // Log in the user
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
@@ -146,7 +139,6 @@ const Auth = () => {
           title: "Logged in successfully",
           description: "Redirecting...",
         });
-        // onAuthStateChange will handle routing using routeAfterLogin
       }
 
     } catch (error) {
@@ -162,7 +154,6 @@ const Auth = () => {
 
   const toggleView = () => {
     setIsSignUp(!isSignUp);
-    // Update URL without reloading
     const url = new URL(window.location.href);
     if (!isSignUp) {
       url.searchParams.set('signup', 'true');

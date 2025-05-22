@@ -1,5 +1,5 @@
 
-import PageLayout from '@/components/layout/PageLayout';
+import { PageLayout } from '@/components/layout/PageLayout'; // Changed to named import
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Showings = () => {

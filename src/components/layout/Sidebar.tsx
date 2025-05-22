@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,11 +9,14 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type NavItem = {
   icon: React.ElementType;
@@ -89,6 +91,8 @@ const NavSection = ({ title, items, isCollapsed }: NavSectionProps) => {
 export const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const engageItems: NavItem[] = [
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
@@ -108,6 +112,24 @@ export const Sidebar = () => {
 
   const handleHelpClick = () => {
     setShowOnboarding(true);
+  };
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Logout Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      navigate('/auth');
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+    }
   };
 
   return (
@@ -154,11 +176,11 @@ export const Sidebar = () => {
           />
         </nav>
         
-        <div className="p-2 mb-2">
+        <div className="p-2 border-t border-sidebar-border mt-auto">
           <Button 
             variant="ghost" 
             className={cn(
-              "w-full text-white/70 hover:text-white hover:bg-sidebar-accent/30 justify-start",
+              "w-full text-white/70 hover:text-white hover:bg-sidebar-accent/30 justify-start mb-1",
               isCollapsed && "px-0 justify-center"
             )}
             onClick={handleHelpClick}
@@ -167,11 +189,24 @@ export const Sidebar = () => {
             <HelpCircle size={20} aria-hidden="true" />
             {!isCollapsed && <span className="ml-2">Help & Guide</span>}
           </Button>
+          
+          <Button 
+            variant="ghost" 
+            className={cn(
+              "w-full text-white/70 hover:text-white hover:bg-sidebar-accent/30 justify-start",
+              isCollapsed && "px-0 justify-center"
+            )}
+            onClick={handleLogout}
+            aria-label="Log Out"
+          >
+            <LogOut size={20} aria-hidden="true" />
+            {!isCollapsed && <span className="ml-2">Log Out</span>}
+          </Button>
         </div>
         
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 mx-auto mb-4 rounded-full bg-sidebar-accent hover:bg-sidebar-accent/80 text-white transition-colors"
+          className="p-2 mx-auto my-2 rounded-full bg-sidebar-accent hover:bg-sidebar-accent/80 text-white transition-colors"
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >

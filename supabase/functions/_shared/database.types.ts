@@ -1,4 +1,3 @@
-
 // This file should contain the 'Database' type definition from your main project's Supabase types.
 // For example, copy the relevant parts from 'src/integrations/supabase/types.ts'.
 // Make sure this is kept in sync with your actual database schema.
@@ -68,7 +67,7 @@ export interface Database {
       appointments: {
         Row: {
           appointment_type: string | null
-          cal_booking_id: string | null // Added this field
+          cal_booking_id: string | null 
           created_at: string | null
           duration: number | null
           google_calendar_event_id: string | null
@@ -81,7 +80,7 @@ export interface Database {
         }
         Insert: {
           appointment_type?: string | null
-          cal_booking_id?: string | null // Added this field
+          cal_booking_id?: string | null 
           created_at?: string | null
           duration?: number | null
           google_calendar_event_id?: string | null
@@ -94,7 +93,7 @@ export interface Database {
         }
         Update: {
           appointment_type?: string | null
-          cal_booking_id?: string | null // Added this field
+          cal_booking_id?: string | null
           created_at?: string | null
           duration?: number | null
           google_calendar_event_id?: string | null
@@ -238,6 +237,7 @@ export interface Database {
           first_name: string | null
           id: string
           last_name: string | null
+          role: string // Added role
         }
         Insert: {
           created_at?: string
@@ -245,6 +245,7 @@ export interface Database {
           first_name?: string | null
           id: string
           last_name?: string | null
+          role?: string // Added role, optional for insert if default is set
         }
         Update: {
           created_at?: string
@@ -252,8 +253,9 @@ export interface Database {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          role?: string // Added role
         }
-        Relationships: []
+        Relationships: [] // Assuming no new relationships for profiles
       }
       qualification_data: {
         Row: {

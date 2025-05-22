@@ -19,6 +19,8 @@ import ConversionOutcomes from '@/pages/ConversionOutcomes';
 import NotFound from '@/pages/NotFound';
 import LandingPage from '@/pages/LandingPage';
 import Auth from '@/pages/Auth';
+import Showings from '@/pages/Showings'; // Import new page
+import LoDashboard from '@/pages/LoDashboard'; // Import new page
 import { Toaster } from '@/components/ui/toaster';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
@@ -41,7 +43,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        setLoading(false);
+        // No automatic navigation here, Auth.tsx handles post-login/signup navigation
+        // This listener primarily ensures the session state is up-to-date for protection.
+        // If session becomes null (logout), this will trigger redirect in the check below.
+        setLoading(false); 
       }
     );
 
@@ -61,6 +66,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   // If authenticated, render the protected content
   return <>{children}</>;
 };
+
 
 function App() {
   return (
@@ -86,6 +92,10 @@ function App() {
         <Route path="/pending-followups" element={<ProtectedRoute><PendingFollowups /></ProtectedRoute>} />
         <Route path="/conversion-outcomes" element={<ProtectedRoute><ConversionOutcomes /></ProtectedRoute>} />
         
+        {/* New protected routes for different roles */}
+        <Route path="/showings" element={<ProtectedRoute><Showings /></ProtectedRoute>} />
+        <Route path="/lo-dashboard" element={<ProtectedRoute><LoDashboard /></ProtectedRoute>} />
+        
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
@@ -94,3 +104,4 @@ function App() {
 }
 
 export default App;
+

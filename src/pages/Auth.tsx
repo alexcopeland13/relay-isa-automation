@@ -1,14 +1,22 @@
-
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Eye, EyeOff, MessageSquare, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast'; // Assuming this is from use-toast.ts not shadcn/ui/use-toast
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { routeAfterLogin } from '@/lib/routeAfterLogin'; // Import the new routing function
+
+type UserRole = 'team_lead' | 'showing_agent' | 'lo_assistant';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,40 +27,43 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState<UserRole>('team_lead'); // Added role state
   
   const navigate = useNavigate();
   const location = useLocation();
   
   useEffect(() => {
-    // Check for existing session on component mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        navigate('/dashboard');
+        await routeAfterLogin(supabase, navigate, session.user.id);
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (session) {
-          navigate('/dashboard');
+          await routeAfterLogin(supabase, navigate, session.user.id);
+        } else {
+          // If session becomes null (logout), navigate to auth page or home
+          // This part handles logout redirection if needed, or can be left to ProtectedRoute
+          if (location.pathname !== '/auth' && location.pathname !== '/') {
+             navigate('/auth');
+          }
         }
       }
     );
 
-    // Check if the URL contains signup parameter
     const params = new URLSearchParams(location.search);
     setIsSignUp(params.get('signup') === 'true');
 
     return () => subscription.unsubscribe();
-  }, [location, navigate]);
+  }, [navigate, location]); // Added location to dependency array
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Validation
       if (isSignUp && password !== confirmPassword) {
         toast({
           title: "Passwords do not match",
@@ -74,24 +85,57 @@ const Auth = () => {
       }
 
       if (isSignUp) {
-        // Sign up the user
-        const { data, error } = await supabase.auth.signUp({ 
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ 
           email, 
           password,
           options: {
             data: {
               first_name: firstName,
               last_name: lastName
+              // role is not part of raw_user_meta_data for direct profile population via trigger in this setup
+              // We will upsert it to profiles table after signup
             }
           }
         });
 
-        if (error) throw error;
+        if (signUpError) throw signUpError;
         
-        toast({
-          title: "Account created successfully",
-          description: "You'll be redirected to the dashboard shortly.",
-        });
+        if (signUpData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({ 
+              id: signUpData.user.id, 
+              email: signUpData.user.email, // Good to keep email consistent
+              first_name: firstName,
+              last_name: lastName,
+              role: role 
+            });
+
+          if (profileError) {
+            console.error("Error updating profile with role:", profileError);
+            toast({
+              title: "Profile update failed",
+              description: `Could not set user role: ${profileError.message}. Please contact support.`,
+              variant: "warning" // Changed to warning as signup was successful
+            });
+            // The onAuthStateChange will still fire and attempt to route.
+          } else {
+             toast({
+              title: "Account created successfully!",
+              description: "Your role has been set. Redirecting...",
+            });
+          }
+        } else {
+            console.error('Sign up successful but no user data returned.');
+            toast({
+                title: "Sign up issue",
+                description: "Account created, but user data not immediately available. Please try logging in.",
+                variant: "warning"
+            });
+            setLoading(false);
+            return;
+        }
+        // onAuthStateChange will handle routing
 
       } else {
         // Log in the user
@@ -100,8 +144,9 @@ const Auth = () => {
 
         toast({
           title: "Logged in successfully",
-          description: "Redirecting to dashboard...",
+          description: "Redirecting...",
         });
+        // onAuthStateChange will handle routing using routeAfterLogin
       }
 
     } catch (error) {
@@ -182,6 +227,19 @@ const Auth = () => {
                           required
                         />
                       </div>
+                    </div>
+                     <div className="space-y-2">
+                      <Label htmlFor="role">I am a...</Label>
+                      <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
+                        <SelectTrigger id="role" className="w-full">
+                          <SelectValue placeholder="Select your role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="team_lead">Team Lead (Realtor)</SelectItem>
+                          <SelectItem value="showing_agent">Showing Agent</SelectItem>
+                          <SelectItem value="lo_assistant">Loan-Officer Assistant</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </>
                 )}

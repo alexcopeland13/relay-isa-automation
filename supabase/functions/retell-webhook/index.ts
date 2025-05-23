@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
@@ -27,7 +26,7 @@ serve(async (req) => {
     
     const { event, data } = webhookData;
 
-    // Enhanced call_started event - lookup caller and provide context
+    // Enhanced call_started event - create conversation record immediately
     if (event === 'call_started') {
       const callerPhone = data.customer_number;
       
@@ -52,11 +51,37 @@ serve(async (req) => {
           .eq('phone_e164', callerPhone)
           .single();
 
+        let leadId = null;
+        
         if (lookupError) {
           console.log(`No existing lead found for ${callerPhone}:`, lookupError);
         } else {
+          leadId = phoneMapping.leads?.id;
           console.log(`Found lead context for ${callerPhone}:`, phoneMapping);
-          
+        }
+
+        // Create conversation record immediately with active status
+        const { data: conversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            lead_id: leadId,
+            agent_id: 'retell-agent',
+            call_sid: data.call_id,
+            direction: 'inbound',
+            call_status: 'active',
+            started_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          console.error("Error creating conversation:", convError);
+        } else {
+          console.log("Created active conversation:", conversation.id);
+        }
+
+        // Generate enhanced lead context for Retell
+        if (phoneMapping) {
           // Get qualification data separately to avoid complex joins
           const { data: qualificationData } = await supabase
             .from('qualification_data')
@@ -104,7 +129,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Call started event processed with enhanced context",
+          message: "Call started event processed with real-time tracking",
           lead_context_found: !!phoneMapping,
           is_return_caller: !!phoneMapping?.leads
         }),
@@ -115,7 +140,7 @@ serve(async (req) => {
       );
     }
 
-    // Enhanced call_ended event - process conversation and extract enhanced data
+    // Enhanced call_ended event - update conversation with completion data
     if (event === 'call_ended') {
       const {
         call_id,
@@ -137,71 +162,83 @@ serve(async (req) => {
       // Use custom_analysis_data if available, otherwise fall back to extracted_information
       const extractionData = custom_analysis_data || extracted_information || {};
       
-      // Find existing lead or create new one
-      let leadId = null;
-      let conversationId = null;
-      
-      // Try to find existing lead first
-      const { data: phoneMapping } = await supabase
-        .from('phone_lead_mapping')
-        .select('lead_id')
-        .eq('phone_e164', callerPhone)
+      // Update existing conversation to completed status
+      const { data: updatedConversation, error: updateError } = await supabase
+        .from('conversations')
+        .update({
+          call_status: 'completed',
+          ended_at: new Date().toISOString(),
+          duration: duration || call_metadata?.duration,
+          recording_url: recording_url || call_metadata?.recording_url,
+          transcript: transcript || transcription
+        })
+        .eq('call_sid', call_id || call_metadata?.call_id)
+        .select()
         .single();
-      
-      if (phoneMapping?.lead_id) {
-        leadId = phoneMapping.lead_id;
-        console.log("Found existing lead:", leadId);
+
+      if (updateError) {
+        console.error("Error updating conversation:", updateError);
       } else {
-        // Create new lead if not found
-        const leadInfo = {
-          firstName: extractionData?.first_name || caller?.name?.split(' ')[0] || 'Unknown',
-          lastName: extractionData?.last_name || (caller?.name?.split(' ').slice(1).join(' ') || 'User'),
-          email: extractionData?.email || caller?.email || `retell_lead_${Date.now()}@example.com`,
-          phone: callerPhone || '',
-          source: 'Retell Voice Agent',
-          notes: `Lead created via Retell conversation. Call ID: ${call_id || 'Unknown'}`,
-          status: 'new'
-        };
-        
-        console.log("Creating new lead:", leadInfo);
-        
-        // Use existing insert-lead function
-        const { data: insertData, error: insertError } = await supabase.functions.invoke('insert-lead', {
-          body: { leadInfo }
-        });
-        
-        if (insertError) {
-          throw new Error(`Error creating lead: ${insertError.message}`);
-        }
-        
-        leadId = insertData?.leadId;
+        console.log("Updated conversation to completed:", updatedConversation?.id);
       }
+
+      // Find existing lead or create new one
+      let leadId = updatedConversation?.lead_id;
+      let conversationId = updatedConversation?.id;
       
-      if (leadId) {
-        // Create conversation record
-        const { data: conversation, error: convError } = await supabase
-          .from('conversations')
-          .insert({
-            lead_id: leadId,
-            agent_id: 'retell-agent',
-            call_sid: call_id || call_metadata?.call_id,
-            direction: 'inbound',
-            duration: duration || call_metadata?.duration,
-            recording_url: recording_url || call_metadata?.recording_url,
-            transcript: transcript || transcription
-          })
-          .select()
+      if (!leadId) {
+        // Try to find existing lead first
+        const { data: phoneMapping } = await supabase
+          .from('phone_lead_mapping')
+          .select('lead_id')
+          .eq('phone_e164', callerPhone)
           .single();
-
-        if (convError) {
-          console.error("Error creating conversation:", convError);
+        
+        if (phoneMapping?.lead_id) {
+          leadId = phoneMapping.lead_id;
+          console.log("Found existing lead:", leadId);
+          
+          // Update conversation with lead_id
+          await supabase
+            .from('conversations')
+            .update({ lead_id: leadId })
+            .eq('id', conversationId);
         } else {
-          conversationId = conversation.id;
-          console.log("Created conversation:", conversationId);
+          // Create new lead if not found
+          const leadInfo = {
+            firstName: extractionData?.first_name || caller?.name?.split(' ')[0] || 'Unknown',
+            lastName: extractionData?.last_name || (caller?.name?.split(' ').slice(1).join(' ') || 'User'),
+            email: extractionData?.email || caller?.email || `retell_lead_${Date.now()}@example.com`,
+            phone: callerPhone || '',
+            source: 'Retell Voice Agent',
+            notes: `Lead created via Retell conversation. Call ID: ${call_id || 'Unknown'}`,
+            status: 'new'
+          };
+          
+          console.log("Creating new lead:", leadInfo);
+          
+          // Use existing insert-lead function
+          const { data: insertData, error: insertError } = await supabase.functions.invoke('insert-lead', {
+            body: { leadInfo }
+          });
+          
+          if (insertError) {
+            throw new Error(`Error creating lead: ${insertError.message}`);
+          }
+          
+          leadId = insertData?.leadId;
+          
+          // Update conversation with new lead_id
+          await supabase
+            .from('conversations')
+            .update({ lead_id: leadId })
+            .eq('id', conversationId);
         }
+      }
 
+      if (leadId && conversationId) {
         // Store extraction data in conversation_extractions table
-        if (conversationId && extractionData) {
+        if (extractionData) {
           const { error: extractionError } = await supabase
             .from('conversation_extractions')
             .insert({

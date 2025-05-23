@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { CallSchedulerModal } from './CallSchedulerModal';
+import { useActiveCalls } from '@/hooks/use-active-calls';
 
 // Create several copies of the sample conversation with modified properties for the list
 const generateSampleConversations = () => {
@@ -200,6 +200,7 @@ interface ConversationListProps {
 export const ConversationList = ({ onSelectConversation }: ConversationListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string | null>(null);
+  const { activeCallLeadIds, isLeadOnCall } = useActiveCalls();
   const conversations = generateSampleConversations();
   
   const filteredConversations = conversations.filter(conv => {
@@ -264,53 +265,71 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
       </div>
       
       <div className="grid grid-cols-1 gap-4">
-        {filteredConversations.map((conversation) => (
-          <Card key={conversation.id} className="hover:border-primary/50 transition-all cursor-pointer" onClick={onSelectConversation}>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="font-medium text-lg">{conversation.leadInfo.name}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                    {getConversationTypeIcon(conversation.type)}
-                    <span>{conversation.type}</span>
-                    <span className="mx-1">•</span>
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>{conversation.duration}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <div className={`text-xs font-medium px-2 py-1 rounded-full ${getQualificationBadgeColor(conversation.extractedInfo.qualification.status)}`}>
-                    {conversation.extractedInfo.qualification.status}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {format(parseISO(conversation.timestamp), 'MMM d, yyyy')}
-                  </div>
-                  {conversation.callStatus && (
-                    <div className="mt-1">
-                      {getCallStatusBadge(conversation.callStatus)}
+        {filteredConversations.map((conversation) => {
+          // Mock check for live call - in real implementation this would use actual lead IDs
+          const isLive = Math.random() < 0.1; // 10% chance for demo purposes
+          
+          return (
+            <Card 
+              key={conversation.id} 
+              className={`hover:border-primary/50 transition-all cursor-pointer ${
+                isLive ? 'border-green-500 ring-2 ring-green-200' : ''
+              }`} 
+              onClick={onSelectConversation}
+            >
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-lg">{conversation.leadInfo.name}</div>
+                      {isLive && (
+                        <Badge className="bg-green-500 text-white animate-pulse">
+                          LIVE CALL
+                        </Badge>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex justify-between items-center mt-4">
-                <div className="text-sm">
-                  <div className="flex items-center gap-1">
-                    <span className="font-medium">Refinance Goals:</span>
-                    {conversation.extractedInfo.refinanceGoals.lowerRate && <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded">Lower Rate</span>}
-                    {conversation.extractedInfo.refinanceGoals.shortenTerm && <span className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded">Shorter Term</span>}
-                    {conversation.extractedInfo.refinanceGoals.cashOut && <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">Cash Out</span>}
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                      {getConversationTypeIcon(conversation.type)}
+                      <span>{conversation.type}</span>
+                      <span className="mx-1">•</span>
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>{conversation.duration}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${getQualificationBadgeColor(conversation.extractedInfo.qualification.status)}`}>
+                      {conversation.extractedInfo.qualification.status}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {format(parseISO(conversation.timestamp), 'MMM d, yyyy')}
+                    </div>
+                    {conversation.callStatus && (
+                      <div className="mt-1">
+                        {getCallStatusBadge(conversation.callStatus)}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="gap-1">
-                  <span>Details</span>
-                  <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-sm">
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">Refinance Goals:</span>
+                      {conversation.extractedInfo.refinanceGoals.lowerRate && <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded">Lower Rate</span>}
+                      {conversation.extractedInfo.refinanceGoals.shortenTerm && <span className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded">Shorter Term</span>}
+                      {conversation.extractedInfo.refinanceGoals.cashOut && <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">Cash Out</span>}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="gap-1">
+                    <span>Details</span>
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

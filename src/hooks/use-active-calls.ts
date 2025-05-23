@@ -43,17 +43,17 @@ export function useActiveCalls() {
           schema: 'public',
           table: 'conversations'
         },
-        (payload) => {
+        (payload: any) => {
           console.log('Call status change:', payload);
           
-          if (payload.eventType === 'INSERT' && payload.new.call_status === 'active') {
+          if (payload.eventType === 'INSERT' && payload.new?.call_status === 'active') {
             const leadId = payload.new.lead_id;
-            if (leadId) {
+            if (leadId && typeof leadId === 'string') {
               setActiveCallLeadIds(prev => [...new Set([...prev, leadId])]);
             }
           } else if (payload.eventType === 'UPDATE') {
-            const leadId = payload.new.lead_id;
-            if (leadId) {
+            const leadId = payload.new?.lead_id;
+            if (leadId && typeof leadId === 'string') {
               if (payload.new.call_status === 'completed') {
                 setActiveCallLeadIds(prev => prev.filter(id => id !== leadId));
               } else if (payload.new.call_status === 'active') {

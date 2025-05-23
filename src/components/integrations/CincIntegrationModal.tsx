@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,14 +19,26 @@ import {
   Users
 } from 'lucide-react';
 
+interface CincConfig {
+  apiKey: string;
+  syncFrequency: "realtime" | "hourly" | "daily";
+  filterOption: "all" | "new" | "active";
+  isConnected: boolean;
+  lastSync?: string;
+}
+
 interface CincIntegrationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: () => void;
+  existingConfig?: CincConfig | null;
 }
 
 export const CincIntegrationModal: React.FC<CincIntegrationModalProps> = ({
   isOpen,
-  onClose
+  onClose,
+  onSuccess,
+  existingConfig
 }) => {
   const [step, setStep] = useState<'credentials' | 'webhook' | 'test' | 'complete'>('credentials');
   const [loading, setLoading] = useState(false);
@@ -128,6 +139,21 @@ export const CincIntegrationModal: React.FC<CincIntegrationModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleComplete = () => {
+    // Save configuration and trigger success callback
+    const newConfig: CincConfig = {
+      apiKey: credentials.api_key,
+      syncFrequency: 'realtime',
+      filterOption: 'all',
+      isConnected: true,
+      lastSync: new Date().toISOString()
+    };
+    
+    localStorage.setItem('cincConfig', JSON.stringify(newConfig));
+    onSuccess();
+    onClose();
   };
 
   const renderCredentialsStep = () => (
@@ -392,7 +418,7 @@ export const CincIntegrationModal: React.FC<CincIntegrationModalProps> = ({
         </Card>
       </div>
 
-      <Button onClick={onClose} className="w-full">
+      <Button onClick={handleComplete} className="w-full">
         Complete Setup
       </Button>
     </div>

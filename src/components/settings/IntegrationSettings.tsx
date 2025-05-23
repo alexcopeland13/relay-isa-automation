@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -315,9 +316,10 @@ export const IntegrationSettings = () => {
     <>
       {showCincModal && (
         <CincIntegrationModal
+          isOpen={showCincModal}
           onClose={() => setShowCincModal(false)}
           onSuccess={handleCincSuccess}
-          existingConfig={cincConfig || undefined}
+          existingConfig={cincConfig}
         />
       )}
       

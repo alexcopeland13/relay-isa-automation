@@ -15,10 +15,14 @@ export function useActiveCalls() {
           .select('lead_id')
           .eq('call_status', 'active');
 
-        const leadIds = activeCalls
-          ?.filter(call => call.lead_id !== null)
-          .map(call => call.lead_id as string) || [];
-          
+        const leadIds: string[] = [];
+        if (activeCalls) {
+          for (const call of activeCalls) {
+            if (call.lead_id) {
+              leadIds.push(call.lead_id);
+            }
+          }
+        }
         setActiveCallLeadIds(leadIds);
       } catch (error) {
         console.error('Error fetching active calls:', error);

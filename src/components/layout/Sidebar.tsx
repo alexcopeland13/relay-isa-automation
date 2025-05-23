@@ -99,6 +99,7 @@ export const Sidebar = () => {
   const engageItems: NavItem[] = [
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
     { icon: Users, label: 'Leads', path: '/leads', badgeCount: 2 },
+    { icon: MapPin, label: 'Marketplace', path: '/marketplace' },
   ];
   
   const manageItems: NavItem[] = [

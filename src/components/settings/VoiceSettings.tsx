@@ -265,7 +265,7 @@ export const VoiceSettings = () => {
                 Dynamic Greetings
               </CardTitle>
               <p className="text-sm text-gray-600">
-                Customize greetings based on caller context. Use placeholders like {{"{"}lead_name{"}"}} and {{"{"}favorite_city{"}"}}.
+                Customize greetings based on caller context. Use placeholders like &#123;&#123;lead_name&#125;&#125; and &#123;&#123;favorite_city&#125;&#125;.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -323,12 +323,12 @@ export const VoiceSettings = () => {
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Available Placeholders</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                  <div><code>{{"{"}lead_name{"}"}</code> - Full name</div>
-                  <div><code>{{"{"}first_name{"}"}</code> - First name only</div>
-                  <div><code>{{"{"}favorite_city{"}"}</code> - Preferred city</div>
-                  <div><code>{{"{"}price_range{"}"}</code> - Price range</div>
-                  <div><code>{{"{"}timeline{"}"}</code> - Buying timeline</div>
-                  <div><code>{{"{"}property_type{"}"}</code> - Property type</div>
+                  <div><code>&#123;&#123;lead_name&#125;&#125;</code> - Full name</div>
+                  <div><code>&#123;&#123;first_name&#125;&#125;</code> - First name only</div>
+                  <div><code>&#123;&#123;favorite_city&#125;&#125;</code> - Preferred city</div>
+                  <div><code>&#123;&#123;price_range&#125;&#125;</code> - Price range</div>
+                  <div><code>&#123;&#123;timeline&#125;&#125;</code> - Buying timeline</div>
+                  <div><code>&#123;&#123;property_type&#125;&#125;</code> - Property type</div>
                 </div>
               </div>
             </CardContent>

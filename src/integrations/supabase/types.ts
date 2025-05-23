@@ -226,6 +226,51 @@ export type Database = {
           },
         ]
       }
+      payouts: {
+        Row: {
+          agent_id: string | null
+          amount: number
+          created_at: string | null
+          id: string
+          showing_id: string | null
+          status: string | null
+          stripe_payment_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          amount: number
+          created_at?: string | null
+          id?: string
+          showing_id?: string | null
+          status?: string | null
+          stripe_payment_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          amount?: number
+          created_at?: string | null
+          id?: string
+          showing_id?: string | null
+          status?: string | null
+          stripe_payment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payouts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_showing_id_fkey"
+            columns: ["showing_id"]
+            isOneToOne: false
+            referencedRelation: "showings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -321,6 +366,132 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showing_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          rating: number | null
+          showing_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          rating?: number | null
+          showing_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          rating?: number | null
+          showing_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showing_ratings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showing_ratings_showing_id_fkey"
+            columns: ["showing_id"]
+            isOneToOne: false
+            referencedRelation: "showings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showings: {
+        Row: {
+          client_name: string
+          client_phone: string
+          client_type: string | null
+          created_at: string | null
+          duration: number | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          mls_number: string | null
+          payout_amount: number
+          preferred_agent_email: string | null
+          property_address: string
+          requesting_agent_id: string | null
+          showing_agent_id: string | null
+          showing_date: string
+          showing_time: string
+          special_instructions: string | null
+          status: string | null
+          updated_at: string | null
+          urgency_level: string | null
+        }
+        Insert: {
+          client_name: string
+          client_phone: string
+          client_type?: string | null
+          created_at?: string | null
+          duration?: number | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          mls_number?: string | null
+          payout_amount: number
+          preferred_agent_email?: string | null
+          property_address: string
+          requesting_agent_id?: string | null
+          showing_agent_id?: string | null
+          showing_date: string
+          showing_time: string
+          special_instructions?: string | null
+          status?: string | null
+          updated_at?: string | null
+          urgency_level?: string | null
+        }
+        Update: {
+          client_name?: string
+          client_phone?: string
+          client_type?: string | null
+          created_at?: string | null
+          duration?: number | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          mls_number?: string | null
+          payout_amount?: number
+          preferred_agent_email?: string | null
+          property_address?: string
+          requesting_agent_id?: string | null
+          showing_agent_id?: string | null
+          showing_date?: string
+          showing_time?: string
+          special_instructions?: string | null
+          status?: string | null
+          updated_at?: string | null
+          urgency_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showings_requesting_agent_id_fkey"
+            columns: ["requesting_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showings_showing_agent_id_fkey"
+            columns: ["showing_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

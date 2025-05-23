@@ -1,4 +1,3 @@
-
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -21,6 +20,7 @@ import LandingPage from '@/pages/LandingPage';
 import Auth from '@/pages/Auth';
 import Showings from '@/pages/Showings'; // Import new page
 import LoDashboard from '@/pages/LoDashboard'; // Import new page
+import Marketplace from '@/pages/Marketplace'; // Import new page
 import { Toaster } from '@/components/ui/toaster';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
@@ -91,6 +91,7 @@ function App() {
         <Route path="/completed-tasks" element={<ProtectedRoute><CompletedTasks /></ProtectedRoute>} />
         <Route path="/pending-followups" element={<ProtectedRoute><PendingFollowups /></ProtectedRoute>} />
         <Route path="/conversion-outcomes" element={<ProtectedRoute><ConversionOutcomes /></ProtectedRoute>} />
+        <Route path="/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
         
         {/* New protected routes for different roles */}
         <Route path="/showings" element={<ProtectedRoute><Showings /></ProtectedRoute>} />
@@ -104,4 +105,3 @@ function App() {
 }
 
 export default App;
-

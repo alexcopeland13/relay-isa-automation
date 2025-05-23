@@ -10,8 +10,9 @@ export function useActiveCalls() {
     // Initial fetch of active calls
     const fetchActiveCalls = async () => {
       try {
-        // Use raw SQL query to bypass TypeScript type inference issues
-        const { data: activeCalls, error } = await supabase.rpc('get_active_calls');
+        // Use type casting to bypass TypeScript checking for custom RPC functions
+        const { data: activeCalls, error } = await (supabase as any)
+          .rpc('get_active_calls');
 
         if (error) {
           console.error('Error fetching active calls:', error);
@@ -20,7 +21,7 @@ export function useActiveCalls() {
         }
 
         const leadIds: string[] = [];
-        if (activeCalls) {
+        if (activeCalls && Array.isArray(activeCalls)) {
           for (const call of activeCalls) {
             if (call.lead_id && typeof call.lead_id === 'string') {
               leadIds.push(call.lead_id);

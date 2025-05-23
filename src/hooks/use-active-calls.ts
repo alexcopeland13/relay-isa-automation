@@ -10,11 +10,8 @@ export function useActiveCalls() {
     // Initial fetch of active calls
     const fetchActiveCalls = async () => {
       try {
-        // Use a simpler query approach to avoid TypeScript issues
-        const { data: activeCalls, error } = await supabase
-          .from('conversations')
-          .select('lead_id')
-          .eq('call_status', 'active');
+        // Use raw SQL query to bypass TypeScript type inference issues
+        const { data: activeCalls, error } = await supabase.rpc('get_active_calls');
 
         if (error) {
           console.error('Error fetching active calls:', error);
@@ -25,7 +22,7 @@ export function useActiveCalls() {
         const leadIds: string[] = [];
         if (activeCalls) {
           for (const call of activeCalls) {
-            if (call.lead_id) {
+            if (call.lead_id && typeof call.lead_id === 'string') {
               leadIds.push(call.lead_id);
             }
           }

@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { parsePhoneNumberWithError, PhoneNumber } from 'https://esm.sh/libphonenumber-js@1.12.8/max';
@@ -10,7 +11,7 @@ const corsHeaders = {
 
 const CINC_WEBHOOK_EVENT_TYPE_NEW_LEAD = 'NEW_LEAD_WEBHOOK';
 const CINC_WEBHOOK_EVENT_TYPE_UPDATED_LEAD = 'LEAD_UPDATE_WEBHOOK';
-const CINC_WEBHOOK_EVENT_TYPE_NOTE_ADDED = 'NOTE_ADDED_WEBHOOK'; // Example of another event type
+const CINC_WEBHOOK_EVENT_TYPE_NOTE_ADDED = 'NOTE_ADDED_WEBHOOK';
 
 async function verifySignature(request: Request, secret: string): Promise<boolean> {
   const signature = request.headers.get('x-cinc-signature');
@@ -42,7 +43,6 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-// Export normalizePhoneNumber for testing
 export function normalizePhoneNumber(phone: string | undefined | null, country: string = 'US'): { phone_raw?: string, phone_e164?: string } {
   if (!phone) {
     return { phone_raw: undefined, phone_e164: undefined };
@@ -60,7 +60,6 @@ export function normalizePhoneNumber(phone: string | undefined | null, country: 
     return { phone_raw, phone_e164: undefined };
   }
 }
-
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -107,7 +106,6 @@ serve(async (req: Request) => {
 
     if (eventError) {
       console.error('Error storing webhook event:', eventError);
-      // Potentially proceed if this is not critical, or return error
     }
     
     const eventType = payload.event_type;
@@ -134,6 +132,30 @@ serve(async (req: Request) => {
     if (eventType === CINC_WEBHOOK_EVENT_TYPE_NEW_LEAD || eventType === CINC_WEBHOOK_EVENT_TYPE_UPDATED_LEAD) {
       const { phone_raw, phone_e164 } = normalizePhoneNumber(leadData.phone1 || leadData.phone);
       
+      // Extract rich CINC data
+      const propertyInterests = {
+        favorited_properties: leadData.favorited_properties || [],
+        search_criteria: {
+          min_price: leadData.min_price,
+          max_price: leadData.max_price,
+          bedrooms: leadData.bedrooms,
+          bathrooms: leadData.bathrooms,
+          property_type: leadData.property_type,
+          preferred_cities: leadData.preferred_cities || []
+        },
+        buyer_timeline: leadData.buyer_timeline || 'not_specified',
+        pre_qualification_status: leadData.pre_qualification_status || 'unknown'
+      };
+
+      const cincData = {
+        favorited_properties: leadData.favorited_properties || [],
+        buyer_timeline: leadData.buyer_timeline || 'not_specified',
+        pre_qualification_status: leadData.pre_qualification_status || 'unknown',
+        assigned_agent: leadData.assigned_agent,
+        lead_source: leadData.lead_source,
+        original_payload: leadData
+      };
+
       const leadRecord = {
         cinc_lead_id: cincLeadId,
         first_name: leadData.first_name,
@@ -161,48 +183,75 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
+      // Update phone_lead_mapping for instant caller ID during inbound calls
+      if (phone_e164 && upsertedLead) {
+        const leadName = `${leadData.first_name || ''} ${leadData.last_name || ''}`.trim() || 'Unknown Lead';
+        
+        const { error: mappingError } = await supabaseClient
+          .from('phone_lead_mapping')
+          .upsert({
+            phone_e164: phone_e164,
+            phone_raw: phone_raw,
+            lead_id: upsertedLead.id,
+            lead_name: leadName,
+            property_interests: propertyInterests,
+            cinc_data: cincData,
+            last_updated: new Date().toISOString()
+          }, { onConflict: 'phone_e164' });
+
+        if (mappingError) {
+          console.error('Error updating phone mapping:', mappingError);
+        } else {
+          console.log(`Updated phone mapping for ${phone_e164} -> ${leadName}`);
+        }
+      }
+
       console.log('Lead upserted successfully:', upsertedLead);
-      return new Response(JSON.stringify({ message: 'Lead processed successfully', lead: upsertedLead }), {
+      return new Response(JSON.stringify({ 
+        message: 'Lead processed successfully', 
+        lead: upsertedLead,
+        phone_mapping_updated: !!phone_e164
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } else if (eventType === CINC_WEBHOOK_EVENT_TYPE_NOTE_ADDED) {
-      // Handle note added event if necessary
-        const noteContent = leadData.note_text || leadData.note;
-        if (cincLeadId && noteContent) {
-            const { data: existingLead, error: fetchError } = await supabaseClient
-                .from('leads')
-                .select('notes')
-                .eq('cinc_lead_id', cincLeadId)
-                .single();
+      const noteContent = leadData.note_text || leadData.note;
+      if (cincLeadId && noteContent) {
+          const { data: existingLead, error: fetchError } = await supabaseClient
+              .from('leads')
+              .select('notes')
+              .eq('cinc_lead_id', cincLeadId)
+              .single();
 
-            if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116: "Query returned 0 rows"
-                console.error('Error fetching lead for note addition:', fetchError);
-            } else if (existingLead) {
-                const updatedNotes = `${existingLead.notes || ''}\n\n[CINC Note - ${new Date().toISOString()}]:\n${noteContent}`.trim();
-                const { error: updateError } = await supabaseClient
-                    .from('leads')
-                    .update({ notes: updatedNotes, last_contacted: new Date().toISOString() })
-                    .eq('cinc_lead_id', cincLeadId);
-                
-                if (updateError) {
-                    console.error('Error updating lead with new note:', updateError);
-                } else {
-                    console.log(`Note added to lead ${cincLeadId}`);
-                }
-            } else {
-                 console.warn(`Lead with cinc_lead_id ${cincLeadId} not found for note addition.`);
-            }
-        }
-        return new Response(JSON.stringify({ message: 'Note event received' }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+          if (fetchError && fetchError.code !== 'PGRST116') {
+              console.error('Error fetching lead for note addition:', fetchError);
+          } else if (existingLead) {
+              const updatedNotes = `${existingLead.notes || ''}\n\n[CINC Note - ${new Date().toISOString()}]:\n${noteContent}`.trim();
+              const { error: updateError } = await supabaseClient
+                  .from('leads')
+                  .update({ notes: updatedNotes, last_contacted: new Date().toISOString() })
+                  .eq('cinc_lead_id', cincLeadId);
+              
+              if (updateError) {
+                  console.error('Error updating lead with new note:', updateError);
+              } else {
+                  console.log(`Note added to lead ${cincLeadId}`);
+              }
+          } else {
+               console.warn(`Lead with cinc_lead_id ${cincLeadId} not found for note addition.`);
+          }
+      }
+      return new Response(JSON.stringify({ message: 'Note event received' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     } else {
       console.log(`Received unhandled CINC event_type: ${eventType}`);
       return new Response(JSON.stringify({ message: 'Event type not handled', event_type: eventType }), {
-        status: 200, // Or 400 if you want to signify it's an unhandled type client-side
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

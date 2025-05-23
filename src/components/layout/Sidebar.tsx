@@ -11,7 +11,9 @@ import {
   ChevronRight,
   HelpCircle,
   LogOut,
-  MapPin
+  MapPin,
+  Phone,
+  Stethoscope
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -100,6 +102,7 @@ export const Sidebar = () => {
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
     { icon: Users, label: 'Leads', path: '/leads', badgeCount: 2 },
     { icon: MapPin, label: 'Marketplace', path: '/marketplace' },
+    { icon: Phone, label: 'Call Center', path: '/inbound-call-center' },
   ];
   
   const manageItems: NavItem[] = [
@@ -111,6 +114,7 @@ export const Sidebar = () => {
   const reviewItems: NavItem[] = [
     { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     { icon: Settings, label: 'Settings', path: '/settings' },
+    { icon: Stethoscope, label: 'Diagnostics', path: '/diagnostics' },
   ];
 
   const handleHelpClick = () => {

@@ -271,6 +271,44 @@ export type Database = {
           },
         ]
       }
+      phone_lead_mapping: {
+        Row: {
+          cinc_data: Json | null
+          last_updated: string | null
+          lead_id: string | null
+          lead_name: string | null
+          phone_e164: string
+          phone_raw: string | null
+          property_interests: Json | null
+        }
+        Insert: {
+          cinc_data?: Json | null
+          last_updated?: string | null
+          lead_id?: string | null
+          lead_name?: string | null
+          phone_e164: string
+          phone_raw?: string | null
+          property_interests?: Json | null
+        }
+        Update: {
+          cinc_data?: Json | null
+          last_updated?: string | null
+          lead_id?: string | null
+          lead_name?: string | null
+          phone_e164?: string
+          phone_raw?: string | null
+          property_interests?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_lead_mapping_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -363,6 +401,62 @@ export type Database = {
           },
           {
             foreignKeyName: "qualification_data_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_callbacks: {
+        Row: {
+          assigned_to: string | null
+          attempt_count: number | null
+          callback_datetime: string | null
+          callback_notes: string | null
+          callback_reason: string | null
+          callback_type: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          last_attempt_at: string | null
+          lead_id: string | null
+          phone_number: string | null
+          status: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attempt_count?: number | null
+          callback_datetime?: string | null
+          callback_notes?: string | null
+          callback_reason?: string | null
+          callback_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          lead_id?: string | null
+          phone_number?: string | null
+          status?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attempt_count?: number | null
+          callback_datetime?: string | null
+          callback_notes?: string | null
+          callback_reason?: string | null
+          callback_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          lead_id?: string | null
+          phone_number?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_callbacks_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"

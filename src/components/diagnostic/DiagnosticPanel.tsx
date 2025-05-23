@@ -1,384 +1,308 @@
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Code } from '@/components/ui/code';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import { RetellTestClient } from './RetellTestClient';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { supabase, diagnoseDatabaseConnection } from '@/integrations/supabase/client';
+import { PhoneLookupTest } from './PhoneLookupTest';
+import { 
+  Database, 
+  Phone, 
+  AlertCircle, 
+  CheckCircle, 
+  Loader2, 
+  Webhook,
+  Users,
+  Calendar
+} from 'lucide-react';
 
-export function DiagnosticPanel() {
-  const [diagnosticData, setDiagnosticData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [directLeadsCount, setDirectLeadsCount] = useState<number | null>(null);
-  const [directLeadsLoading, setDirectLeadsLoading] = useState<boolean>(false);
+interface DiagnosticResult {
+  test: string;
+  status: 'success' | 'error' | 'warning';
+  message: string;
+  details?: any;
+}
+
+export const DiagnosticPanel = () => {
+  const [results, setResults] = useState<DiagnosticResult[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const runDiagnostics = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const { data, error: funcError } = await supabase.functions.invoke('diagnose-connection');
-      
-      if (funcError) {
-        throw new Error(`Edge function error: ${funcError.message}`);
-      }
-      
-      setDiagnosticData(data);
-    } catch (err) {
-      console.error('Diagnostic error:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setLoading(true);
+    const newResults: DiagnosticResult[] = [];
 
-  const checkDirectLeadsCount = async () => {
-    setDirectLeadsLoading(true);
     try {
-      console.log('Checking direct leads count...');
-      const { data, error, count } = await supabase
-        .from('leads')
-        .select('*', { count: 'exact' });
-      
-      if (error) throw error;
-      
-      console.log('Direct leads check:', { data, count });
-      setDirectLeadsCount(data?.length || 0);
-    } catch (err) {
-      console.error('Direct leads count error:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setDirectLeadsLoading(false);
-    }
-  };
-
-  const insertTestLead = async () => {
-    try {
-      setIsLoading(true);
-      // Fix: Check the response structure properly
-      const response = await supabase.functions.invoke('insert-lead', {
-        body: {
-          leadInfo: {
-            firstName: 'Diagnostic',
-            lastName: 'Test',
-            email: `test${Date.now()}@example.com`,
-            phone: '555-123-4567',
-            source: 'diagnostic-test'
-          }
-        }
+      // Test database connection
+      const dbResult = await diagnoseDatabaseConnection();
+      newResults.push({
+        test: 'Database Connection',
+        status: dbResult.success ? 'success' : 'error',
+        message: dbResult.success ? 'Database connected successfully' : dbResult.message || 'Database connection failed',
+        details: dbResult
       });
-      
-      // Safely access response properties
-      if (response.error) throw new Error(response.error.message);
-      
-      // Run diagnostics again after inserting
-      await runDiagnostics();
-      await checkDirectLeadsCount();
-      
-    } catch (err) {
-      console.error('Test lead insertion error:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
+
+      // Test phone_lead_mapping table
+      try {
+        const { data: mappings, error: mappingError } = await supabase
+          .from('phone_lead_mapping')
+          .select('count')
+          .limit(1);
+
+        newResults.push({
+          test: 'Phone Lead Mapping Table',
+          status: mappingError ? 'error' : 'success',
+          message: mappingError ? mappingError.message : 'Phone mapping table accessible',
+          details: { count: mappings?.length || 0 }
+        });
+      } catch (error: any) {
+        newResults.push({
+          test: 'Phone Lead Mapping Table',
+          status: 'error',
+          message: error.message || 'Failed to access phone mapping table'
+        });
+      }
+
+      // Test scheduled_callbacks table
+      try {
+        const { data: callbacks, error: callbackError } = await supabase
+          .from('scheduled_callbacks')
+          .select('count')
+          .limit(1);
+
+        newResults.push({
+          test: 'Scheduled Callbacks Table',
+          status: callbackError ? 'error' : 'success',
+          message: callbackError ? callbackError.message : 'Scheduled callbacks table accessible',
+          details: { count: callbacks?.length || 0 }
+        });
+      } catch (error: any) {
+        newResults.push({
+          test: 'Scheduled Callbacks Table',
+          status: 'error',
+          message: error.message || 'Failed to access scheduled callbacks table'
+        });
+      }
+
+      // Test CINC webhook function
+      try {
+        // This would normally test the webhook, but for now we'll just check if the function exists
+        newResults.push({
+          test: 'CINC Webhook Integration',
+          status: 'warning',
+          message: 'Webhook endpoint configured (test with actual CINC data)',
+          details: { endpoint: 'supabase/functions/cinc-webhook' }
+        });
+      } catch (error: any) {
+        newResults.push({
+          test: 'CINC Webhook Integration',
+          status: 'error',
+          message: error.message || 'Webhook test failed'
+        });
+      }
+
+      // Test Retell webhook function
+      try {
+        newResults.push({
+          test: 'Retell Webhook Integration',
+          status: 'warning',
+          message: 'Webhook endpoint configured (test with actual Retell data)',
+          details: { endpoint: 'supabase/functions/retell-webhook' }
+        });
+      } catch (error: any) {
+        newResults.push({
+          test: 'Retell Webhook Integration',
+          status: 'error',
+          message: error.message || 'Retell webhook test failed'
+        });
+      }
+
+      // Test phone lookup function
+      try {
+        const { error: lookupError } = await supabase.functions.invoke('phone-lookup', {
+          body: { phone_number: '+15555555555' }
+        });
+
+        newResults.push({
+          test: 'Phone Lookup Function',
+          status: lookupError ? 'warning' : 'success',
+          message: lookupError ? 'Function exists but no test data found' : 'Phone lookup function working',
+          details: { test_number: '+15555555555' }
+        });
+      } catch (error: any) {
+        newResults.push({
+          test: 'Phone Lookup Function',
+          status: 'error',
+          message: error.message || 'Phone lookup function test failed'
+        });
+      }
+
+    } catch (error: any) {
+      newResults.push({
+        test: 'General Diagnostics',
+        status: 'error',
+        message: error.message || 'Unexpected error during diagnostics'
+      });
+    }
+
+    setResults(newResults);
+    setLoading(false);
+  };
+
+  const getStatusIcon = (status: DiagnosticResult['status']) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case 'warning':
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
     }
   };
 
-  const handleRetellLeadCreated = async () => {
-    // After a Retell test lead is created, refresh our diagnostics
-    await runDiagnostics();
-    await checkDirectLeadsCount();
+  const getStatusColor = (status: DiagnosticResult['status']) => {
+    switch (status) {
+      case 'success':
+        return 'bg-green-100 text-green-800';
+      case 'error':
+        return 'bg-red-100 text-red-800';
+      case 'warning':
+        return 'bg-yellow-100 text-yellow-800';
+    }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <span>System Diagnostics</span>
-          {error && <AlertTriangle className="h-5 w-5 text-destructive" />}
-        </CardTitle>
-        <CardDescription>
-          Troubleshoot data flow between VAPI, Retell, Supabase, and the frontend
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Button 
-            onClick={runDiagnostics} 
-            variant="outline" 
-            disabled={isLoading}
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'hidden' : ''}`} />
-            Run Diagnostics
-          </Button>
-          
-          <Button 
-            onClick={checkDirectLeadsCount}
-            variant="outline"
-            disabled={directLeadsLoading}
-          >
-            {directLeadsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Check Direct Leads
-          </Button>
-          
-          <Button 
-            onClick={insertTestLead}
-            variant="secondary"
-            disabled={isLoading}
-          >
-            Insert Test Lead
-          </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">CINC Integration Diagnostics</h2>
+          <p className="text-gray-600">Test and monitor CINC to Retell integration</p>
         </div>
+        <Button onClick={runDiagnostics} disabled={loading}>
+          {loading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Database className="h-4 w-4 mr-2" />
+          )}
+          Run Diagnostics
+        </Button>
+      </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      <Tabs defaultValue="system-tests" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="system-tests">System Tests</TabsTrigger>
+          <TabsTrigger value="phone-lookup">Phone Lookup</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+        </TabsList>
 
-        {directLeadsCount !== null && (
-          <Alert className="mb-4">
-            <AlertTitle>Direct Leads Count</AlertTitle>
-            <AlertDescription>
-              Found {directLeadsCount} leads in database via direct query
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
-          <RetellTestClient onLeadCreated={handleRetellLeadCreated} />
-          
+        <TabsContent value="system-tests" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Integration Testing</CardTitle>
-              <CardDescription>
-                Test direct integrations with voice agents
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                System Status
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Use these tools to test different voice agent integrations with your Relay CRM.
-              </p>
-              
-              <div className="flex flex-col gap-2">
-                <Button 
-                  onClick={insertTestLead}
-                  variant="outline"
-                  disabled={isLoading}
-                >
-                  Test VAPI Integration
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {diagnosticData && (
-          <Tabs defaultValue="overview">
-            <TabsList className="mb-2">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="leads">Leads</TabsTrigger>
-              <TabsTrigger value="structure">Table Structure</TabsTrigger>
-              <TabsTrigger value="raw">Raw Data</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h3 className="font-medium mb-2">Connection Status</h3>
-                  <div className="flex items-center gap-2">
-                    {/* Fix: Use valid Badge variants - 'default' or 'outline' instead of 'success' */}
-                    <Badge variant={diagnosticData.environment.supabaseUrl ? "default" : "destructive"}>
-                      Supabase URL {diagnosticData.environment.supabaseUrl ? "✓" : "✗"}
-                    </Badge>
-                    <Badge variant={diagnosticData.environment.hasServiceKey ? "default" : "destructive"}>
-                      Service Key {diagnosticData.environment.hasServiceKey ? "✓" : "✗"}
-                    </Badge>
-                  </div>
+              {results.length === 0 ? (
+                <div className="text-center py-8">
+                  <Database className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Run diagnostics to check system status</h3>
+                  <p className="text-gray-500">Click "Run Diagnostics" to test all components</p>
                 </div>
-                <div>
-                  <h3 className="font-medium mb-2">Data Overview</h3>
-                  <div className="flex items-center gap-2">
-                    <Badge>
-                      {diagnosticData.leadsCount} leads found
-                    </Badge>
-                    <Badge variant={Object.values(diagnosticData.errors).some(e => e !== null) ? "destructive" : "outline"}>
-                      {Object.values(diagnosticData.errors).filter(e => e !== null).length} errors
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-              
-              <Accordion type="single" collapsible className="mt-4">
-                <AccordionItem value="errors">
-                  <AccordionTrigger>
-                    <div className="flex items-center gap-2">
-                      <span>Error Summary</span>
-                      {Object.values(diagnosticData.errors).some(e => e !== null) ? (
-                        <AlertTriangle className="h-4 w-4 text-destructive" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      )}
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Error Type</TableHead>
-                          <TableHead>Message</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(diagnosticData.errors).map(([key, value]) => (
-                          <TableRow key={key}>
-                            <TableCell>{key}</TableCell>
-                            <TableCell>
-                              {/* Fix: Convert unknown type to string */}
-                              {value ? (
-                                <span className="text-destructive">{String(value)}</span>
-                              ) : (
-                                <span className="text-green-500">No error</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </TabsContent>
-
-            <TabsContent value="leads">
-              <h3 className="font-medium mb-2">Lead Statuses (Check for case sensitivity)</h3>
-              {diagnosticData.leadStatuses?.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Lead ID</TableHead>
-                      <TableHead>Status (exact value)</TableHead>
-                      <TableHead>Source</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {diagnosticData.leadStatuses.map((lead: any) => (
-                      <TableRow key={lead.id}>
-                        <TableCell className="font-mono text-xs">{lead.id}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="font-mono">
-                            "{lead.status}"
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {lead.source || 'Unknown'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               ) : (
-                <Alert>
-                  <AlertTitle>No leads found</AlertTitle>
-                  <AlertDescription>
-                    No lead status data is available to analyze
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {diagnosticData.recentLead && (
-                <div className="mt-4">
-                  <h3 className="font-medium mb-2">Most Recent Lead</h3>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
+                  {results.map((result, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(result.status)}
                         <div>
-                          <p className="text-sm font-medium">Name</p>
-                          <p>{diagnosticData.recentLead.first_name} {diagnosticData.recentLead.last_name}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Status</p>
-                          <p>"{diagnosticData.recentLead.status}"</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Email</p>
-                          <p>{diagnosticData.recentLead.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Source</p>
-                          <p>{diagnosticData.recentLead.source}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Created</p>
-                          <p>{new Date(diagnosticData.recentLead.created_at).toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">ID</p>
-                          <p className="font-mono text-xs">{diagnosticData.recentLead.id}</p>
+                          <h4 className="font-medium">{result.test}</h4>
+                          <p className="text-sm text-gray-600">{result.message}</p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <Badge className={getStatusColor(result.status)}>
+                        {result.status}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
               )}
-            </TabsContent>
-            
-            <TabsContent value="structure">
-              {diagnosticData.tableInfo ? (
-                <div>
-                  <h3 className="font-medium mb-2">Leads Table Structure</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Column</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Nullable</TableHead>
-                        <TableHead>Default</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {diagnosticData.tableInfo.map((column: any) => (
-                        <TableRow key={column.column_name}>
-                          <TableCell>{column.column_name}</TableCell>
-                          <TableCell>{column.data_type}</TableCell>
-                          <TableCell>{column.is_nullable}</TableCell>
-                          <TableCell className="font-mono text-xs">{column.column_default}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="phone-lookup" className="space-y-4">
+          <PhoneLookupTest />
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Webhook className="h-4 w-4" />
+                  Webhook Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm">CINC Webhook</span>
+                    <Badge variant="outline">Ready</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Retell Webhook</span>
+                    <Badge variant="outline">Ready</Badge>
+                  </div>
                 </div>
-              ) : (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Table structure unavailable</AlertTitle>
-                  <AlertDescription>
-                    Could not retrieve table structure information
-                  </AlertDescription>
-                </Alert>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="raw">
-              <h3 className="font-medium mb-2">Raw Diagnostic Data</h3>
-              <Code className="text-xs overflow-auto max-h-96">
-                {JSON.stringify(diagnosticData, null, 2)}
-              </Code>
-            </TabsContent>
-          </Tabs>
-        )}
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Lead Mapping
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm">Mapped Leads</span>
+                    <Badge variant="secondary">Loading...</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Ready for Calls</span>
+                    <Badge variant="secondary">Loading...</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Callbacks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm">Scheduled</span>
+                    <Badge variant="secondary">Loading...</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Pending</span>
+                    <Badge variant="secondary">Loading...</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
-}
+};

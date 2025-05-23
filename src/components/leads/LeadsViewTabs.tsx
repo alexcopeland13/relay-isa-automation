@@ -30,12 +30,22 @@ export const LeadsViewTabs = ({
   return (
     <div className={cn("bg-card rounded-lg border border-border p-6", className)}>
       <div className="flex justify-between items-center mb-4">
-        <Tabs value={activeView} onValueChange={(value) => onActiveViewChange(value as 'list' | 'board')}>
-          <TabsList>
-            <TabsTrigger value="list">List View</TabsTrigger>
-            <TabsTrigger value="board">Board View</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant={activeView === 'list' ? 'default' : 'outline'}
+            onClick={() => onActiveViewChange('list')}
+            className="gap-1"
+          >
+            List View
+          </Button>
+          <Button 
+            variant={activeView === 'board' ? 'default' : 'outline'}
+            onClick={() => onActiveViewChange('board')}
+            className="gap-1"
+          >
+            Board View
+          </Button>
+        </div>
 
         <div className="flex items-center gap-2">
           <Button variant="outline" className="gap-1" disabled>
@@ -51,21 +61,19 @@ export const LeadsViewTabs = ({
       </div>
 
       <div>
-        <TabsContent value="list" className="mt-0" style={{ display: activeView === 'list' ? 'block' : 'none' }}>
+        {activeView === 'list' ? (
           <LeadsList
             leads={leads}
             onSelectLead={onSelectLead}
             onAssignLead={onOpenAssignmentModal}
             onScheduleFollowUp={onScheduleFollowUp}
           />
-        </TabsContent>
-
-        <TabsContent value="board" className="mt-0" style={{ display: activeView === 'board' ? 'block' : 'none' }}>
+        ) : (
           <LeadsBoard
             leads={leads}
             onSelectLead={onSelectLead}
           />
-        </TabsContent>
+        )}
       </div>
     </div>
   );

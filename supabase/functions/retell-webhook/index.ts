@@ -27,14 +27,14 @@ serve(async (req) => {
     
     const { event, data } = webhookData;
 
-    // Handle call_started event - lookup caller and provide context
+    // Enhanced call_started event - lookup caller and provide context
     if (event === 'call_started') {
       const callerPhone = data.customer_number;
       
       if (callerPhone) {
         console.log(`Looking up caller: ${callerPhone}`);
         
-        // Lookup caller in phone_lead_mapping
+        // Enhanced lookup with qualification data
         const { data: phoneMapping, error: lookupError } = await supabase
           .from('phone_lead_mapping')
           .select(`
@@ -57,31 +57,56 @@ serve(async (req) => {
         } else {
           console.log(`Found lead context for ${callerPhone}:`, phoneMapping);
           
-          // Prepare lead context for Retell
+          // Get qualification data separately to avoid complex joins
+          const { data: qualificationData } = await supabase
+            .from('qualification_data')
+            .select('*')
+            .eq('lead_id', phoneMapping.leads?.id)
+            .single();
+          
+          // Enhanced lead context for Retell
           const leadContext = {
+            // Basic info
             lead_name: phoneMapping.lead_name,
             first_name: phoneMapping.leads?.first_name,
             last_name: phoneMapping.leads?.last_name,
-            property_interests: phoneMapping.property_interests,
             cinc_lead_id: phoneMapping.leads?.cinc_lead_id,
+            
+            // CINC property interests
             favorited_properties: phoneMapping.cinc_data?.favorited_properties || [],
-            buyer_timeline: phoneMapping.cinc_data?.buyer_timeline,
+            property_interests: phoneMapping.property_interests,
             preferred_cities: phoneMapping.property_interests?.search_criteria?.preferred_cities || [],
             price_range: {
               min: phoneMapping.property_interests?.search_criteria?.min_price,
               max: phoneMapping.property_interests?.search_criteria?.max_price
-            }
+            },
+            buyer_timeline: phoneMapping.cinc_data?.buyer_timeline,
+            
+            // Previous conversation context (if any)
+            previous_status: qualificationData?.pre_approval_status,
+            previous_concerns: qualificationData?.objection_details,
+            is_return_caller: !!qualificationData?.pre_approval_status,
+            knows_overlays: qualificationData?.knows_about_overlays,
+            has_specific_property: qualificationData?.has_specific_property,
+            property_address: qualificationData?.property_address,
+            
+            // Custom greeting suggestion based on context
+            greeting_context: generateGreetingContext(phoneMapping, qualificationData)
           };
 
-          console.log("Lead context prepared for Retell:", leadContext);
+          console.log("Enhanced lead context prepared for Retell:", leadContext);
+          
+          // TODO: Send this context to Retell via their API when available
+          // await updateRetellCallContext(data.call_id, leadContext);
         }
       }
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Call started event processed",
-          lead_context_found: !!phoneMapping
+          message: "Call started event processed with enhanced context",
+          lead_context_found: !!phoneMapping,
+          is_return_caller: !!phoneMapping?.leads
         }),
         { 
           status: 200,
@@ -90,179 +115,132 @@ serve(async (req) => {
       );
     }
 
-    // Handle call_ended event - process conversation and extract enhanced data
+    // Enhanced call_ended event - process conversation and extract enhanced data
     if (event === 'call_ended') {
       const {
+        call_id,
+        duration,
+        recording_url,
+        transcript,
+        from_number: callerPhone,
+        custom_analysis_data,
+        // Fallback to existing structure if custom_analysis_data not available
         conversation,
         caller,
         transcription,
         call_metadata,
         extracted_information
-      } = webhookData;
+      } = data;
       
-      // Map Retell data to our lead structure
-      const leadInfo = {
-        firstName: extracted_information?.first_name || caller?.name?.split(' ')[0] || 'Unknown',
-        lastName: extracted_information?.last_name || (caller?.name?.split(' ').slice(1).join(' ') || 'User'),
-        email: extracted_information?.email || caller?.email || `retell_lead_${Date.now()}@example.com`,
-        phone: extracted_information?.phone || caller?.phone || '',
-        source: 'Retell Voice Agent',
-        notes: `Lead created via Retell conversation. Call ID: ${call_metadata?.call_id || 'Unknown'}`,
-        status: 'new'
-      };
+      console.log("Processing call_ended event for:", callerPhone);
       
-      console.log("Mapped lead information:", leadInfo);
+      // Use custom_analysis_data if available, otherwise fall back to extracted_information
+      const extractionData = custom_analysis_data || extracted_information || {};
       
-      // Extract enhanced qualification data for home purchase
-      const qualificationData = extracted_information?.qualification_data ? {
-        loanType: extracted_information.qualification_data.loan_type,
-        propertyType: extracted_information.qualification_data.property_type,
-        propertyUse: extracted_information.qualification_data.property_use,
-        creditScore: extracted_information.qualification_data.estimated_credit_score,
-        annualIncome: extracted_information.qualification_data.annual_income,
-        isSelfEmployed: extracted_information.qualification_data.is_self_employed,
-        hasCoBorrower: extracted_information.qualification_data.has_co_borrower,
-        downPaymentPercentage: extracted_information.qualification_data.down_payment_percentage,
-        loanAmount: extracted_information.qualification_data.loan_amount,
-        debtToIncomeRatio: extracted_information.qualification_data.debt_to_income_ratio,
-        timeFrame: extracted_information.qualification_data.time_frame,
-        notes: extracted_information.qualification_data.notes,
-        
-        // Enhanced fields for home purchase
-        preApprovalStatus: extracted_information.qualification_data.pre_approval_status,
-        currentLender: extracted_information.qualification_data.current_lender,
-        knowsAboutOverlays: extracted_information.qualification_data.knows_about_overlays,
-        overlayEducationCompleted: extracted_information.qualification_data.overlay_education_completed,
-        readyToBuyTimeline: extracted_information.qualification_data.ready_to_buy_timeline,
-        leadTemperature: extracted_information.qualification_data.lead_temperature,
-        creditConcerns: extracted_information.qualification_data.credit_concerns,
-        debtConcerns: extracted_information.qualification_data.debt_concerns,
-        downPaymentConcerns: extracted_information.qualification_data.down_payment_concerns,
-        jobChangeConcerns: extracted_information.qualification_data.job_change_concerns,
-        interestRateConcerns: extracted_information.qualification_data.interest_rate_concerns,
-        objectionDetails: extracted_information.qualification_data.objection_details,
-        hasSpecificProperty: extracted_information.qualification_data.has_specific_property,
-        propertyAddress: extracted_information.qualification_data.property_address,
-        propertyPrice: extracted_information.qualification_data.property_price,
-        multiplePropertiesInterested: extracted_information.qualification_data.multiple_properties_interested,
-        propertyMlsNumber: extracted_information.qualification_data.property_mls_number,
-        wantsCreditReview: extracted_information.qualification_data.wants_credit_review,
-        wantsDownPaymentAssistance: extracted_information.qualification_data.wants_down_payment_assistance,
-        vaEligible: extracted_information.qualification_data.va_eligible,
-        firstTimeBuyer: extracted_information.qualification_data.first_time_buyer,
-        preferredContactMethod: extracted_information.qualification_data.preferred_contact_method,
-        bestTimeToCall: extracted_information.qualification_data.best_time_to_call
-      } : null;
+      // Find existing lead or create new one
+      let leadId = null;
+      let conversationId = null;
       
-      // Create conversation data structure
-      const conversationData = transcription ? {
-        agentId: 'retell-agent',
-        callSid: call_metadata?.call_id || '',
-        direction: 'inbound',
-        duration: call_metadata?.duration || null,
-        recordingUrl: call_metadata?.recording_url || null,
-        transcript: transcription,
-        sentimentScore: extracted_information?.sentiment_score || null
-      } : null;
-
-      // Parse transcript for callback requests
-      const callbackInfo = extractCallbackFromTranscript(transcription);
+      // Try to find existing lead first
+      const { data: phoneMapping } = await supabase
+        .from('phone_lead_mapping')
+        .select('lead_id')
+        .eq('phone_e164', callerPhone)
+        .single();
       
-      // Insert lead using existing insert-lead function
-      const { data: insertData, error: insertError } = await supabase.functions.invoke('insert-lead', {
-        body: {
-          leadInfo,
-          qualificationData,
-          conversationData
-        }
-      });
-      
-      if (insertError) {
-        throw new Error(`Error inserting lead: ${insertError.message}`);
-      }
-
-      console.log("Lead successfully created:", insertData);
-
-      // Create conversation extraction record with enhanced data
-      if (insertData?.leadId && insertData?.conversationId && extracted_information) {
-        const extractionData = {
-          conversation_id: insertData.conversationId,
-          lead_id: insertData.leadId,
-          lead_qualification_status: extracted_information.lead_qualification_status,
-          pre_approval_status: extracted_information.pre_approval_status,
-          current_lender: extracted_information.current_lender,
-          knows_overlays: extracted_information.knows_overlays,
-          buying_timeline: extracted_information.buying_timeline,
-          primary_concerns: extracted_information.primary_concerns || [],
-          interested_properties: extracted_information.interested_properties || [],
-          requested_actions: extracted_information.requested_actions || [],
-          conversation_summary: extracted_information.conversation_summary,
-          extraction_version: '2.0',
-          raw_extraction_data: extracted_information
+      if (phoneMapping?.lead_id) {
+        leadId = phoneMapping.lead_id;
+        console.log("Found existing lead:", leadId);
+      } else {
+        // Create new lead if not found
+        const leadInfo = {
+          firstName: extractionData?.first_name || caller?.name?.split(' ')[0] || 'Unknown',
+          lastName: extractionData?.last_name || (caller?.name?.split(' ').slice(1).join(' ') || 'User'),
+          email: extractionData?.email || caller?.email || `retell_lead_${Date.now()}@example.com`,
+          phone: callerPhone || '',
+          source: 'Retell Voice Agent',
+          notes: `Lead created via Retell conversation. Call ID: ${call_id || 'Unknown'}`,
+          status: 'new'
         };
-
-        const { error: extractionError } = await supabase
-          .from('conversation_extractions')
-          .insert(extractionData);
-
-        if (extractionError) {
-          console.error("Error creating conversation extraction:", extractionError);
-        } else {
-          console.log("Conversation extraction created successfully");
+        
+        console.log("Creating new lead:", leadInfo);
+        
+        // Use existing insert-lead function
+        const { data: insertData, error: insertError } = await supabase.functions.invoke('insert-lead', {
+          body: { leadInfo }
+        });
+        
+        if (insertError) {
+          throw new Error(`Error creating lead: ${insertError.message}`);
         }
+        
+        leadId = insertData?.leadId;
       }
-
-      // Create actions based on extracted data
-      if (insertData?.leadId && extracted_information?.requested_actions) {
-        const actions = extracted_information.requested_actions.map((action: any) => ({
-          lead_id: insertData.leadId,
-          conversation_id: insertData.conversationId,
-          action_type: action.type || 'follow_up',
-          description: action.description || 'Action requested during conversation',
-          scheduled_for: action.scheduled_for || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Default to tomorrow
-          status: 'pending'
-        }));
-
-        const { error: actionsError } = await supabase
-          .from('actions')
-          .insert(actions);
-
-        if (actionsError) {
-          console.error("Error creating actions:", actionsError);
-        } else {
-          console.log("Actions created successfully:", actions.length);
-        }
-      }
-
-      // If callback was requested, schedule it
-      if (callbackInfo && insertData?.leadId) {
-        const { error: callbackError } = await supabase
-          .from('scheduled_callbacks')
+      
+      if (leadId) {
+        // Create conversation record
+        const { data: conversation, error: convError } = await supabase
+          .from('conversations')
           .insert({
-            lead_id: insertData.leadId,
-            phone_number: leadInfo.phone,
-            callback_datetime: callbackInfo.datetime,
-            callback_reason: callbackInfo.reason,
-            callback_type: callbackInfo.type,
-            callback_notes: callbackInfo.notes,
-            status: 'scheduled'
-          });
+            lead_id: leadId,
+            agent_id: 'retell-agent',
+            call_sid: call_id || call_metadata?.call_id,
+            direction: 'inbound',
+            duration: duration || call_metadata?.duration,
+            recording_url: recording_url || call_metadata?.recording_url,
+            transcript: transcript || transcription
+          })
+          .select()
+          .single();
 
-        if (callbackError) {
-          console.error("Error scheduling callback:", callbackError);
+        if (convError) {
+          console.error("Error creating conversation:", convError);
         } else {
-          console.log("Callback scheduled successfully");
+          conversationId = conversation.id;
+          console.log("Created conversation:", conversationId);
         }
+
+        // Store extraction data in conversation_extractions table
+        if (conversationId && extractionData) {
+          const { error: extractionError } = await supabase
+            .from('conversation_extractions')
+            .insert({
+              conversation_id: conversationId,
+              lead_id: leadId,
+              lead_qualification_status: extractionData.lead_qualification_status,
+              pre_approval_status: extractionData.pre_approval_status,
+              current_lender: extractionData.current_lender,
+              knows_overlays: extractionData.knows_overlays,
+              buying_timeline: extractionData.buying_timeline,
+              primary_concerns: extractionData.primary_concerns || [],
+              interested_properties: extractionData.interested_properties || [],
+              requested_actions: extractionData.requested_actions || [],
+              conversation_summary: extractionData.conversation_summary,
+              extraction_version: '2.0',
+              raw_extraction_data: extractionData
+            });
+
+          if (extractionError) {
+            console.error("Error creating conversation extraction:", extractionError);
+          } else {
+            console.log("Conversation extraction created successfully");
+          }
+        }
+
+        // Create actions based on extraction
+        await createActionsFromExtraction(leadId, conversationId, extractionData);
+
+        // Handle specific requests
+        await handleSpecificRequests(leadId, extractionData, callerPhone);
       }
       
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Lead successfully created from Retell conversation",
-          leadId: insertData?.leadId || null,
-          conversationId: insertData?.conversationId || null,
-          extractionCreated: true,
-          callbackScheduled: !!callbackInfo
+          message: "Call ended event processed with enhanced extraction",
+          leadId: leadId,
+          conversationId: conversationId,
+          extractionCreated: true
         }),
         { 
           status: 200,
@@ -298,48 +276,160 @@ serve(async (req) => {
   }
 });
 
-// Helper function to extract callback information from transcript
-function extractCallbackFromTranscript(transcript: string): any {
-  if (!transcript) return null;
-
-  const lowerTranscript = transcript.toLowerCase();
+// Helper function to generate greeting context
+function generateGreetingContext(phoneMapping: any, qualificationData?: any) {
+  const firstName = phoneMapping.leads?.first_name || phoneMapping.lead_name?.split(' ')[0];
+  const favoriteCount = phoneMapping.cinc_data?.favorited_properties?.length || 0;
   
-  // Look for callback-related keywords
-  const callbackPatterns = [
-    'call me back',
-    'callback',
-    'call back',
-    'schedule a call',
-    'follow up',
-    'contact me',
-    'reach out'
-  ];
-
-  const hasCallbackRequest = callbackPatterns.some(pattern => 
-    lowerTranscript.includes(pattern)
-  );
-
-  if (!hasCallbackRequest) return null;
-
-  // Extract time preferences (simplified)
-  let callbackType = 'general';
-  if (lowerTranscript.includes('property') || lowerTranscript.includes('house') || lowerTranscript.includes('home')) {
-    callbackType = 'property_info';
-  } else if (lowerTranscript.includes('financing') || lowerTranscript.includes('loan') || lowerTranscript.includes('mortgage')) {
-    callbackType = 'financing';
-  } else if (lowerTranscript.includes('showing') || lowerTranscript.includes('tour') || lowerTranscript.includes('visit')) {
-    callbackType = 'showing_request';
+  // Return caller with previous qualification
+  if (qualificationData?.pre_approval_status) {
+    return {
+      type: 'return_caller',
+      greeting: `Hi ${firstName}! Great to hear from you again. How can I help you continue your home buying journey?`
+    };
   }
+  
+  // Property-specific greeting
+  if (favoriteCount > 0) {
+    const topProperty = phoneMapping.cinc_data.favorited_properties[0];
+    return {
+      type: 'property_specific',
+      greeting: `Hi ${firstName}! I see you were interested in the property on ${topProperty.address}. How can I help you with that today?`
+    };
+  } 
+  
+  // General search greeting
+  const city = phoneMapping.property_interests?.search_criteria?.preferred_cities?.[0];
+  return {
+    type: 'general_search',
+    greeting: `Hi ${firstName}! I understand you're looking for homes${city ? ` in ${city}` : ' in the area'}. What can I help you with today?`
+  };
+}
 
-  // Default to tomorrow at 10 AM for now (in production, use NLP to extract actual times)
+// Helper function to create actions from extraction data
+async function createActionsFromExtraction(leadId: string, conversationId: string | null, extractionData: any) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://qvarmbhdradfpkegtpgw.supabase.co';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
+  const actions = [];
+  const requestedActions = extractionData.requested_actions || [];
+  
+  if (requestedActions.includes('send_preapproval_link')) {
+    actions.push({
+      lead_id: leadId,
+      conversation_id: conversationId,
+      action_type: 'send_sms',
+      description: 'Send EMM pre-approval link',
+      status: 'pending',
+      scheduled_for: new Date().toISOString()
+    });
+  }
+  
+  if (requestedActions.includes('schedule_showing')) {
+    const propertyAddress = extractionData.interested_properties?.[0]?.address || 'property mentioned in call';
+    actions.push({
+      lead_id: leadId,
+      conversation_id: conversationId,
+      action_type: 'schedule_showing',
+      description: `Schedule showing for ${propertyAddress}`,
+      status: 'pending',
+      scheduled_for: getNextBusinessDay()
+    });
+  }
+  
+  if (requestedActions.includes('credit_review')) {
+    actions.push({
+      lead_id: leadId,
+      conversation_id: conversationId,
+      action_type: 'credit_review_followup',
+      description: 'Credit team to provide free review',
+      status: 'pending',
+      scheduled_for: getNextBusinessDay()
+    });
+  }
+  
+  if (requestedActions.includes('callback')) {
+    actions.push({
+      lead_id: leadId,
+      conversation_id: conversationId,
+      action_type: 'callback',
+      description: 'Follow-up call requested',
+      status: 'pending',
+      scheduled_for: extractionData.callback_time || getNextBusinessDay()
+    });
+  }
+  
+  // High-priority follow-up for hot leads
+  if (extractionData.buying_timeline === 'immediately' || extractionData.buying_timeline === '1-3_months') {
+    actions.push({
+      lead_id: leadId,
+      conversation_id: conversationId,
+      action_type: 'priority_followup',
+      description: 'Hot lead - immediate follow-up required',
+      status: 'pending',
+      scheduled_for: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString() // 2 hours from now
+    });
+  }
+  
+  if (actions.length > 0) {
+    const { error } = await supabase.from('actions').insert(actions);
+    if (error) {
+      console.error("Error creating actions:", error);
+    } else {
+      console.log(`Created ${actions.length} actions for lead ${leadId}`);
+    }
+  }
+}
+
+// Helper function to handle specific requests
+async function handleSpecificRequests(leadId: string, extractionData: any, phoneNumber: string) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://qvarmbhdradfpkegtpgw.supabase.co';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
+  const requestedActions = extractionData.requested_actions || [];
+  
+  // Schedule callback if mentioned
+  if (requestedActions.includes('callback')) {
+    const { error: callbackError } = await supabase
+      .from('scheduled_callbacks')
+      .insert({
+        lead_id: leadId,
+        phone_number: phoneNumber,
+        callback_datetime: extractionData.callback_time || getNextBusinessDay(),
+        callback_reason: extractionData.callback_reason || 'Follow-up requested during conversation',
+        callback_type: 'general',
+        status: 'scheduled'
+      });
+
+    if (callbackError) {
+      console.error("Error scheduling callback:", callbackError);
+    } else {
+      console.log("Callback scheduled successfully");
+    }
+  }
+  
+  // TODO: Implement SMS sending for pre-approval links
+  if (requestedActions.includes('send_preapproval_link')) {
+    console.log(`TODO: Send pre-approval link to ${phoneNumber}`);
+    // await sendSMS(phoneNumber, `Hi! Here's your pre-approval link: ${EMM_PREAPPROVAL_URL}`);
+  }
+}
+
+// Helper function to get next business day
+function getNextBusinessDay(): string {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  // If tomorrow is Saturday (6) or Sunday (0), move to Monday
+  if (tomorrow.getDay() === 6) {
+    tomorrow.setDate(tomorrow.getDate() + 2);
+  } else if (tomorrow.getDay() === 0) {
+    tomorrow.setDate(tomorrow.getDate() + 1);
+  }
+  
+  // Set to 10 AM
   tomorrow.setHours(10, 0, 0, 0);
-
-  return {
-    datetime: tomorrow.toISOString(),
-    reason: 'Callback requested during inbound call',
-    type: callbackType,
-    notes: 'Extracted from conversation transcript'
-  };
+  return tomorrow.toISOString();
 }

@@ -117,6 +117,78 @@ export type Database = {
           },
         ]
       }
+      conversation_extractions: {
+        Row: {
+          buying_timeline: string | null
+          conversation_id: string | null
+          conversation_summary: string | null
+          created_at: string | null
+          current_lender: string | null
+          extraction_timestamp: string | null
+          extraction_version: string | null
+          id: string
+          interested_properties: Json | null
+          knows_overlays: boolean | null
+          lead_id: string | null
+          lead_qualification_status: string | null
+          pre_approval_status: string | null
+          primary_concerns: Json | null
+          raw_extraction_data: Json | null
+          requested_actions: Json | null
+        }
+        Insert: {
+          buying_timeline?: string | null
+          conversation_id?: string | null
+          conversation_summary?: string | null
+          created_at?: string | null
+          current_lender?: string | null
+          extraction_timestamp?: string | null
+          extraction_version?: string | null
+          id?: string
+          interested_properties?: Json | null
+          knows_overlays?: boolean | null
+          lead_id?: string | null
+          lead_qualification_status?: string | null
+          pre_approval_status?: string | null
+          primary_concerns?: Json | null
+          raw_extraction_data?: Json | null
+          requested_actions?: Json | null
+        }
+        Update: {
+          buying_timeline?: string | null
+          conversation_id?: string | null
+          conversation_summary?: string | null
+          created_at?: string | null
+          current_lender?: string | null
+          extraction_timestamp?: string | null
+          extraction_version?: string | null
+          id?: string
+          interested_properties?: Json | null
+          knows_overlays?: boolean | null
+          lead_id?: string | null
+          lead_qualification_status?: string | null
+          pre_approval_status?: string | null
+          primary_concerns?: Json | null
+          raw_extraction_data?: Json | null
+          requested_actions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_extractions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_extractions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           agent_id: string | null
@@ -339,57 +411,126 @@ export type Database = {
       qualification_data: {
         Row: {
           annual_income: number | null
+          best_time_to_call: string | null
           conversation_id: string | null
           created_at: string | null
+          credit_concerns: boolean | null
+          current_lender: string | null
+          debt_concerns: boolean | null
           debt_to_income_ratio: number | null
+          down_payment_concerns: boolean | null
           down_payment_percentage: number | null
           estimated_credit_score: string | null
+          first_time_buyer: boolean | null
           has_co_borrower: boolean | null
+          has_specific_property: boolean | null
           id: string
+          interest_rate_concerns: boolean | null
           is_self_employed: boolean | null
+          job_change_concerns: boolean | null
+          knows_about_overlays: boolean | null
           lead_id: string | null
+          lead_temperature: string | null
           loan_amount: number | null
           loan_type: string | null
+          multiple_properties_interested: boolean | null
+          objection_details: Json | null
+          overlay_education_completed: boolean | null
+          pre_approval_status: string | null
+          preferred_contact_method: string | null
+          property_address: string | null
+          property_mls_number: string | null
+          property_price: number | null
           property_type: string | null
           property_use: string | null
           qualifying_notes: string | null
+          ready_to_buy_timeline: string | null
           time_frame: string | null
+          va_eligible: boolean | null
+          wants_credit_review: boolean | null
+          wants_down_payment_assistance: boolean | null
         }
         Insert: {
           annual_income?: number | null
+          best_time_to_call?: string | null
           conversation_id?: string | null
           created_at?: string | null
+          credit_concerns?: boolean | null
+          current_lender?: string | null
+          debt_concerns?: boolean | null
           debt_to_income_ratio?: number | null
+          down_payment_concerns?: boolean | null
           down_payment_percentage?: number | null
           estimated_credit_score?: string | null
+          first_time_buyer?: boolean | null
           has_co_borrower?: boolean | null
+          has_specific_property?: boolean | null
           id?: string
+          interest_rate_concerns?: boolean | null
           is_self_employed?: boolean | null
+          job_change_concerns?: boolean | null
+          knows_about_overlays?: boolean | null
           lead_id?: string | null
+          lead_temperature?: string | null
           loan_amount?: number | null
           loan_type?: string | null
+          multiple_properties_interested?: boolean | null
+          objection_details?: Json | null
+          overlay_education_completed?: boolean | null
+          pre_approval_status?: string | null
+          preferred_contact_method?: string | null
+          property_address?: string | null
+          property_mls_number?: string | null
+          property_price?: number | null
           property_type?: string | null
           property_use?: string | null
           qualifying_notes?: string | null
+          ready_to_buy_timeline?: string | null
           time_frame?: string | null
+          va_eligible?: boolean | null
+          wants_credit_review?: boolean | null
+          wants_down_payment_assistance?: boolean | null
         }
         Update: {
           annual_income?: number | null
+          best_time_to_call?: string | null
           conversation_id?: string | null
           created_at?: string | null
+          credit_concerns?: boolean | null
+          current_lender?: string | null
+          debt_concerns?: boolean | null
           debt_to_income_ratio?: number | null
+          down_payment_concerns?: boolean | null
           down_payment_percentage?: number | null
           estimated_credit_score?: string | null
+          first_time_buyer?: boolean | null
           has_co_borrower?: boolean | null
+          has_specific_property?: boolean | null
           id?: string
+          interest_rate_concerns?: boolean | null
           is_self_employed?: boolean | null
+          job_change_concerns?: boolean | null
+          knows_about_overlays?: boolean | null
           lead_id?: string | null
+          lead_temperature?: string | null
           loan_amount?: number | null
           loan_type?: string | null
+          multiple_properties_interested?: boolean | null
+          objection_details?: Json | null
+          overlay_education_completed?: boolean | null
+          pre_approval_status?: string | null
+          preferred_contact_method?: string | null
+          property_address?: string | null
+          property_mls_number?: string | null
+          property_price?: number | null
           property_type?: string | null
           property_use?: string | null
           qualifying_notes?: string | null
+          ready_to_buy_timeline?: string | null
           time_frame?: string | null
+          va_eligible?: boolean | null
+          wants_credit_review?: boolean | null
+          wants_down_payment_assistance?: boolean | null
         }
         Relationships: [
           {

@@ -73,11 +73,7 @@ serve(async (req) => {
             }
           };
 
-          // Update the call with lead context (this would typically be sent to Retell's API)
           console.log("Lead context prepared for Retell:", leadContext);
-          
-          // Here you would typically make a call to Retell's API to update the call with context
-          // For now, we'll just log it and store it in our conversation record
         }
       }
 
@@ -94,7 +90,7 @@ serve(async (req) => {
       );
     }
 
-    // Handle call_ended event - process conversation and extract callbacks
+    // Handle call_ended event - process conversation and extract enhanced data
     if (event === 'call_ended') {
       const {
         conversation,
@@ -117,7 +113,7 @@ serve(async (req) => {
       
       console.log("Mapped lead information:", leadInfo);
       
-      // Extract qualification data if available
+      // Extract enhanced qualification data for home purchase
       const qualificationData = extracted_information?.qualification_data ? {
         loanType: extracted_information.qualification_data.loan_type,
         propertyType: extracted_information.qualification_data.property_type,
@@ -130,7 +126,32 @@ serve(async (req) => {
         loanAmount: extracted_information.qualification_data.loan_amount,
         debtToIncomeRatio: extracted_information.qualification_data.debt_to_income_ratio,
         timeFrame: extracted_information.qualification_data.time_frame,
-        notes: extracted_information.qualification_data.notes
+        notes: extracted_information.qualification_data.notes,
+        
+        // Enhanced fields for home purchase
+        preApprovalStatus: extracted_information.qualification_data.pre_approval_status,
+        currentLender: extracted_information.qualification_data.current_lender,
+        knowsAboutOverlays: extracted_information.qualification_data.knows_about_overlays,
+        overlayEducationCompleted: extracted_information.qualification_data.overlay_education_completed,
+        readyToBuyTimeline: extracted_information.qualification_data.ready_to_buy_timeline,
+        leadTemperature: extracted_information.qualification_data.lead_temperature,
+        creditConcerns: extracted_information.qualification_data.credit_concerns,
+        debtConcerns: extracted_information.qualification_data.debt_concerns,
+        downPaymentConcerns: extracted_information.qualification_data.down_payment_concerns,
+        jobChangeConcerns: extracted_information.qualification_data.job_change_concerns,
+        interestRateConcerns: extracted_information.qualification_data.interest_rate_concerns,
+        objectionDetails: extracted_information.qualification_data.objection_details,
+        hasSpecificProperty: extracted_information.qualification_data.has_specific_property,
+        propertyAddress: extracted_information.qualification_data.property_address,
+        propertyPrice: extracted_information.qualification_data.property_price,
+        multiplePropertiesInterested: extracted_information.qualification_data.multiple_properties_interested,
+        propertyMlsNumber: extracted_information.qualification_data.property_mls_number,
+        wantsCreditReview: extracted_information.qualification_data.wants_credit_review,
+        wantsDownPaymentAssistance: extracted_information.qualification_data.wants_down_payment_assistance,
+        vaEligible: extracted_information.qualification_data.va_eligible,
+        firstTimeBuyer: extracted_information.qualification_data.first_time_buyer,
+        preferredContactMethod: extracted_information.qualification_data.preferred_contact_method,
+        bestTimeToCall: extracted_information.qualification_data.best_time_to_call
       } : null;
       
       // Create conversation data structure
@@ -160,6 +181,59 @@ serve(async (req) => {
         throw new Error(`Error inserting lead: ${insertError.message}`);
       }
 
+      console.log("Lead successfully created:", insertData);
+
+      // Create conversation extraction record with enhanced data
+      if (insertData?.leadId && insertData?.conversationId && extracted_information) {
+        const extractionData = {
+          conversation_id: insertData.conversationId,
+          lead_id: insertData.leadId,
+          lead_qualification_status: extracted_information.lead_qualification_status,
+          pre_approval_status: extracted_information.pre_approval_status,
+          current_lender: extracted_information.current_lender,
+          knows_overlays: extracted_information.knows_overlays,
+          buying_timeline: extracted_information.buying_timeline,
+          primary_concerns: extracted_information.primary_concerns || [],
+          interested_properties: extracted_information.interested_properties || [],
+          requested_actions: extracted_information.requested_actions || [],
+          conversation_summary: extracted_information.conversation_summary,
+          extraction_version: '2.0',
+          raw_extraction_data: extracted_information
+        };
+
+        const { error: extractionError } = await supabase
+          .from('conversation_extractions')
+          .insert(extractionData);
+
+        if (extractionError) {
+          console.error("Error creating conversation extraction:", extractionError);
+        } else {
+          console.log("Conversation extraction created successfully");
+        }
+      }
+
+      // Create actions based on extracted data
+      if (insertData?.leadId && extracted_information?.requested_actions) {
+        const actions = extracted_information.requested_actions.map((action: any) => ({
+          lead_id: insertData.leadId,
+          conversation_id: insertData.conversationId,
+          action_type: action.type || 'follow_up',
+          description: action.description || 'Action requested during conversation',
+          scheduled_for: action.scheduled_for || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Default to tomorrow
+          status: 'pending'
+        }));
+
+        const { error: actionsError } = await supabase
+          .from('actions')
+          .insert(actions);
+
+        if (actionsError) {
+          console.error("Error creating actions:", actionsError);
+        } else {
+          console.log("Actions created successfully:", actions.length);
+        }
+      }
+
       // If callback was requested, schedule it
       if (callbackInfo && insertData?.leadId) {
         const { error: callbackError } = await supabase
@@ -181,13 +255,13 @@ serve(async (req) => {
         }
       }
       
-      console.log("Lead successfully created:", insertData);
-      
       return new Response(
         JSON.stringify({
           success: true,
           message: "Lead successfully created from Retell conversation",
           leadId: insertData?.leadId || null,
+          conversationId: insertData?.conversationId || null,
+          extractionCreated: true,
           callbackScheduled: !!callbackInfo
         }),
         { 

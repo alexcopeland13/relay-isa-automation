@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,6 +75,17 @@ export const ShowingMarketplace = () => {
     setUser(user);
   };
 
+  const transformShowingData = (rawShowing: any): ShowingRequest => ({
+    ...rawShowing,
+    payout_amount: parseFloat(rawShowing.payout_amount),
+    location_lat: rawShowing.location_lat ? parseFloat(rawShowing.location_lat) : undefined,
+    location_lng: rawShowing.location_lng ? parseFloat(rawShowing.location_lng) : undefined,
+    duration: parseInt(rawShowing.duration),
+    client_type: rawShowing.client_type as 'individual' | 'couple' | 'family',
+    status: rawShowing.status as 'available' | 'claimed' | 'completed' | 'cancelled',
+    urgency_level: rawShowing.urgency_level as 'normal' | 'urgent' | 'emergency'
+  });
+
   const fetchShowings = async () => {
     try {
       setLoading(true);
@@ -85,7 +95,9 @@ export const ShowingMarketplace = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setShowings(data || []);
+      
+      const transformedData = (data || []).map(transformShowingData);
+      setShowings(transformedData);
     } catch (error) {
       console.error('Error fetching showings:', error);
       toast({

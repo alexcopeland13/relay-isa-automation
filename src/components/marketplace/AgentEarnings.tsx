@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +33,23 @@ export const AgentEarnings = () => {
     setUser(user);
   };
 
+  const transformPayoutData = (rawPayout: any): Payout => ({
+    ...rawPayout,
+    amount: parseFloat(rawPayout.amount),
+    status: rawPayout.status as 'pending' | 'processing' | 'completed' | 'failed'
+  });
+
+  const transformShowingData = (rawShowing: any): ShowingRequest => ({
+    ...rawShowing,
+    payout_amount: parseFloat(rawShowing.payout_amount),
+    location_lat: rawShowing.location_lat ? parseFloat(rawShowing.location_lat) : undefined,
+    location_lng: rawShowing.location_lng ? parseFloat(rawShowing.location_lng) : undefined,
+    duration: parseInt(rawShowing.duration),
+    client_type: rawShowing.client_type as 'individual' | 'couple' | 'family',
+    status: rawShowing.status as 'available' | 'claimed' | 'completed' | 'cancelled',
+    urgency_level: rawShowing.urgency_level as 'normal' | 'urgent' | 'emergency'
+  });
+
   const fetchEarningsData = async () => {
     try {
       setLoading(true);
@@ -54,8 +70,11 @@ export const AgentEarnings = () => {
 
       if (showingsError) throw showingsError;
 
-      setPayouts(payoutsData || []);
-      setShowings(showingsData || []);
+      const transformedPayouts = (payoutsData || []).map(transformPayoutData);
+      const transformedShowings = (showingsData || []).map(transformShowingData);
+
+      setPayouts(transformedPayouts);
+      setShowings(transformedShowings);
     } catch (error) {
       console.error('Error fetching earnings data:', error);
     } finally {

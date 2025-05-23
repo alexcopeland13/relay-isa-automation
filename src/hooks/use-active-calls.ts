@@ -15,7 +15,7 @@ export function useActiveCalls() {
           .select('lead_id')
           .eq('call_status', 'active');
 
-        setActiveCallLeadIds(activeCalls?.map(call => call.lead_id).filter(Boolean) || []);
+        setActiveCallLeadIds(activeCalls?.map(call => call.lead_id).filter((id): id is string => id !== null) || []);
       } catch (error) {
         console.error('Error fetching active calls:', error);
       } finally {

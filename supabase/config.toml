@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.cal-webhook] # Newly added function
 verify_jwt = false # Public webhook endpoint
+
+[functions.send-sms] # New SMS sending function
+verify_jwt = false # Public function for webhook calls

@@ -13,7 +13,8 @@ import {
   LogOut,
   MapPin,
   Phone,
-  Stethoscope
+  Stethoscope,
+  Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -101,6 +102,7 @@ export const Sidebar = () => {
   const engageItems: NavItem[] = [
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
     { icon: Users, label: 'Leads', path: '/leads', badgeCount: 2 },
+    { icon: Bot, label: 'AI Chat', path: '/ai-chat' },
     { icon: MapPin, label: 'Marketplace', path: '/marketplace' },
     { icon: Phone, label: 'Call Center', path: '/inbound-call-center' },
   ];

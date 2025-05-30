@@ -12,6 +12,9 @@ import { CallSchedulerModal } from '@/components/conversations/CallSchedulerModa
 import { HandoffProtocol } from '@/components/conversations/HandoffProtocol';
 import { ConversationContextBar } from '@/components/conversations/ConversationContextBar';
 import { ActiveCallInterface } from '@/components/conversations/ActiveCallInterface';
+import { ActiveCallsTable } from '@/components/conversations/ActiveCallsTable';
+import { ActiveCallsOverview } from '@/components/conversations/ActiveCallsOverview';
+import { useActiveCalls } from '@/hooks/use-active-calls';
 
 const Conversations = () => {
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
@@ -22,6 +25,9 @@ const Conversations = () => {
   ]);
   const [isHandoffDialogOpen, setIsHandoffDialogOpen] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
+  const [selectedActiveCall, setSelectedActiveCall] = useState(null);
+  
+  const { activeCalls } = useActiveCalls();
 
   const handleSelectConversation = () => {
     setSelectedConversation(sampleConversation);
@@ -32,12 +38,26 @@ const Conversations = () => {
     setActiveView('list');
   };
   
-  const handleStartCall = () => {
+  const handleJoinActiveCall = (callData: any) => {
+    setSelectedActiveCall(callData);
     setIsCallActive(true);
   };
   
   const handleEndCall = () => {
     setIsCallActive(false);
+    setSelectedActiveCall(null);
+  };
+
+  // Convert active call data to lead info format for ActiveCallInterface
+  const getLeadInfoFromCall = (callData: any) => {
+    if (!callData) return selectedConversation.leadInfo;
+    
+    return {
+      name: callData.lead_name,
+      email: 'N/A', // We don't have email in the active calls data
+      phone: callData.lead_phone,
+      source: 'Live Call'
+    };
   };
 
   return (
@@ -50,7 +70,7 @@ const Conversations = () => {
           <h1 className="text-2xl font-bold">AI Conversations</h1>
           <p className="text-muted-foreground mt-1">
             {activeView === 'list' 
-              ? 'Review and analyze AI-handled conversations with leads.' 
+              ? 'Monitor live calls and review AI-handled conversations with leads.' 
               : 'Analyzing conversation with ' + selectedConversation.leadInfo.name}
           </p>
         </div>
@@ -90,20 +110,35 @@ const Conversations = () => {
                 </DialogTrigger>
                 <CallSchedulerModal />
               </Dialog>
-              
-              <Button onClick={handleStartCall}>
-                <Phone className="mr-2 h-4 w-4" />
-                Start Live Call
-              </Button>
             </>
           )}
         </div>
       </div>
+
+      {/* Active Calls Section - Only show in list view */}
+      {activeView === 'list' && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+            <h2 className="text-lg font-semibold">Live Conversations</h2>
+            <span className="text-sm text-muted-foreground">
+              ({activeCalls.length} active)
+            </span>
+          </div>
+          
+          <ActiveCallsOverview />
+          <ActiveCallsTable onSelectCall={handleJoinActiveCall} />
+        </div>
+      )}
       
       <div className={cn(
         "transition-all duration-300",
         activeView === 'list' ? 'opacity-100' : 'opacity-0 hidden'
       )}>
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Conversation History</h2>
+        </div>
         <ConversationList onSelectConversation={handleSelectConversation} />
       </div>
       
@@ -118,7 +153,7 @@ const Conversations = () => {
       
       {isCallActive && (
         <ActiveCallInterface 
-          leadInfo={selectedConversation.leadInfo} 
+          leadInfo={getLeadInfoFromCall(selectedActiveCall)} 
           onClose={handleEndCall} 
         />
       )}

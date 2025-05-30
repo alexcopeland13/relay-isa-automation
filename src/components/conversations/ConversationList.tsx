@@ -266,8 +266,8 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
       
       <div className="grid grid-cols-1 gap-4">
         {filteredConversations.map((conversation) => {
-          // Mock check for live call - in real implementation this would use actual lead IDs
-          const isLive = Math.random() < 0.1; // 10% chance for demo purposes
+          // Check if this lead is currently on a live call using real data
+          const isLive = isLeadOnCall(conversation.leadInfo.name); // Using name as mock ID match
           
           return (
             <Card 

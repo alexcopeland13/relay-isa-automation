@@ -20,6 +20,9 @@ export function useActiveCalls() {
     // Initial fetch of active calls using direct query
     const fetchActiveCalls = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
+        
         // Use a more flexible query approach to handle potential schema differences
         const { data: activeCallsData, error } = await supabase
           .from('conversations')
@@ -51,12 +54,13 @@ export function useActiveCalls() {
         // Transform the data to match our ActiveCall interface
         const transformedCalls: ActiveCall[] = (activeCallsData || []).map(call => {
           const leadData = leadsData.find(lead => lead.id === call.lead_id);
+          const callData = call as any; // Type assertion to access new columns
           
           return {
             conversation_id: call.id,
             lead_id: call.lead_id || '',
-            call_status: call.call_status || 'active',
-            started_at: call.started_at || call.created_at || new Date().toISOString(),
+            call_status: callData.call_status || 'active',
+            started_at: callData.started_at || call.created_at || new Date().toISOString(),
             call_sid: call.call_sid || '',
             lead_name: leadData ? `${leadData.first_name || ''} ${leadData.last_name || ''}`.trim() : 'Unknown',
             lead_phone: leadData ? (leadData.phone_e164 || leadData.phone || leadData.phone_raw || '') : ''

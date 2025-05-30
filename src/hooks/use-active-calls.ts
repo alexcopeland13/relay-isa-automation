@@ -15,6 +15,7 @@ interface ActiveCall {
 export function useActiveCalls() {
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Initial fetch of active calls using direct query
@@ -23,16 +24,15 @@ export function useActiveCalls() {
         setIsLoading(true);
         setError(null);
         
-        // Use a more flexible query approach to handle potential schema differences
-        const { data: activeCallsData, error } = await supabase
+        // Use a simpler query approach to avoid type issues
+        const { data: conversationsData, error: conversationsError } = await supabase
           .from('conversations')
           .select('*')
-          .not('call_status', 'is', null)
           .eq('call_status', 'active')
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching active calls:', error);
+        if (conversationsError) {
+          console.error('Error fetching conversations:', conversationsError);
           // If call_status column doesn't exist yet, fall back to empty array
           setActiveCalls([]);
           setIsLoading(false);
@@ -40,7 +40,7 @@ export function useActiveCalls() {
         }
 
         // Get lead data separately to avoid join issues
-        const leadIds = activeCallsData?.map(call => call.lead_id).filter(Boolean) || [];
+        const leadIds = conversationsData?.map((conv: any) => conv.lead_id).filter(Boolean) || [];
         
         let leadsData: any[] = [];
         if (leadIds.length > 0) {
@@ -52,16 +52,15 @@ export function useActiveCalls() {
         }
 
         // Transform the data to match our ActiveCall interface
-        const transformedCalls: ActiveCall[] = (activeCallsData || []).map(call => {
-          const leadData = leadsData.find(lead => lead.id === call.lead_id);
-          const callData = call as any; // Type assertion to access new columns
+        const transformedCalls: ActiveCall[] = (conversationsData || []).map((conversation: any) => {
+          const leadData = leadsData.find(lead => lead.id === conversation.lead_id);
           
           return {
-            conversation_id: call.id,
-            lead_id: call.lead_id || '',
-            call_status: callData.call_status || 'active',
-            started_at: callData.started_at || call.created_at || new Date().toISOString(),
-            call_sid: call.call_sid || '',
+            conversation_id: conversation.id,
+            lead_id: conversation.lead_id || '',
+            call_status: conversation.call_status || 'active',
+            started_at: conversation.started_at || conversation.created_at || new Date().toISOString(),
+            call_sid: conversation.call_sid || '',
             lead_name: leadData ? `${leadData.first_name || ''} ${leadData.last_name || ''}`.trim() : 'Unknown',
             lead_phone: leadData ? (leadData.phone_e164 || leadData.phone || leadData.phone_raw || '') : ''
           };
@@ -71,6 +70,7 @@ export function useActiveCalls() {
         setActiveCalls(transformedCalls);
       } catch (error) {
         console.error('Error fetching active calls:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error');
         setActiveCalls([]);
       } finally {
         setIsLoading(false);
@@ -131,6 +131,7 @@ export function useActiveCalls() {
     activeCalls,
     activeCallLeadIds: activeCalls.map(call => call.lead_id),
     isLoading,
+    error,
     isLeadOnCall: (leadId: string) => activeCalls.some(call => call.lead_id === leadId),
     getActiveCallForLead: (leadId: string) => activeCalls.find(call => call.lead_id === leadId)
   };

@@ -1,12 +1,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Maximize2, PhoneOff } from "lucide-react";
+import { useActiveCallsContext } from "@/contexts/ActiveCallsContext";
 
 interface MinimizedCallViewProps {
   leadInfo: {
     name: string;
+    id?: string;
   };
-  callDuration: number;
+  callDuration?: number;
   onMaximize: () => void;
   onEndCall: () => void;
 }
@@ -17,6 +19,16 @@ export const MinimizedCallView = ({
   onMaximize, 
   onEndCall 
 }: MinimizedCallViewProps) => {
+  const { getActiveCallForLead } = useActiveCallsContext();
+  
+  // Get actual call data if lead ID is available
+  const activeCall = leadInfo.id ? getActiveCallForLead(leadInfo.id) : null;
+  
+  // Calculate duration from actual call start time if available
+  const actualDuration = activeCall?.started_at ? 
+    Math.floor((Date.now() - new Date(activeCall.started_at).getTime()) / 1000) : 
+    callDuration || 0;
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -40,8 +52,13 @@ export const MinimizedCallView = ({
         </div>
       </div>
       <div className="text-sm text-muted-foreground mt-1">
-        Call duration: {formatTime(callDuration)}
+        Call duration: {formatTime(actualDuration)}
+        {activeCall && (
+          <div className="text-xs mt-1">
+            Call ID: {activeCall.call_sid || 'Unknown'}
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}

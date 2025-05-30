@@ -1,21 +1,16 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Loader2, MessageSquare, Brain, Clock } from 'lucide-react';
+import { Loader2, Brain, Clock } from 'lucide-react';
 
 interface ConversationExtractionsProps {
   conversationId: string;
 }
 
-// It's good practice to define a type for your data,
-// but for now, we'll keep 'any' to match the previous structure closely
-// and focus on the real-time logic.
-// interface ExtractionRecord { /* ... fields ... */ }
-
 export const ConversationExtractions = ({ conversationId }: ConversationExtractionsProps) => {
-  const [latestExtraction, setLatestExtraction] = useState<any | null>(null); // Changed from array to single object
+  const [latestExtraction, setLatestExtraction] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +30,15 @@ export const ConversationExtractions = ({ conversationId }: ConversationExtracti
           .from('conversation_extractions')
           .select('*')
           .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: false }); // Fetch all, order by most recent
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
         if (fetchError) {
           throw fetchError;
         }
 
-        // Set the single most recent extraction, or null if none
-        setLatestExtraction(data && data.length > 0 ? data[0] : null);
+        setLatestExtraction(data);
       } catch (err) {
         console.error('Error fetching conversation extractions:', err);
         setError(err instanceof Error ? err.message : 'Unknown error fetching extractions');
@@ -53,36 +49,33 @@ export const ConversationExtractions = ({ conversationId }: ConversationExtracti
 
     fetchInitialExtraction();
 
-    // Real-time subscription
+    // Real-time subscription for extraction updates
     const channel = supabase
       .channel(`conversation-extraction-${conversationId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen for INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'conversation_extractions',
           filter: `conversation_id=eq.${conversationId}`
         },
         (payload: any) => {
           console.log('Real-time extraction update:', payload);
+          
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newRecord = payload.new;
-            // Ensure this update is for the current conversation (though filter should suffice)
             if (newRecord.conversation_id === conversationId) {
               setLatestExtraction(currentLatest => {
-                // If no current extraction, or if new one is more recent, update.
                 if (!currentLatest || new Date(newRecord.created_at) >= new Date(currentLatest.created_at)) {
                   return newRecord;
                 }
-                return currentLatest; // Otherwise, keep the existing (it's still the latest)
+                return currentLatest;
               });
             }
           } else if (payload.eventType === 'DELETE') {
-            // If the deleted record was the one we are displaying, refetch to get the next latest.
-            // This is a simpler strategy; more complex logic could involve checking payload.old.id
             if (latestExtraction && payload.old && payload.old.id === latestExtraction.id) {
-                fetchInitialExtraction(); // Refetch to get the new latest or null
+              fetchInitialExtraction();
             }
           }
         }
@@ -100,7 +93,7 @@ export const ConversationExtractions = ({ conversationId }: ConversationExtracti
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]); // Removed latestExtraction from deps to avoid potential loops on setLatestExtraction
+  }, [conversationId]);
 
   if (isLoading) {
     return (
@@ -123,7 +116,6 @@ export const ConversationExtractions = ({ conversationId }: ConversationExtracti
     );
   }
 
-  // Changed condition from extractions.length === 0
   if (!latestExtraction) {
     return (
       <Card>
@@ -139,9 +131,6 @@ export const ConversationExtractions = ({ conversationId }: ConversationExtracti
       </Card>
     );
   }
-
-  // Removed: const latestExtraction = extractions[0];
-  // Now `latestExtraction` is directly the state object.
 
   const getQualificationBadge = (status?: string) => {
     const colors = {
@@ -162,7 +151,6 @@ export const ConversationExtractions = ({ conversationId }: ConversationExtracti
         </CardTitle>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock className="h-4 w-4" />
-          {/* Ensure latestExtraction is not null before accessing properties */}
           {new Date(latestExtraction.created_at).toLocaleString()}
           <Badge variant="outline">v{latestExtraction.extraction_version}</Badge>
         </div>

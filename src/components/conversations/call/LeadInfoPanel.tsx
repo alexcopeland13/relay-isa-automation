@@ -123,7 +123,7 @@ export const LeadInfoPanel = ({ leadInfo, leadId }: LeadInfoPanelProps) => {
             <div>
               <p className="font-medium">{leadInfo.name}</p>
               {leadData?.status && (
-                <Badge className={getStatusColor(leadData.status)} size="sm">
+                <Badge className={getStatusColor(leadData.status)}>
                   {leadData.status}
                 </Badge>
               )}
@@ -186,7 +186,7 @@ export const LeadInfoPanel = ({ leadInfo, leadId }: LeadInfoPanelProps) => {
               {qualificationData.pre_approval_status && (
                 <div>
                   <span className="font-medium">Pre-approval:</span>
-                  <Badge variant="outline" size="sm">
+                  <Badge variant="outline">
                     {qualificationData.pre_approval_status}
                   </Badge>
                 </div>
@@ -218,7 +218,7 @@ export const LeadInfoPanel = ({ leadInfo, leadId }: LeadInfoPanelProps) => {
             <CardContent>
               <p className="text-sm text-muted-foreground">{leadData.notes}</p>
             </CardContent>
-          </Card>
+          </CardContent>
         )}
       </div>
     </ScrollArea>

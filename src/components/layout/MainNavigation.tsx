@@ -1,3 +1,4 @@
+
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -41,20 +42,24 @@ export function MainNavigation({
       className={cn("flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1", className)}
       {...props}
     >
-      {navigation.map((item) => (
-        <NavLink 
-          key={item.href} 
-          to={item.href}
-          className={({ isActive }) =>
-            cn(
-              "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
-              isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-            )
-          }
-        >
-          {item.icon} <span>{item.name}</span>
-        </NavLink>
-      ))}
+      {navigation.map((item) => {
+        const IconComponent = item.icon;
+        return (
+          <NavLink 
+            key={item.href} 
+            to={item.href}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
+                isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+              )
+            }
+          >
+            <IconComponent className="mr-2 h-4 w-4" />
+            <span>{item.name}</span>
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }

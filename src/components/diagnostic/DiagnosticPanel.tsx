@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase, diagnoseDatabaseConnection } from '@/integrations/supabase/client';
 import { PhoneLookupTest } from './PhoneLookupTest';
+import { AiPerformanceMonitor } from './AiPerformanceMonitor';
+import { ConversationQualityValidator } from './ConversationQualityValidator';
 import { 
   Database, 
   Phone, 
@@ -14,7 +15,9 @@ import {
   Loader2, 
   Webhook,
   Users,
-  Calendar
+  Calendar,
+  Brain,
+  MessageSquare
 } from 'lucide-react';
 
 interface DiagnosticResult {
@@ -176,7 +179,7 @@ export const DiagnosticPanel = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">CINC Integration Diagnostics</h2>
-          <p className="text-gray-600">Test and monitor CINC to Retell integration</p>
+          <p className="text-gray-600">Test and monitor CINC to Retell integration with AI capabilities</p>
         </div>
         <Button onClick={runDiagnostics} disabled={loading}>
           {loading ? (
@@ -191,6 +194,8 @@ export const DiagnosticPanel = () => {
       <Tabs defaultValue="system-tests" className="space-y-4">
         <TabsList>
           <TabsTrigger value="system-tests">System Tests</TabsTrigger>
+          <TabsTrigger value="ai-performance">AI Performance</TabsTrigger>
+          <TabsTrigger value="conversation-quality">Conversation Quality</TabsTrigger>
           <TabsTrigger value="phone-lookup">Phone Lookup</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
@@ -230,6 +235,14 @@ export const DiagnosticPanel = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-performance" className="space-y-4">
+          <AiPerformanceMonitor />
+        </TabsContent>
+
+        <TabsContent value="conversation-quality" className="space-y-4">
+          <ConversationQualityValidator />
         </TabsContent>
 
         <TabsContent value="phone-lookup" className="space-y-4">

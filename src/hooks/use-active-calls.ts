@@ -17,11 +17,27 @@ export function useActiveCalls() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initial fetch of active calls using the new RPC function
+    // Initial fetch of active calls using direct query instead of RPC
     const fetchActiveCalls = async () => {
       try {
         const { data: activeCallsData, error } = await supabase
-          .rpc('get_active_calls');
+          .from('conversations')
+          .select(`
+            id,
+            lead_id,
+            call_status,
+            started_at,
+            call_sid,
+            leads!inner(
+              first_name,
+              last_name,
+              phone_e164,
+              phone,
+              phone_raw
+            )
+          `)
+          .eq('call_status', 'active')
+          .order('started_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching active calls:', error);
@@ -29,7 +45,18 @@ export function useActiveCalls() {
           return;
         }
 
-        setActiveCalls(activeCallsData || []);
+        // Transform the data to match our ActiveCall interface
+        const transformedCalls: ActiveCall[] = (activeCallsData || []).map(call => ({
+          conversation_id: call.id,
+          lead_id: call.lead_id,
+          call_status: call.call_status,
+          started_at: call.started_at,
+          call_sid: call.call_sid || '',
+          lead_name: call.leads ? `${call.leads.first_name || ''} ${call.leads.last_name || ''}`.trim() : 'Unknown',
+          lead_phone: call.leads ? (call.leads.phone_e164 || call.leads.phone || call.leads.phone_raw || '') : ''
+        }));
+
+        setActiveCalls(transformedCalls);
       } catch (error) {
         console.error('Error fetching active calls:', error);
       } finally {

@@ -8,6 +8,7 @@ import { HighlightsTab } from './call/HighlightsTab';
 import { LeadInfoPanel } from './call/LeadInfoPanel';
 import { MinimizedCallView } from './call/MinimizedCallView';
 import { TranscriptUpdateIndicator } from './call/TranscriptUpdateIndicator';
+import { CallEventProcessor } from './CallEventProcessor';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeConversations } from '@/hooks/use-realtime-conversations';
@@ -121,6 +122,15 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
     loadTranscript();
   }, [callData?.conversation_id]);
   
+  const handleCallStatusChange = (status: string) => {
+    setIsCallActive(status === 'active');
+  };
+  
+  const handleTranscriptUpdate = (newTranscript: string) => {
+    setTranscript(newTranscript);
+    setLastTranscriptUpdate(new Date().toISOString());
+  };
+  
   const handleEndCall = async () => {
     if (!callData?.conversation_id) {
       onClose();
@@ -182,66 +192,77 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
   );
   
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-background rounded-lg shadow-xl w-full max-w-4xl overflow-hidden">
-        <CallHeader
-          leadInfo={leadInfo}
-          callDuration={callDuration}
-          callSid={callData?.call_sid}
-          isActive={isCallActive}
-          onMinimize={() => setIsMinimized(true)}
+    <>
+      {/* Event processor for handling real-time events */}
+      {callData?.conversation_id && (
+        <CallEventProcessor
+          conversationId={callData.conversation_id}
+          onCallStatusChange={handleCallStatusChange}
+          onTranscriptUpdate={handleTranscriptUpdate}
         />
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 h-[500px]">
-          <div className="md:col-span-2 border-r border-border">
-            <Tabs defaultValue="transcript">
-              <div className="border-b border-border">
-                <TabsList className="w-full justify-start h-12 px-4">
-                  <TabsTrigger value="transcript" className="flex items-center gap-2">
-                    Live Transcript
-                    {isTranscriptUpdating && (
-                      <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="highlights">
-                    Key Highlights
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-              
-              <TabsContent value="transcript" className="mt-0 p-0 h-[448px]">
-                <div className="relative h-full">
-                  <TranscriptTab transcript={transcript} />
-                  <div className="absolute top-2 right-2">
-                    <TranscriptUpdateIndicator 
-                      isUpdating={isTranscriptUpdating}
-                      lastUpdate={lastTranscriptUpdate}
-                    />
-                  </div>
+      )}
+      
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-background rounded-lg shadow-xl w-full max-w-4xl overflow-hidden">
+          <CallHeader
+            leadInfo={leadInfo}
+            callDuration={callDuration}
+            callSid={callData?.call_sid}
+            isActive={isCallActive}
+            onMinimize={() => setIsMinimized(true)}
+          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 h-[500px]">
+            <div className="md:col-span-2 border-r border-border">
+              <Tabs defaultValue="transcript">
+                <div className="border-b border-border">
+                  <TabsList className="w-full justify-start h-12 px-4">
+                    <TabsTrigger value="transcript" className="flex items-center gap-2">
+                      Live Transcript
+                      {isTranscriptUpdating && (
+                        <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="highlights">
+                      Key Highlights
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="highlights" className="mt-0 p-0 h-[448px]">
-                <HighlightsTab conversationId={callData?.conversation_id} />
-              </TabsContent>
-            </Tabs>
+                
+                <TabsContent value="transcript" className="mt-0 p-0 h-[448px]">
+                  <div className="relative h-full">
+                    <TranscriptTab transcript={transcript} />
+                    <div className="absolute top-2 right-2">
+                      <TranscriptUpdateIndicator 
+                        isUpdating={isTranscriptUpdating}
+                        lastUpdate={lastTranscriptUpdate}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="highlights" className="mt-0 p-0 h-[448px]">
+                  <HighlightsTab conversationId={callData?.conversation_id} />
+                </TabsContent>
+              </Tabs>
+            </div>
+            
+            <div className="border-t md:border-t-0 md:border-l border-border bg-muted/30">
+              <LeadInfoPanel 
+                leadInfo={leadInfo} 
+                leadId={callData?.lead_id}
+              />
+            </div>
           </div>
           
-          <div className="border-t md:border-t-0 md:border-l border-border bg-muted/30">
-            <LeadInfoPanel 
-              leadInfo={leadInfo} 
-              leadId={callData?.lead_id}
-            />
-          </div>
+          <CallControls
+            isMuted={isMuted}
+            isActive={isCallActive}
+            onMuteToggle={() => setIsMuted(!isMuted)}
+            onEndCall={handleEndCall}
+          />
         </div>
-        
-        <CallControls
-          isMuted={isMuted}
-          isActive={isCallActive}
-          onMuteToggle={() => setIsMuted(!isMuted)}
-          onEndCall={handleEndCall}
-        />
       </div>
-    </div>
+    </>
   );
 };

@@ -23,6 +23,15 @@ serve(async (req) => {
 
     const { event, data } = body;
 
+    // Log webhook event
+    await supabaseClient
+      .from('webhook_events')
+      .insert({
+        provider: 'retell',
+        event_id: data.call_id,
+        payload: body
+      });
+
     if (event === 'call_started') {
       console.log('Processing call_started event');
       
@@ -57,6 +66,16 @@ serve(async (req) => {
       }
 
       console.log('Created active conversation:', conversation.id);
+
+      // Create initial extraction record
+      await supabaseClient
+        .from('conversation_extractions')
+        .insert({
+          conversation_id: conversation.id,
+          lead_id: phoneMapping?.lead_id || null,
+          extraction_timestamp: new Date().toISOString(),
+          extraction_version: '1.0'
+        });
 
     } else if (event === 'call_ended') {
       console.log('Processing call_ended event');
@@ -108,6 +127,24 @@ serve(async (req) => {
       }
 
       console.log('Updated conversation with analysis data');
+      
+    } else if (event === 'transcript_update') {
+      console.log('Processing transcript_update event');
+      
+      // Update conversation with latest transcript
+      const { error: transcriptError } = await supabaseClient
+        .from('conversations')
+        .update({
+          transcript: data.transcript || null
+        })
+        .eq('call_sid', data.call_id);
+
+      if (transcriptError) {
+        console.error('Error updating transcript:', transcriptError);
+        throw transcriptError;
+      }
+
+      console.log('Updated conversation transcript');
     }
 
     return new Response(JSON.stringify({ success: true }), {

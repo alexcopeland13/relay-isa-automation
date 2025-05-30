@@ -7,8 +7,11 @@ import { TranscriptTab } from './call/TranscriptTab';
 import { HighlightsTab } from './call/HighlightsTab';
 import { LeadInfoPanel } from './call/LeadInfoPanel';
 import { MinimizedCallView } from './call/MinimizedCallView';
+import { TranscriptUpdateIndicator } from './call/TranscriptUpdateIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeConversations } from '@/hooks/use-realtime-conversations';
+import { useRealtimeExtractions } from '@/hooks/use-realtime-extractions';
 
 interface ActiveCallData {
   conversation_id: string;
@@ -38,7 +41,20 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
   const [callDuration, setCallDuration] = useState(0);
   const [transcript, setTranscript] = useState<string>('');
   const [isCallActive, setIsCallActive] = useState(true);
+  const [lastTranscriptUpdate, setLastTranscriptUpdate] = useState<string>();
   const { toast } = useToast();
+  
+  // Real-time hooks
+  const { conversationUpdates } = useRealtimeConversations(
+    callData?.conversation_id ? [callData.conversation_id] : []
+  );
+  const { extractionUpdates } = useRealtimeExtractions(
+    callData?.conversation_id ? [callData.conversation_id] : []
+  );
+  
+  // Get current conversation update
+  const currentUpdate = callData?.conversation_id ? 
+    conversationUpdates[callData.conversation_id] : null;
   
   // Calculate call duration from actual start time
   useEffect(() => {
@@ -51,16 +67,29 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
       setCallDuration(durationInSeconds);
     };
     
-    // Update immediately
     updateDuration();
-    
-    // Update every second
     const timer = setInterval(updateDuration, 1000);
     
     return () => clearInterval(timer);
   }, [callData?.started_at]);
 
-  // Load conversation transcript from database
+  // Handle real-time conversation updates
+  useEffect(() => {
+    if (currentUpdate) {
+      // Update transcript if changed
+      if (currentUpdate.transcript && currentUpdate.transcript !== transcript) {
+        setTranscript(currentUpdate.transcript);
+        setLastTranscriptUpdate(new Date().toISOString());
+      }
+      
+      // Update call status
+      if (currentUpdate.call_status !== 'active') {
+        setIsCallActive(false);
+      }
+    }
+  }, [currentUpdate, transcript]);
+
+  // Load initial conversation transcript from database
   useEffect(() => {
     const loadTranscript = async () => {
       if (!callData?.conversation_id) return;
@@ -68,7 +97,7 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
       try {
         const { data, error } = await supabase
           .from('conversations')
-          .select('transcript')
+          .select('transcript, call_status')
           .eq('id', callData.conversation_id)
           .single();
           
@@ -80,38 +109,16 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
         if (data?.transcript) {
           setTranscript(data.transcript);
         }
+        
+        if (data?.call_status !== 'active') {
+          setIsCallActive(false);
+        }
       } catch (error) {
         console.error('Error loading transcript:', error);
       }
     };
     
     loadTranscript();
-    
-    // Set up real-time subscription for transcript updates
-    const subscription = supabase
-      .channel(`conversation-${callData?.conversation_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'conversations',
-          filter: `id=eq.${callData?.conversation_id}`
-        },
-        (payload) => {
-          if (payload.new?.transcript) {
-            setTranscript(payload.new.transcript);
-          }
-          if (payload.new?.call_status !== 'active') {
-            setIsCallActive(false);
-          }
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [callData?.conversation_id]);
   
   const handleEndCall = async () => {
@@ -121,7 +128,6 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
     }
     
     try {
-      // Update conversation status in database
       const { error } = await supabase
         .from('conversations')
         .update({ 
@@ -170,6 +176,11 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
     );
   }
   
+  const isTranscriptUpdating = Boolean(currentUpdate && 
+    currentUpdate.transcript && 
+    currentUpdate.transcript !== transcript
+  );
+  
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-background rounded-lg shadow-xl w-full max-w-4xl overflow-hidden">
@@ -186,8 +197,11 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
             <Tabs defaultValue="transcript">
               <div className="border-b border-border">
                 <TabsList className="w-full justify-start h-12 px-4">
-                  <TabsTrigger value="transcript">
+                  <TabsTrigger value="transcript" className="flex items-center gap-2">
                     Live Transcript
+                    {isTranscriptUpdating && (
+                      <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                    )}
                   </TabsTrigger>
                   <TabsTrigger value="highlights">
                     Key Highlights
@@ -196,7 +210,15 @@ export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallI
               </div>
               
               <TabsContent value="transcript" className="mt-0 p-0 h-[448px]">
-                <TranscriptTab transcript={transcript} />
+                <div className="relative h-full">
+                  <TranscriptTab transcript={transcript} />
+                  <div className="absolute top-2 right-2">
+                    <TranscriptUpdateIndicator 
+                      isUpdating={isTranscriptUpdating}
+                      lastUpdate={lastTranscriptUpdate}
+                    />
+                  </div>
+                </div>
               </TabsContent>
               
               <TabsContent value="highlights" className="mt-0 p-0 h-[448px]">

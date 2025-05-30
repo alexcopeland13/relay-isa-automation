@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Minimize2, Phone, PhoneOff } from "lucide-react";
+import { Minimize2 } from "lucide-react";
+import { LiveStatusIndicator } from "./LiveStatusIndicator";
 
 interface CallHeaderProps {
   leadInfo: {
@@ -35,32 +35,23 @@ export const CallHeader = ({
   return (
     <div className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          {isActive ? (
-            <Phone className="h-5 w-5 text-green-400" />
-          ) : (
-            <PhoneOff className="h-5 w-5 text-red-400" />
-          )}
+        <div className="flex items-center gap-3">
           <div>
             <h3 className="font-semibold text-lg">{leadInfo.name}</h3>
             <p className="text-sm opacity-90">{leadInfo.phone}</p>
           </div>
+          
+          <LiveStatusIndicator 
+            status={isActive ? 'active' : 'completed'} 
+            size="md"
+          />
         </div>
         
-        <div className="flex items-center gap-3">
-          <Badge 
-            variant={isActive ? "default" : "secondary"} 
-            className={isActive ? "bg-green-500 animate-pulse" : "bg-gray-500"}
-          >
-            {isActive ? "LIVE" : "ENDED"}
-          </Badge>
-          
-          <div className="text-sm">
-            <div>Duration: {formatTime(callDuration)}</div>
-            {callSid && (
-              <div className="text-xs opacity-75">ID: {callSid}</div>
-            )}
-          </div>
+        <div className="text-sm">
+          <div>Duration: {formatTime(callDuration)}</div>
+          {callSid && (
+            <div className="text-xs opacity-75">ID: {callSid}</div>
+          )}
         </div>
       </div>
       

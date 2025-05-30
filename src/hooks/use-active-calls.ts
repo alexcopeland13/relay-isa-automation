@@ -18,56 +18,72 @@ export function useActiveCalls() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial fetch of active calls using direct query
+    // Initial fetch of active calls using the stored function
     const fetchActiveCalls = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
-        // Use a simpler query approach to avoid type issues
-        const { data: conversationsData, error: conversationsError } = await supabase
-          .from('conversations')
-          .select('*')
-          .eq('call_status', 'active')
-          .order('created_at', { ascending: false });
+        // Use the stored function for consistent results
+        const { data: activeCallsData, error: functionError } = await supabase
+          .rpc('get_active_calls');
 
-        if (conversationsError) {
-          console.error('Error fetching conversations:', conversationsError);
-          // If call_status column doesn't exist yet, fall back to empty array
-          setActiveCalls([]);
-          setIsLoading(false);
-          return;
-        }
+        if (functionError) {
+          console.error('Error calling get_active_calls function:', functionError);
+          // Fallback to direct query
+          const { data: conversationsData, error: conversationsError } = await supabase
+            .from('conversations')
+            .select(`
+              id,
+              lead_id,
+              call_status,
+              started_at,
+              call_sid,
+              created_at
+            `)
+            .eq('call_status', 'active')
+            .order('started_at', { ascending: false });
 
-        // Get lead data separately to avoid join issues
-        const leadIds = conversationsData?.map((conv: any) => conv.lead_id).filter(Boolean) || [];
-        
-        let leadsData: any[] = [];
-        if (leadIds.length > 0) {
-          const { data: leads } = await supabase
-            .from('leads')
-            .select('id, first_name, last_name, phone_e164, phone, phone_raw')
-            .in('id', leadIds);
-          leadsData = leads || [];
-        }
+          if (conversationsError) {
+            console.error('Error fetching conversations:', conversationsError);
+            setActiveCalls([]);
+            setIsLoading(false);
+            return;
+          }
 
-        // Transform the data to match our ActiveCall interface
-        const transformedCalls: ActiveCall[] = (conversationsData || []).map((conversation: any) => {
-          const leadData = leadsData.find(lead => lead.id === conversation.lead_id);
+          // Get lead data separately
+          const leadIds = conversationsData?.map(conv => conv.lead_id).filter(Boolean) || [];
           
-          return {
-            conversation_id: conversation.id,
-            lead_id: conversation.lead_id || '',
-            call_status: conversation.call_status || 'active',
-            started_at: conversation.started_at || conversation.created_at || new Date().toISOString(),
-            call_sid: conversation.call_sid || '',
-            lead_name: leadData ? `${leadData.first_name || ''} ${leadData.last_name || ''}`.trim() : 'Unknown',
-            lead_phone: leadData ? (leadData.phone_e164 || leadData.phone || leadData.phone_raw || '') : ''
-          };
-        });
+          let leadsData: any[] = [];
+          if (leadIds.length > 0) {
+            const { data: leads } = await supabase
+              .from('leads')
+              .select('id, first_name, last_name, phone_e164, phone, phone_raw')
+              .in('id', leadIds);
+            leadsData = leads || [];
+          }
 
-        console.log('Active calls fetched:', transformedCalls);
-        setActiveCalls(transformedCalls);
+          // Transform the data
+          const transformedCalls: ActiveCall[] = (conversationsData || []).map(conversation => {
+            const leadData = leadsData.find(lead => lead.id === conversation.lead_id);
+            
+            return {
+              conversation_id: conversation.id,
+              lead_id: conversation.lead_id || '',
+              call_status: conversation.call_status || 'active',
+              started_at: conversation.started_at || conversation.created_at || new Date().toISOString(),
+              call_sid: conversation.call_sid || '',
+              lead_name: leadData ? `${leadData.first_name || ''} ${leadData.last_name || ''}`.trim() : 'Unknown',
+              lead_phone: leadData ? (leadData.phone_e164 || leadData.phone || leadData.phone_raw || '') : ''
+            };
+          });
+
+          setActiveCalls(transformedCalls);
+        } else {
+          // Use the function result directly
+          console.log('Active calls from function:', activeCallsData);
+          setActiveCalls(activeCallsData || []);
+        }
       } catch (error) {
         console.error('Error fetching active calls:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
@@ -93,14 +109,14 @@ export function useActiveCalls() {
           console.log('Real-time conversation change:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new?.call_status === 'active') {
-            // New active call started - fetch updated data
+            // New active call started - refresh data
             console.log('New active call detected, refreshing data');
             await fetchActiveCalls();
           } else if (payload.eventType === 'UPDATE') {
             const { new: newConversation, old: oldConversation } = payload;
             
             if (newConversation.call_status === 'active' && oldConversation?.call_status !== 'active') {
-              // Call became active - fetch updated data
+              // Call became active - refresh data
               console.log('Call became active, refreshing data');
               await fetchActiveCalls();
             } else if (newConversation.call_status !== 'active' && oldConversation?.call_status === 'active') {

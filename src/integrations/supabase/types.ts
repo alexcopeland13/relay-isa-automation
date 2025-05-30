@@ -193,37 +193,46 @@ export type Database = {
         Row: {
           agent_id: string | null
           call_sid: string | null
+          call_status: string | null
           created_at: string | null
           direction: string | null
           duration: number | null
+          ended_at: string | null
           id: string
           lead_id: string | null
           recording_url: string | null
           sentiment_score: number | null
+          started_at: string | null
           transcript: string | null
         }
         Insert: {
           agent_id?: string | null
           call_sid?: string | null
+          call_status?: string | null
           created_at?: string | null
           direction?: string | null
           duration?: number | null
+          ended_at?: string | null
           id?: string
           lead_id?: string | null
           recording_url?: string | null
           sentiment_score?: number | null
+          started_at?: string | null
           transcript?: string | null
         }
         Update: {
           agent_id?: string | null
           call_sid?: string | null
+          call_status?: string | null
           created_at?: string | null
           direction?: string | null
           duration?: number | null
+          ended_at?: string | null
           id?: string
           lead_id?: string | null
           recording_url?: string | null
           sentiment_score?: number | null
+          started_at?: string | null
           transcript?: string | null
         }
         Relationships: [
@@ -819,13 +828,16 @@ export type Database = {
         Returns: {
           agent_id: string | null
           call_sid: string | null
+          call_status: string | null
           created_at: string | null
           direction: string | null
           duration: number | null
+          ended_at: string | null
           id: string
           lead_id: string | null
           recording_url: string | null
           sentiment_score: number | null
+          started_at: string | null
           transcript: string | null
         }[]
       }

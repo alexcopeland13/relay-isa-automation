@@ -1,4 +1,3 @@
-
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -11,64 +10,30 @@ import {
   Users,
   FolderCheck,
   Phone,
-  Shield
+  Shield,
+  Bot,
+  Users as UserCheck,
+  Building,
+  Calendar,
+  Activity
 } from 'lucide-react';
 
 export function MainNavigation({
   className,
   ...props
 }: React.HTMLAttributes<HTMLElement>) {
-  const navItems = [
-    {
-      href: "/dashboard",
-      title: "Dashboard",
-      icon: <LayoutDashboard className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/leads",
-      title: "Leads",
-      icon: <UserRound className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/conversations",
-      title: "Conversations",
-      icon: <MessageSquare className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/agents",
-      title: "Agents",
-      icon: <Users className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/follow-ups",
-      title: "Follow-Ups",
-      icon: <CalendarCheck className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/analytics",
-      title: "Analytics",
-      icon: <BarChart3 className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/team-lead-controls",
-      title: "Team Lead Controls",
-      icon: <Shield className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/upcoming-calls",
-      title: "Upcoming Calls",
-      icon: <Phone className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/completed-tasks",
-      title: "Completed Tasks",
-      icon: <FolderCheck className="mr-2 h-4 w-4" />
-    },
-    {
-      href: "/settings",
-      title: "Settings",
-      icon: <Settings className="mr-2 h-4 w-4" />
-    }
+  const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, current: false },
+    { name: 'Leads', href: '/leads', icon: Users, current: false },
+    { name: 'Conversations', href: '/conversations', icon: MessageSquare, current: false },
+    { name: 'AI Chat', href: '/ai-chat', icon: Bot, current: false },
+    { name: 'Follow-ups', href: '/follow-ups', icon: Calendar, current: false },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3, current: false },
+    { name: 'Agents', href: '/agents', icon: UserCheck, current: false },
+    { name: 'Marketplace', href: '/marketplace', icon: Building, current: false },
+    { name: 'Call Center', href: '/inbound-call-center', icon: Phone, current: false },
+    { name: 'Settings', href: '/settings', icon: Settings, current: false },
+    { name: 'Diagnostics', href: '/diagnostics', icon: Activity, current: false },
   ];
 
   return (
@@ -76,7 +41,7 @@ export function MainNavigation({
       className={cn("flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1", className)}
       {...props}
     >
-      {navItems.map((item) => (
+      {navigation.map((item) => (
         <NavLink 
           key={item.href} 
           to={item.href}
@@ -87,7 +52,7 @@ export function MainNavigation({
             )
           }
         >
-          {item.icon} <span>{item.title}</span>
+          {item.icon} <span>{item.name}</span>
         </NavLink>
       ))}
     </nav>

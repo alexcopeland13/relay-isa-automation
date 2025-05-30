@@ -1,48 +1,50 @@
 
-import { Button } from '@/components/ui/button';
-import { 
-  MicOff, 
-  Mic, 
-  PhoneOff, 
-  PauseCircle, 
-  ScreenShareOff, 
-  UserPlus
-} from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
 
 interface CallControlsProps {
   isMuted: boolean;
+  isActive?: boolean;
   onMuteToggle: () => void;
   onEndCall: () => void;
 }
 
-export const CallControls = ({ isMuted, onMuteToggle, onEndCall }: CallControlsProps) => {
+export const CallControls = ({ 
+  isMuted, 
+  isActive = true, 
+  onMuteToggle, 
+  onEndCall 
+}: CallControlsProps) => {
   return (
-    <div className="p-4 bg-muted border-t border-border flex justify-center">
-      <div className="flex gap-2">
-        <Button 
-          variant={isMuted ? "default" : "outline"} 
-          size="icon"
+    <div className="border-t border-border p-4 bg-muted/30">
+      <div className="flex justify-center gap-4">
+        <Button
+          variant={isMuted ? "destructive" : "outline"}
+          size="lg"
           onClick={onMuteToggle}
+          disabled={!isActive}
+          className="gap-2"
         >
           {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          {isMuted ? "Unmute" : "Mute"}
         </Button>
         
-        <Button variant="outline" size="icon">
-          <PauseCircle className="h-4 w-4" />
-        </Button>
-        
-        <Button variant="outline" size="icon">
-          <ScreenShareOff className="h-4 w-4" />
-        </Button>
-        
-        <Button variant="outline" size="icon">
-          <UserPlus className="h-4 w-4" />
-        </Button>
-        
-        <Button variant="destructive" size="icon" onClick={onEndCall}>
+        <Button
+          variant="destructive"
+          size="lg"
+          onClick={onEndCall}
+          className="gap-2"
+        >
           <PhoneOff className="h-4 w-4" />
+          {isActive ? "End Call" : "Close"}
         </Button>
       </div>
+      
+      {!isActive && (
+        <p className="text-center text-sm text-muted-foreground mt-2">
+          Call has ended
+        </p>
+      )}
     </div>
   );
 };

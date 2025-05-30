@@ -1,7 +1,7 @@
 
-import { User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Minimize2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Minimize2, Phone, PhoneOff } from "lucide-react";
 
 interface CallHeaderProps {
   leadInfo: {
@@ -9,37 +9,64 @@ interface CallHeaderProps {
     phone: string;
   };
   callDuration: number;
+  callSid?: string;
+  isActive?: boolean;
   onMinimize: () => void;
 }
 
-export const CallHeader = ({ leadInfo, callDuration, onMinimize }: CallHeaderProps) => {
+export const CallHeader = ({ 
+  leadInfo, 
+  callDuration, 
+  callSid, 
+  isActive = true,
+  onMinimize 
+}: CallHeaderProps) => {
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    
+    if (hrs > 0) {
+      return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   return (
-    <div className="p-4 bg-muted flex justify-between items-center">
-      <div className="flex items-center gap-2">
-        <div className="bg-primary/10 text-primary p-2 rounded-full">
-          <User className="h-6 w-6" />
+    <div className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          {isActive ? (
+            <Phone className="h-5 w-5 text-green-400" />
+          ) : (
+            <PhoneOff className="h-5 w-5 text-red-400" />
+          )}
+          <div>
+            <h3 className="font-semibold text-lg">{leadInfo.name}</h3>
+            <p className="text-sm opacity-90">{leadInfo.phone}</p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-medium">{leadInfo.name}</h3>
-          <p className="text-sm text-muted-foreground">{leadInfo.phone}</p>
+        
+        <div className="flex items-center gap-3">
+          <Badge 
+            variant={isActive ? "default" : "secondary"} 
+            className={isActive ? "bg-green-500 animate-pulse" : "bg-gray-500"}
+          >
+            {isActive ? "LIVE" : "ENDED"}
+          </Badge>
+          
+          <div className="text-sm">
+            <div>Duration: {formatTime(callDuration)}</div>
+            {callSid && (
+              <div className="text-xs opacity-75">ID: {callSid}</div>
+            )}
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          {formatTime(callDuration)}
-        </span>
-        <div className="flex">
-          <Button variant="ghost" size="icon" onClick={onMinimize}>
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      
+      <Button variant="ghost" size="icon" onClick={onMinimize}>
+        <Minimize2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 };

@@ -53,6 +53,7 @@ const Conversations = () => {
     if (!callData) return selectedConversation.leadInfo;
     
     return {
+      id: callData.lead_id,
       name: callData.lead_name,
       email: 'N/A', // We don't have email in the active calls data
       phone: callData.lead_phone,
@@ -153,6 +154,7 @@ const Conversations = () => {
       
       {isCallActive && (
         <ActiveCallInterface 
+          callData={selectedActiveCall}
           leadInfo={getLeadInfoFromCall(selectedActiveCall)} 
           onClose={handleEndCall} 
         />

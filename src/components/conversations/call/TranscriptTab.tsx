@@ -1,73 +1,87 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { useEffect, useRef } from "react";
 
 interface TranscriptTabProps {
-  initialTranscript?: { speaker: string; text: string }[];
+  transcript?: string;
 }
 
-export const TranscriptTab = ({ initialTranscript = [] }: TranscriptTabProps) => {
-  const [transcribedText, setTranscribedText] = useState<{speaker: string; text: string}[]>(initialTranscript);
+export const TranscriptTab = ({ transcript }: TranscriptTabProps) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
-  // Simulate real-time transcription with this effect
+  // Auto-scroll to bottom when new transcript data arrives
   useEffect(() => {
-    const transcriptItems = [
-      { speaker: 'AI', text: 'Hello, this is Relay AI. Am I speaking with Michael Brown today?' },
-      { speaker: 'Lead', text: 'Yes, this is Michael.' },
-      { speaker: 'AI', text: 'Great, thank you for taking my call. I understand you\'re interested in refinancing your mortgage. Is that correct?' },
-      { speaker: 'Lead', text: 'Yes, I\'m looking to potentially lower my rate and maybe get some cash out for home improvements.' },
-      { speaker: 'AI', text: 'That\'s helpful information. What\'s your current interest rate, if you don\'t mind me asking?' },
-      { speaker: 'Lead', text: 'I\'m at 4.75% right now on a 30-year fixed.' },
-      { speaker: 'AI', text: 'I see. And how long have you had your current mortgage?' },
-      { speaker: 'Lead', text: 'We\'ve had it for about 5 years now.' },
-    ];
-    
-    // Only populate if we don't have initial transcript
-    if (initialTranscript.length === 0) {
-      const interval = setInterval(() => {
-        if (transcribedText.length < transcriptItems.length) {
-          setTranscribedText(prev => [
-            ...prev, 
-            transcriptItems[prev.length]
-          ]);
-        } else {
-          clearInterval(interval);
-        }
-      }, 3000);
-      
-      return () => clearInterval(interval);
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
     }
-  }, [transcribedText, initialTranscript]);
+  }, [transcript]);
+
+  // Parse transcript if it's a string (could be JSON or plain text)
+  const parseTranscript = (transcript: string) => {
+    if (!transcript) return [];
+    
+    try {
+      // Try to parse as JSON first
+      const parsed = JSON.parse(transcript);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      // If it's an object with messages
+      if (parsed.messages) {
+        return parsed.messages;
+      }
+    } catch {
+      // If not JSON, treat as plain text and split by common patterns
+      const lines = transcript.split(/\n|\. (?=[A-Z])/);
+      return lines.map((line, index) => ({
+        id: index,
+        speaker: index % 2 === 0 ? 'AI Agent' : 'Lead',
+        content: line.trim(),
+        timestamp: new Date().toISOString()
+      })).filter(item => item.content.length > 0);
+    }
+    
+    return [];
+  };
+
+  const messages = transcript ? parseTranscript(transcript) : [];
+
+  if (!transcript || messages.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <div className="animate-pulse mb-2">●</div>
+          <p>Waiting for conversation to begin...</p>
+          <p className="text-xs mt-1">Transcript will appear here in real-time</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <ScrollArea className="h-full p-4">
-      <div className="space-y-4">
-        {transcribedText.map((item, index) => (
-          <div 
-            key={index} 
-            className={`flex max-w-[85%] ${item.speaker === 'AI' ? 'mr-auto' : 'ml-auto flex-row-reverse'}`}
-          >
-            <div 
-              className={`rounded-lg p-3 ${
-                item.speaker === 'AI' 
-                  ? 'bg-secondary text-foreground rounded-tl-none' 
-                  : 'bg-primary text-primary-foreground rounded-tr-none'
-              }`}
-            >
-              <div className="font-medium mb-1 text-sm">
-                {item.speaker}
-              </div>
-              <p>{item.text}</p>
+    <ScrollArea className="h-full" ref={scrollAreaRef}>
+      <div className="p-4 space-y-4">
+        {messages.map((message: any, index: number) => (
+          <div key={message.id || index} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant={message.speaker === 'AI Agent' ? 'default' : 'secondary'}>
+                {message.speaker || (index % 2 === 0 ? 'AI Agent' : 'Lead')}
+              </Badge>
+              {message.timestamp && (
+                <span className="text-xs text-muted-foreground">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              )}
             </div>
+            <p className="text-sm leading-relaxed">
+              {message.content || message.text || message}
+            </p>
           </div>
         ))}
-        {transcribedText.length > 0 && (
-          <div className="h-4 flex items-center text-xs text-muted-foreground justify-center">
-            <div className="w-4 h-1 rounded-full bg-muted-foreground mx-1 animate-pulse" />
-            <div className="w-3 h-1 rounded-full bg-muted-foreground mx-1 animate-pulse" />
-            <div className="w-2 h-1 rounded-full bg-muted-foreground mx-1 animate-pulse" />
-          </div>
-        )}
       </div>
     </ScrollArea>
   );

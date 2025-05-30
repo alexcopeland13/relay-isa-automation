@@ -7,38 +7,165 @@ import { TranscriptTab } from './call/TranscriptTab';
 import { HighlightsTab } from './call/HighlightsTab';
 import { LeadInfoPanel } from './call/LeadInfoPanel';
 import { MinimizedCallView } from './call/MinimizedCallView';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface ActiveCallData {
+  conversation_id: string;
+  lead_id: string;
+  call_status: string;
+  started_at: string;
+  call_sid: string;
+  lead_name: string;
+  lead_phone: string;
+}
 
 interface ActiveCallInterfaceProps {
+  callData?: ActiveCallData;
   leadInfo: {
     name: string;
     email: string;
     phone: string;
     source: string;
+    id?: string;
   };
   onClose: () => void;
 }
 
-export const ActiveCallInterface = ({ leadInfo, onClose }: ActiveCallInterfaceProps) => {
+export const ActiveCallInterface = ({ callData, leadInfo, onClose }: ActiveCallInterfaceProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [transcript, setTranscript] = useState<string>('');
+  const [isCallActive, setIsCallActive] = useState(true);
+  const { toast } = useToast();
   
-  // Call timer effect
+  // Calculate call duration from actual start time
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
+    if (!callData?.started_at) return;
+    
+    const updateDuration = () => {
+      const startTime = new Date(callData.started_at);
+      const now = new Date();
+      const durationInSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+      setCallDuration(durationInSeconds);
+    };
+    
+    // Update immediately
+    updateDuration();
+    
+    // Update every second
+    const timer = setInterval(updateDuration, 1000);
     
     return () => clearInterval(timer);
-  }, []);
+  }, [callData?.started_at]);
+
+  // Load conversation transcript from database
+  useEffect(() => {
+    const loadTranscript = async () => {
+      if (!callData?.conversation_id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('conversations')
+          .select('transcript')
+          .eq('id', callData.conversation_id)
+          .single();
+          
+        if (error) {
+          console.error('Error loading transcript:', error);
+          return;
+        }
+        
+        if (data?.transcript) {
+          setTranscript(data.transcript);
+        }
+      } catch (error) {
+        console.error('Error loading transcript:', error);
+      }
+    };
+    
+    loadTranscript();
+    
+    // Set up real-time subscription for transcript updates
+    const subscription = supabase
+      .channel(`conversation-${callData?.conversation_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `id=eq.${callData?.conversation_id}`
+        },
+        (payload) => {
+          if (payload.new?.transcript) {
+            setTranscript(payload.new.transcript);
+          }
+          if (payload.new?.call_status !== 'active') {
+            setIsCallActive(false);
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [callData?.conversation_id]);
+  
+  const handleEndCall = async () => {
+    if (!callData?.conversation_id) {
+      onClose();
+      return;
+    }
+    
+    try {
+      // Update conversation status in database
+      const { error } = await supabase
+        .from('conversations')
+        .update({ 
+          call_status: 'completed',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', callData.conversation_id);
+        
+      if (error) {
+        console.error('Error ending call:', error);
+        toast({
+          title: "Error ending call",
+          description: "Could not update call status. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Call ended",
+        description: "The call has been successfully ended.",
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error ending call:', error);
+      toast({
+        title: "Error ending call",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
   
   if (isMinimized) {
     return (
       <MinimizedCallView
-        leadInfo={leadInfo}
+        leadInfo={{
+          name: leadInfo.name,
+          id: leadInfo.id || callData?.lead_id
+        }}
         callDuration={callDuration}
         onMaximize={() => setIsMinimized(false)}
-        onEndCall={onClose}
+        onEndCall={handleEndCall}
       />
     );
   }
@@ -49,6 +176,8 @@ export const ActiveCallInterface = ({ leadInfo, onClose }: ActiveCallInterfacePr
         <CallHeader
           leadInfo={leadInfo}
           callDuration={callDuration}
+          callSid={callData?.call_sid}
+          isActive={isCallActive}
           onMinimize={() => setIsMinimized(true)}
         />
         
@@ -67,24 +196,28 @@ export const ActiveCallInterface = ({ leadInfo, onClose }: ActiveCallInterfacePr
               </div>
               
               <TabsContent value="transcript" className="mt-0 p-0 h-[448px]">
-                <TranscriptTab />
+                <TranscriptTab transcript={transcript} />
               </TabsContent>
               
               <TabsContent value="highlights" className="mt-0 p-0 h-[448px]">
-                <HighlightsTab />
+                <HighlightsTab conversationId={callData?.conversation_id} />
               </TabsContent>
             </Tabs>
           </div>
           
           <div className="border-t md:border-t-0 md:border-l border-border bg-muted/30">
-            <LeadInfoPanel leadInfo={leadInfo} />
+            <LeadInfoPanel 
+              leadInfo={leadInfo} 
+              leadId={callData?.lead_id}
+            />
           </div>
         </div>
         
         <CallControls
           isMuted={isMuted}
+          isActive={isCallActive}
           onMuteToggle={() => setIsMuted(!isMuted)}
-          onEndCall={onClose}
+          onEndCall={handleEndCall}
         />
       </div>
     </div>

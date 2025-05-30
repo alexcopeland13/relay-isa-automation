@@ -17,14 +17,48 @@ export function useActiveCalls() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initial fetch of active calls using a different approach
-    // Since call_status column might not exist yet, we'll work with existing data
+    // Initial fetch of active calls using direct query
     const fetchActiveCalls = async () => {
       try {
-        // For now, we'll return an empty array until the schema is confirmed
-        // This prevents the build errors while maintaining the hook structure
-        console.log('Active calls hook initialized - waiting for proper schema');
-        setActiveCalls([]);
+        const { data: activeCallsData, error } = await supabase
+          .from('conversations')
+          .select(`
+            id,
+            lead_id,
+            call_status,
+            started_at,
+            call_sid,
+            leads!inner(
+              first_name,
+              last_name,
+              phone_e164,
+              phone,
+              phone_raw
+            )
+          `)
+          .eq('call_status', 'active')
+          .order('started_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching active calls:', error);
+          setActiveCalls([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Transform the data to match our ActiveCall interface
+        const transformedCalls: ActiveCall[] = (activeCallsData || []).map(call => ({
+          conversation_id: call.id,
+          lead_id: call.lead_id,
+          call_status: call.call_status,
+          started_at: call.started_at,
+          call_sid: call.call_sid || '',
+          lead_name: call.leads ? `${call.leads.first_name || ''} ${call.leads.last_name || ''}`.trim() : 'Unknown',
+          lead_phone: call.leads ? (call.leads.phone_e164 || call.leads.phone || call.leads.phone_raw || '') : ''
+        }));
+
+        console.log('Active calls fetched:', transformedCalls);
+        setActiveCalls(transformedCalls);
       } catch (error) {
         console.error('Error fetching active calls:', error);
       } finally {
@@ -34,10 +68,9 @@ export function useActiveCalls() {
 
     fetchActiveCalls();
 
-    // Set up a basic real-time subscription that won't fail
-    // We'll subscribe to any conversation changes for now
+    // Set up real-time subscription for conversation changes
     const subscription = supabase
-      .channel('conversations-realtime')
+      .channel('active-calls-realtime')
       .on(
         'postgres_changes',
         {
@@ -46,16 +79,35 @@ export function useActiveCalls() {
           table: 'conversations'
         },
         async (payload: any) => {
-          console.log('Conversation change detected:', payload);
-          // We'll handle this properly once schema is confirmed
+          console.log('Real-time conversation change:', payload);
+          
+          if (payload.eventType === 'INSERT' && payload.new?.call_status === 'active') {
+            // New active call started - fetch updated data
+            console.log('New active call detected, refreshing data');
+            await fetchActiveCalls();
+          } else if (payload.eventType === 'UPDATE') {
+            const { new: newConversation, old: oldConversation } = payload;
+            
+            if (newConversation.call_status === 'active' && oldConversation.call_status !== 'active') {
+              // Call became active - fetch updated data
+              console.log('Call became active, refreshing data');
+              await fetchActiveCalls();
+            } else if (newConversation.call_status !== 'active' && oldConversation.call_status === 'active') {
+              // Call ended - remove from active calls
+              console.log('Call ended, removing from active calls');
+              setActiveCalls(prev => 
+                prev.filter(call => call.conversation_id !== newConversation.id)
+              );
+            }
+          }
         }
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Subscribed to conversation updates');
+          console.log('Subscribed to active calls real-time updates');
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Subscription error:', status, err);
+          console.error('Active calls subscription error:', status, err);
         }
       });
 

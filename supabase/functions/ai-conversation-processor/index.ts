@@ -84,25 +84,35 @@ serve(async (req) => {
       }
 
       case 'extract_entities': {
-        const { text } = data;
+        const { conversation_id, transcript } = data;
         
-        const extractionPrompt = `Extract real estate-relevant entities from this conversation text. 
-        Return a JSON object with extracted information like contact details, property preferences, 
-        budget, timeline, location preferences, etc. Only extract information that is explicitly mentioned.
+        const extractionPrompt = `Analyze this real estate conversation transcript and extract comprehensive information.
         
-        Text: ${text}
+        Transcript: ${transcript}
         
-        Return format:
+        Return a JSON object with the following structure:
         {
-          "entities": {
+          "identified_lead_id": "lead-uuid-if-identified",
+          "sentiment_score": 0.0-1.0,
+          "pre_approval_status": "not_started|in_progress|approved|denied",
+          "current_lender": "lender name or null",
+          "buying_timeline": "immediately|1-3_months|3-6_months|6+_months",
+          "summary": "brief conversation summary",
+          "concerns": ["concern1", "concern2"],
+          "properties": ["property info"],
+          "actions": ["requested action"],
+          "extracted_entities": {
             "name": {"value": "string", "confidence": 0.0-1.0},
             "phone": {"value": "string", "confidence": 0.0-1.0},
             "email": {"value": "string", "confidence": 0.0-1.0},
             "budget_range": {"value": "string", "confidence": 0.0-1.0},
             "property_type": {"value": "string", "confidence": 0.0-1.0},
-            "location_preference": {"value": "string", "confidence": 0.0-1.0},
-            "timeline": {"value": "string", "confidence": 0.0-1.0}
-          }
+            "location_preference": {"value": "string", "confidence": 0.0-1.0}
+          },
+          "lead_temperature": "hot|warm|cool|cold",
+          "qualification_score": 0-100,
+          "next_best_actions": ["action1", "action2"],
+          "conversion_probability": 0.0-1.0
         }`;
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -114,11 +124,11 @@ serve(async (req) => {
           body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: 'You are an expert at extracting structured data from conversations.' },
+              { role: 'system', content: 'You are an expert at extracting structured data from real estate conversations.' },
               { role: 'user', content: extractionPrompt }
             ],
             temperature: 0.1,
-            max_tokens: 1500,
+            max_tokens: 2000,
           }),
         });
 
@@ -135,7 +145,152 @@ serve(async (req) => {
           });
         } catch (parseError) {
           console.error('Failed to parse extraction result:', parseError);
-          return new Response(JSON.stringify({ entities: {} }), {
+          return new Response(JSON.stringify({ 
+            sentiment_score: 0.5,
+            extracted_entities: {},
+            summary: 'Extraction failed',
+            qualification_score: 50
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      case 'analyze_lead': {
+        const { lead_context, analysis_type } = data;
+        
+        const analysisPrompt = `Analyze this real estate lead comprehensively:
+        
+        Lead Context: ${JSON.stringify(lead_context)}
+        
+        Provide analysis in this JSON format:
+        {
+          "analysis": {
+            "insights": ["insight1", "insight2"],
+            "recommendations": ["recommendation1", "recommendation2"],
+            "next_best_action": "specific action to take",
+            "confidence": 0.0-1.0,
+            "temperature_score": 0-100,
+            "urgency_score": 0-100,
+            "score_adjustments": {
+              "conversation_quality": -10 to +10,
+              "engagement_level": -10 to +10,
+              "qualification_depth": -10 to +10
+            },
+            "conversion_indicators": ["indicator1", "indicator2"],
+            "risk_factors": ["risk1", "risk2"],
+            "follow_up_strategy": {
+              "timing": "immediate|within_24h|within_week",
+              "channel": "phone|email|text",
+              "message_type": "qualification|nurture|appointment"
+            }
+          }
+        }`;
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are an expert real estate lead analyst providing strategic insights.' },
+              { role: 'user', content: analysisPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 1500,
+          }),
+        });
+
+        const aiResponse = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(aiResponse.error?.message || 'OpenAI API error');
+        }
+
+        try {
+          const analysis = JSON.parse(aiResponse.choices[0].message.content);
+          return new Response(JSON.stringify(analysis), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (parseError) {
+          console.error('Failed to parse analysis result:', parseError);
+          return new Response(JSON.stringify({
+            analysis: {
+              insights: ['Analysis temporarily unavailable'],
+              recommendations: ['Follow up with lead'],
+              next_best_action: 'Schedule follow-up call',
+              confidence: 0.5,
+              temperature_score: 50,
+              urgency_score: 50,
+              score_adjustments: { conversation_quality: 0, engagement_level: 0, qualification_depth: 0 }
+            }
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      case 'score_from_conversation': {
+        const { lead_id, conversation } = data;
+        
+        const scoringPrompt = `Analyze this conversation and provide lead scoring updates:
+        
+        Conversation Data: ${JSON.stringify(conversation)}
+        
+        Return JSON:
+        {
+          "score_update": {
+            "new_score": 0-100,
+            "score_change": -50 to +50,
+            "reasoning": "explanation of score change",
+            "temperature": "hot|warm|cool|cold",
+            "priority_level": "high|medium|low",
+            "follow_up_urgency": "immediate|urgent|normal|low"
+          }
+        }`;
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a lead scoring specialist.' },
+              { role: 'user', content: scoringPrompt }
+            ],
+            temperature: 0.2,
+            max_tokens: 500,
+          }),
+        });
+
+        const aiResponse = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(aiResponse.error?.message || 'OpenAI API error');
+        }
+
+        try {
+          const scoreData = JSON.parse(aiResponse.choices[0].message.content);
+          return new Response(JSON.stringify(scoreData), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (parseError) {
+          return new Response(JSON.stringify({
+            score_update: {
+              new_score: 50,
+              score_change: 0,
+              reasoning: 'Score analysis unavailable',
+              temperature: 'warm',
+              priority_level: 'medium',
+              follow_up_urgency: 'normal'
+            }
+          }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
@@ -156,7 +311,13 @@ serve(async (req) => {
           "nextSteps": ["step1", "step2"],
           "leadTemperature": "hot|warm|cool|cold",
           "concerns": ["concern1", "concern2"],
-          "interests": ["interest1", "interest2"]
+          "interests": ["interest1", "interest2"],
+          "conversion_probability": 0.0-1.0,
+          "recommended_follow_up": {
+            "timing": "immediate|within_24h|within_week",
+            "method": "phone|email|text",
+            "message": "suggested follow-up message"
+          }
         }`;
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -196,7 +357,13 @@ serve(async (req) => {
             nextSteps: ['Follow up with lead'],
             leadTemperature: 'warm',
             concerns: [],
-            interests: []
+            interests: [],
+            conversion_probability: 0.5,
+            recommended_follow_up: {
+              timing: 'within_24h',
+              method: 'phone',
+              message: 'Follow up on our previous conversation'
+            }
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -220,7 +387,7 @@ serve(async (req) => {
 });
 
 async function generateSuggestedActions(messageContent: string) {
-  // Simple heuristic-based action suggestions
+  // Enhanced action suggestions based on message content
   const actions = [];
   
   if (messageContent.toLowerCase().includes('schedule') || messageContent.toLowerCase().includes('appointment')) {
@@ -239,14 +406,23 @@ async function generateSuggestedActions(messageContent: string) {
       priority: 'medium'
     });
   }
+
+  if (messageContent.toLowerCase().includes('pre-approval') || messageContent.toLowerCase().includes('mortgage')) {
+    actions.push({
+      type: 'qualify',
+      reason: 'Financing needs identified',
+      priority: 'high',
+      data: { suggestedTemplate: 'mortgage_qualification' }
+    });
+  }
   
   return actions;
 }
 
 async function analyzeSentiment(text: string) {
-  // Simple sentiment analysis based on keywords
-  const positiveWords = ['great', 'excellent', 'perfect', 'wonderful', 'amazing', 'love', 'interested'];
-  const negativeWords = ['terrible', 'awful', 'hate', 'disappointing', 'frustrated', 'angry'];
+  // Enhanced sentiment analysis
+  const positiveWords = ['great', 'excellent', 'perfect', 'wonderful', 'amazing', 'love', 'interested', 'excited'];
+  const negativeWords = ['terrible', 'awful', 'hate', 'disappointing', 'frustrated', 'angry', 'concerned', 'worried'];
   
   const lowerText = text.toLowerCase();
   const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;

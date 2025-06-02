@@ -1,29 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LeadsList } from '@/components/leads/LeadsList';
 import { Lead } from '@/types/lead'; 
 import { LeadsBoard } from '@/components/leads/LeadsBoard';
-import { LeadMetrics } from '@/components/leads/LeadMetrics';
-import { LeadDistribution } from '@/components/leads/LeadDistribution';
 import { LeadFormModal } from '@/components/leads/LeadFormModal';
 import { LeadAssignmentModal } from '@/components/leads/LeadAssignmentModal';
 import { LeadsHeader } from '@/components/leads/LeadsHeader';
 import { LeadsStatsPanel } from '@/components/leads/LeadsStatsPanel';
 import { LeadsViewTabs } from '@/components/leads/LeadsViewTabs';
-import { 
-  PlusCircle, 
-  UserPlus, 
-  UploadCloud, 
-  ArrowDownToLine, 
-  ListFilter,
-  RefreshCw,
-  Filter
-} from 'lucide-react';
-import { parsePhoneNumberWithError, PhoneNumber, CountryCode } from 'libphonenumber-js/max';
-import { sampleLeads } from '@/data/sampleLeadsData';
-import { useAsyncData } from '@/hooks/use-async-data';
+import { useLeadsData } from '@/hooks/use-leads-data';
+import { useToast } from '@/hooks/use-toast';
 import { ErrorContainer } from '@/components/ui/error-container';
 import { ExportOptions } from '@/components/ui/export-menu';
 import { 
@@ -31,144 +19,7 @@ import {
   StatCardSkeleton, 
   ChartSkeleton 
 } from '@/components/ui/loading-skeleton';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
-const fetchLeadsData = async () => {
-  try {
-    console.log('📞 Fetching leads data from Supabase...');
-    // Try to fetch from Supabase first
-    const { data: supabaseLeads, error } = await supabase
-      .from('leads')
-      .select(`
-        *,
-        qualification_data(*),
-        conversations(*)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Supabase fetch error:', error);
-      throw new Error(`Failed to fetch leads from Supabase: ${error.message}`);
-    }
-
-    console.log('📋 Supabase returned data:', supabaseLeads);
-    console.log('📋 Number of leads found:', supabaseLeads?.length || 0);
-
-    if (!supabaseLeads || supabaseLeads.length === 0) {
-      console.warn('⚠️ No leads found in Supabase, checking if this is expected...');
-      // You might want to check if this is expected or add diagnostic info here
-    }
-
-    // Convert Supabase data to match the Lead type
-    const formattedLeads: Lead[] = supabaseLeads.map(lead => ({
-      id: lead.id,
-      name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unnamed Lead',
-      email: lead.email || '',
-      phone: lead.phone || '', // Keep for display if needed, but UI should prefer phone_raw/phone_e164
-      phone_raw: lead.phone_raw || lead.phone, // Fallback to old phone if phone_raw is not present
-      phone_e164: lead.phone_e164,
-      cinc_lead_id: lead.cinc_lead_id,
-      status: mapLeadStatus(lead.status),
-      source: lead.source || '',
-      createdAt: lead.created_at,
-      lastContact: lead.last_contacted || lead.created_at,
-      assignedTo: lead.assigned_to || 'unassigned',
-      type: determineLeadType(lead),
-      interestType: determineInterestType(lead),
-      location: determineLocation(lead), // This was missing, added back
-      score: calculateLeadScore(lead),
-      notes: lead.notes || '',
-      qualification_data: lead.qualification_data || [],
-      conversations: lead.conversations || []
-    }));
-
-    console.log('🔄 Fetched and formatted leads from Supabase:', formattedLeads);
-    return { leads: formattedLeads };
-  } catch (error) {
-    console.warn('⚠️ Error with Supabase, falling back to local storage/sample data:', error);
-    
-    // Fallback to local storage if Supabase fetch fails
-    const storedLeads = localStorage.getItem('relayLeads');
-    
-    // Log diagnostic information
-    if (storedLeads) {
-      console.log('🔄 Using leads from localStorage as fallback');
-      try {
-        const parsedLeads = JSON.parse(storedLeads);
-        console.log('🔄 Number of leads in localStorage:', parsedLeads.length);
-        return { leads: parsedLeads };
-      } catch (parseError) {
-        console.error('❌ Error parsing localStorage leads:', parseError);
-      }
-    } else {
-      console.log('🔄 No leads in localStorage, using sample data');
-    }
-    
-    return {
-      leads: storedLeads ? JSON.parse(storedLeads) : sampleLeads,
-    };
-  }
-};
-
-// Helper functions for mapping data
-const mapLeadStatus = (status: string | null): Lead['status'] => {
-  const statusMap: Record<string, Lead['status']> = {
-    'new': 'New',
-    'contacted': 'Contacted',
-    'qualified': 'Qualified',
-    'proposal': 'Proposal',
-    'converted': 'Converted',
-    'lost': 'Lost'
-  };
-  
-  return statusMap[status?.toLowerCase() || 'new'] || 'New';
-};
-
-const determineLeadType = (lead: any): 'Mortgage' | 'Realtor' => {
-  if (lead.qualification_data && lead.qualification_data.length > 0) {
-    return 'Mortgage';
-  }
-  // Check source or other indicators if needed
-  if (lead.source?.toLowerCase().includes('realtor')) return 'Realtor';
-  return 'Mortgage'; // Default type
-};
-
-const determineInterestType = (lead: any): string => {
-  if (lead.qualification_data && lead.qualification_data.length > 0) {
-    const qualification = lead.qualification_data[0];
-    if (qualification.loan_type) return qualification.loan_type;
-    if (qualification.property_type) return qualification.property_type;
-  }
-  // Infer from other fields if possible, e.g. notes or source specific data
-  return lead.interest_type || 'Unknown'; // Assuming an interest_type field might exist
-};
-
-const determineLocation = (lead: any): string => {
-  // Assuming location might be part of lead object or qualification_data
-  return lead.location || (lead.qualification_data?.[0]?.property_location) || 'Unknown';
-};
-
-const calculateLeadScore = (lead: any): number => {
-  let score = 50;
-  if (lead.qualification_data && lead.qualification_data.length > 0) {
-    const qual = lead.qualification_data[0];
-    if (qual.estimated_credit_score) {
-      if (qual.estimated_credit_score.includes('700')) score += 15;
-      else if (qual.estimated_credit_score.includes('600')) score += 10;
-    }
-    if (qual.annual_income && qual.annual_income > 100000) score += 10;
-    if (qual.down_payment_percentage && qual.down_payment_percentage > 20) score += 10;
-  }
-  if (lead.conversations && lead.conversations.length > 0) {
-    score += 5 * Math.min(lead.conversations.length, 5);
-  }
-  // Adjust score based on status
-  if (lead.status === 'Qualified') score += 10;
-  if (lead.status === 'Proposal') score += 5;
-
-  return Math.max(0, Math.min(100, score));
-};
+import { RefreshCw } from 'lucide-react';
 
 const Leads = () => {
   const [activeView, setActiveView] = useState<'list' | 'board'>('list');
@@ -176,215 +27,50 @@ const Leads = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
   const { toast } = useToast();
   
   const { 
-    data, 
+    leads, 
     isLoading, 
     error, 
-    refresh 
-  } = useAsyncData(fetchLeadsData, null, [refreshTrigger]);
-
-  const [leadsData, setLeadsData] = useState<{ leads: Lead[] } | null>(null);
-  
-  // Effect to update state when data changes
-  useEffect(() => {
-    if (data) {
-      console.log("Setting leads data:", data);
-      setLeadsData(data);
-      
-      // Store in localStorage as fallback
-      localStorage.setItem('relayLeads', JSON.stringify(data.leads));
-    }
-  }, [data]);
-  
-  // Force refresh on mount and when refreshTrigger changes
-  useEffect(() => {
-    const refreshTimeout = setTimeout(() => {
-      refresh();
-    }, 300);
-    
-    const channel = supabase
-      .channel('schema-db-changes-leads')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'leads'
-        },
-        (payload: any) => { 
-          console.log('Lead data changed via Supabase real-time:', payload);
-          refresh();
-          
-          const eventType = payload.eventType;
-          let leadName = 'A lead';
-          if (payload.new && (payload.new.first_name || payload.new.last_name)) {
-            leadName = `${payload.new.first_name || ''} ${payload.new.last_name || ''}`.trim();
-          } else if (payload.old && (payload.old.first_name || payload.old.last_name)) {
-            leadName = `${payload.old.first_name || ''} ${payload.old.last_name || ''}`.trim();
-          }
-
-          if (eventType === 'INSERT') {
-            toast({
-              title: 'New Lead Added',
-              description: `${leadName} has been added to the system.`,
-            });
-          } else if (eventType === 'UPDATE') {
-            toast({
-              title: 'Lead Updated',
-              description: `${leadName} has been updated.`,
-            });
-          } else if (eventType === 'DELETE') {
-             toast({
-              title: 'Lead Deleted',
-              description: `${leadName} has been removed from the system.`,
-              variant: 'destructive' 
-            });
-          }
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('📢 Successfully subscribed to leads table changes!');
-        }
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
-          console.error('❌ Realtime subscription error:', status, err);
-          toast({
-            title: "Realtime Error",
-            description: "Could not connect to live updates. Data may be stale.",
-            variant: "destructive"
-          });
-        }
-      });
-    
-    return () => {
-      clearTimeout(refreshTimeout);
-      supabase.removeChannel(channel)
-        .then(() => console.log("📢 Unsubscribed from leads table changes."))
-        .catch(err => console.error("Error unsubscribing from channel:", err));
-    };
-  }, [refresh, refreshTrigger, toast]);
-
-  const handleManualRefresh = useCallback(() => {
-    toast({
-      title: 'Refreshing Data',
-      description: 'Fetching the latest leads...',
-    });
-    setRefreshTrigger(Date.now());
-  }, [toast]);
+    fetchLeads,
+    createLead,
+    updateLead,
+    deleteLead 
+  } = useLeadsData();
 
   const handleLeadSave = async (leadToSave: Lead) => { 
     try {
-        const isNewLead = !leadToSave.id || !leadsData?.leads.find(l => l.id === leadToSave.id);
-        
-        const nameParts = leadToSave.name.split(' ');
-        const first_name = nameParts[0] || '';
-        const last_name = nameParts.slice(1).join(' ') || '';
-
-        const supabaseLeadData = {
-            first_name: first_name,
-            last_name: last_name,
-            email: leadToSave.email,
-            phone: leadToSave.phone, 
-            phone_raw: leadToSave.phone_raw,
-            phone_e164: leadToSave.phone_e164,
-            status: leadToSave.status.toLowerCase(),
-            source: leadToSave.source,
-            notes: leadToSave.notes,
-            cinc_lead_id: leadToSave.cinc_lead_id,
-            last_contacted: new Date().toISOString(),
-        };
-
-        if (isNewLead) {
-            const { data: newLeadData, error } = await supabase
-                .from('leads')
-                .insert(supabaseLeadData)
-                .select() 
-                .single();
-
-            if (error) {
-                console.error('Error creating lead in Supabase:', error);
-                toast({
-                    title: 'Creation Error',
-                    description: `Failed to create lead: ${error.message}.`,
-                    variant: 'destructive',
-                });
-                return; 
-            }
-            toast({
-                title: 'Lead Created',
-                description: `${newLeadData.first_name} ${newLeadData.last_name} has been successfully created.`,
-            });
-        } else {
-            const { data: updatedLeadData, error } = await supabase
-                .from('leads')
-                .update(supabaseLeadData)
-                .eq('id', leadToSave.id)
-                .select()
-                .single();
-            
-            if (error) {
-                console.error('Error updating lead in Supabase:', error);
-                toast({
-                    title: 'Update Error',
-                    description: `Failed to update lead: ${error.message}.`,
-                    variant: 'destructive',
-                });
-                return; 
-            }
-            toast({
-                title: 'Lead Updated',
-                description: `${updatedLeadData.first_name} ${updatedLeadData.last_name} has been successfully updated.`,
-            });
-        }
-        
-        refresh(); 
-        setSelectedLead(undefined);
-
+      const isNewLead = !leadToSave.id || !leads.find(l => l.id === leadToSave.id);
+      
+      if (isNewLead) {
+        await createLead(leadToSave);
+      } else {
+        await updateLead(leadToSave.id, leadToSave);
+      }
+      
+      setSelectedLead(undefined);
+      setShowLeadForm(false);
     } catch (error) {
-        console.error('Error saving lead:', error);
-        toast({
-            title: 'Save Error',
-            description: 'An unexpected error occurred while saving the lead. Please check console.',
-            variant: 'destructive',
-        });
+      console.error('Error saving lead:', error);
+      toast({
+        title: 'Save Error',
+        description: 'Failed to save lead. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
   
   const handleAssignLead = async (leadId: string, agentId: string, assignmentData: { priority: string; notes: string }) => {
     try {
-      const { error } = await supabase
-        .from('leads')
-        .update({
-          assigned_to: agentId,
-          last_contacted: new Date().toISOString()
-        })
-        .eq('id', leadId);
-      
-      if (error) {
-        console.error('Error updating lead assignment in Supabase:', error);
-        toast({
-          title: 'Assignment Error',
-          description: 'Failed to update lead assignment in database.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Lead Assigned',
-          description: 'Lead has been successfully assigned.',
-        });
-        refresh(); 
-      }
+      await updateLead(leadId, { assignedTo: agentId });
       setSelectedLead(undefined); 
       setShowAssignmentModal(false);
-
     } catch (error) {
       console.error('Error assigning lead:', error);
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred while assigning the lead.',
+        title: 'Assignment Error',
+        description: 'Failed to assign lead. Please try again.',
         variant: 'destructive',
       });
     }
@@ -418,8 +104,7 @@ const Leads = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const dataToExport = leadsData?.leads || [];
-      console.log(`Exporting ${dataToExport.length} leads as ${format} with options:`, options);
+      console.log(`Exporting ${leads.length} leads as ${format} with options:`, options);
       
       toast({
         title: format === 'email' ? 'Export Sent' : 'Export Complete',
@@ -439,43 +124,37 @@ const Leads = () => {
     }
   };
 
-  const renderLoading = () => (
-    <PageLayout>
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Leads Management</h1>
-            <p className="text-muted-foreground mt-1">View, filter, and manage all your leads in one place</p>
-          </div>
-          
-          <div className="flex gap-2 mt-4 sm:mt-0">
-            <Button variant="outline" disabled>Loading Actions...</Button>
+  if (isLoading) {
+    return (
+      <PageLayout>
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+            <div>
+              <h1 className="text-2xl font-bold">Leads Management</h1>
+              <p className="text-muted-foreground mt-1">Loading your leads...</p>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <StatCardSkeleton key={i} />)}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2"> {/* Wrap ChartSkeleton */}
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <StatCardSkeleton key={i} />)}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <ChartSkeleton />
+            </div>
             <ChartSkeleton />
           </div>
-          <ChartSkeleton />
+          <div className="bg-card rounded-lg border border-border p-6">
+            <TableSkeleton rows={6} cols={7} />
+          </div>
         </div>
-        <div className="bg-card rounded-lg border border-border p-6">
-          <TableSkeleton rows={6} cols={7} />
-        </div>
-      </div>
-    </PageLayout>
-  );
-
-  if (isLoading && !leadsData) {
-    return renderLoading();
+      </PageLayout>
+    );
   }
 
-  if (error && !leadsData) {
+  if (error) {
     return (
       <PageLayout>
         <div className="mb-6">
@@ -486,17 +165,18 @@ const Leads = () => {
         <ErrorContainer
           title="Failed to Load Leads"
           description="We couldn't retrieve your leads data. Please try again."
-          error={error}
-          onRetry={handleManualRefresh}
+          error={new Error(error)}
+          onRetry={fetchLeads}
           suggestions={[
             "Check your internet connection.",
+            "Verify database connectivity.",
             "Try refreshing the page.",
             "If the problem persists, contact support.",
           ]}
         />
         
         <div className="flex justify-end mt-4">
-          <Button onClick={handleManualRefresh} variant="outline" className="gap-2">
+          <Button onClick={fetchLeads} variant="outline" className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Retry
           </Button>
@@ -505,13 +185,11 @@ const Leads = () => {
     );
   }
 
-  const leads = leadsData?.leads || [];
-
   return (
     <PageLayout>
       <LeadsHeader
         isLoading={isLoading}
-        onManualRefresh={handleManualRefresh}
+        onManualRefresh={fetchLeads}
         leads={leads}
         onExportData={exportData}
         onNewLeadClick={handleNewLeadClick}

@@ -62,12 +62,9 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
   useEffect(() => {
     if (leadId && conversation?.transcript && !leadInsight && !isGeneratingInsights) {
       console.log('🧠 Auto-generating AI insights for conversation');
-      generateLeadInsights(leadId, {
-        transcript: conversation.transcript,
-        extraction_data: conversationData
-      }).then(() => {
+      generateLeadInsights(leadId, conversation.transcript, conversationData).then(() => {
         // Generate recommendations after insights
-        generateRecommendations(conversation.leadInfo, conversationData);
+        generateRecommendations(leadId, conversation.transcript);
       });
     }
   }, [leadId, conversation?.transcript, leadInsight, isGeneratingInsights]);

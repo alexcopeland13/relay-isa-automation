@@ -97,34 +97,8 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
     return success;
   };
 
-  // Create a unified recommendation interface for display
-  const formatAIRecommendationsForDisplay = () => {
-    return aiRecommendations.map(aiRec => ({
-      id: aiRec.id,
-      leadId: aiRec.leadId,
-      suggestedTiming: {
-        description: aiRec.timing === 'immediate' ? 'Now' : 
-                    aiRec.timing === 'within_24h' ? 'Within 24 hours' :
-                    aiRec.timing === 'within_week' ? 'Within a week' : 'Next month',
-        timeframe: aiRec.dueDate || new Date().toISOString()
-      },
-      channel: aiRec.channel,
-      priority: aiRec.priority,
-      reason: aiRec.reasoning,
-      recommendedTemplates: [],
-      context: {
-        lastInteraction: aiRec.title,
-        lastInteractionDate: aiRec.createdAt,
-        engagementScore: Math.round(aiRec.confidence * 100),
-        stage: 'AI Generated'
-      }
-    }));
-  };
-
-  // Safely check if we have recommendations before rendering
+  // Use only the regular recommendations for the FollowUpRecommendations component
   const safeRecommendations = recommendations || [];
-  const formattedAIRecommendations = formatAIRecommendationsForDisplay();
-  const combinedRecommendations = [...safeRecommendations, ...formattedAIRecommendations];
 
   // Ensure we have the transcript messages for TranscriptViewer
   const transcriptMessages = conversation?.messages || [];
@@ -324,8 +298,8 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
           {/* Follow-up recommendations */}
           <div className="mt-4">
             <FollowUpRecommendations
-              recommendations={combinedRecommendations}
-              isLoading={isLoadingRecommendations || isGenerating}
+              recommendations={safeRecommendations}
+              isLoading={isLoadingRecommendations}
               onCreateFollowUp={createFollowUp}
               onDismiss={dismissRecommendation}
             />

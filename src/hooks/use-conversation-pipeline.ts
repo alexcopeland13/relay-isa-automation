@@ -2,14 +2,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useConversationIntegration } from './use-conversation-integration';
 import { useAILeadScoring } from './use-ai-lead-scoring';
 
 export function useConversationPipeline() {
   const [processingQueue, setProcessingQueue] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const { updateConversation, linkConversationToLead } = useConversationIntegration();
   const { updateLeadScoreFromConversation } = useAILeadScoring();
 
   // Process conversation through AI pipeline
@@ -38,18 +36,8 @@ export function useConversationPipeline() {
 
       console.log('✅ AI processing complete:', data);
 
-      // Update conversation with extracted data
-      if (data.extracted_entities) {
-        await updateConversation(conversationId, {
-          sentiment_score: data.sentiment_score
-        });
-      }
-
-      // Link to lead if identified
+      // Update lead score based on conversation if lead identified
       if (data.identified_lead_id) {
-        await linkConversationToLead(conversationId, data.identified_lead_id);
-        
-        // Update lead score based on conversation
         await updateLeadScoreFromConversation(data.identified_lead_id, data);
       }
 

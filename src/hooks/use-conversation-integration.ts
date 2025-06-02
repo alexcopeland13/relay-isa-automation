@@ -27,12 +27,12 @@ export function useConversationIntegration(conversationId?: string) {
       const extractionData = await processConversation(conversation.id, conversation.transcript);
       
       // Step 2: Generate AI insights if we have lead info
-      if (conversation.lead_id) {
-        const leadInsights = await generateLeadInsights(conversation.lead_id, conversation.transcript, extractionData);
+      if (conversation.lead_id && conversation.leadInfo) {
+        const leadInsights = await generateLeadInsights(conversation.leadInfo);
 
         // Step 3: Generate recommendations
         if (leadInsights) {
-          await generateRecommendations(conversation.lead_id, conversation.transcript);
+          await generateRecommendations(conversation.leadInfo, { transcript: conversation.transcript });
         }
       }
 

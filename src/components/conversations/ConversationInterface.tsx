@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -60,14 +59,14 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
 
   // Auto-generate AI insights when conversation loads
   useEffect(() => {
-    if (leadId && conversation?.transcript && !leadInsight && !isGeneratingInsights) {
+    if (conversation?.leadInfo && conversation?.transcript && !leadInsight && !isGeneratingInsights) {
       console.log('🧠 Auto-generating AI insights for conversation');
-      generateLeadInsights(leadId, conversation.transcript, conversationData).then(() => {
+      generateLeadInsights(conversation.leadInfo).then(() => {
         // Generate recommendations after insights
-        generateRecommendations(leadId, conversation.transcript);
+        generateRecommendations(conversation.leadInfo, { transcript: conversation.transcript });
       });
     }
-  }, [leadId, conversation?.transcript, leadInsight, isGeneratingInsights]);
+  }, [conversation?.leadInfo, conversation?.transcript, leadInsight, isGeneratingInsights]);
 
   // Map extracted entities to the format expected by ProfileUpdateNotification
   const formatExtractedUpdates = () => {

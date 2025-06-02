@@ -63,8 +63,8 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
     if (leadId && conversation?.transcript && !leadInsight && !isGeneratingInsights) {
       console.log('🧠 Auto-generating AI insights for conversation');
       generateLeadInsights(leadId, {
-        conversation_data: conversationData,
-        transcript: conversation.transcript
+        transcript: conversation.transcript,
+        extraction_data: conversationData
       }).then(() => {
         // Generate recommendations after insights
         generateRecommendations(conversation.leadInfo, conversationData);
@@ -97,9 +97,34 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
     return success;
   };
 
+  // Create a unified recommendation interface for display
+  const formatAIRecommendationsForDisplay = () => {
+    return aiRecommendations.map(aiRec => ({
+      id: aiRec.id,
+      leadId: aiRec.leadId,
+      suggestedTiming: {
+        description: aiRec.timing === 'immediate' ? 'Now' : 
+                    aiRec.timing === 'within_24h' ? 'Within 24 hours' :
+                    aiRec.timing === 'within_week' ? 'Within a week' : 'Next month',
+        timeframe: aiRec.dueDate || new Date().toISOString()
+      },
+      channel: aiRec.channel,
+      priority: aiRec.priority,
+      reason: aiRec.reasoning,
+      recommendedTemplates: [],
+      context: {
+        lastInteraction: aiRec.title,
+        lastInteractionDate: aiRec.createdAt,
+        engagementScore: Math.round(aiRec.confidence * 100),
+        stage: 'AI Generated'
+      }
+    }));
+  };
+
   // Safely check if we have recommendations before rendering
   const safeRecommendations = recommendations || [];
-  const combinedRecommendations = [...safeRecommendations, ...aiRecommendations];
+  const formattedAIRecommendations = formatAIRecommendationsForDisplay();
+  const combinedRecommendations = [...safeRecommendations, ...formattedAIRecommendations];
 
   // Ensure we have the transcript messages for TranscriptViewer
   const transcriptMessages = conversation?.messages || [];

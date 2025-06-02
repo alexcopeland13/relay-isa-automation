@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { useConversationIntegration } from './use-conversation-integration';
 import { useConversationPipeline } from './use-conversation-pipeline';
 import { useAIRecommendations } from './use-ai-recommendations';
 import { useAILeadScoring } from './use-ai-lead-scoring';
@@ -10,7 +9,6 @@ export function useConversationIntegration(conversationId?: string) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   
-  const { conversations, getConversationsByLead } = useConversationIntegration();
   const { processConversation } = useConversationPipeline();
   const { generateRecommendations } = useAIRecommendations();
   const { generateLeadInsights } = useAILeadScoring();
@@ -31,13 +29,13 @@ export function useConversationIntegration(conversationId?: string) {
       // Step 2: Generate AI insights if we have lead info
       if (conversation.lead_id) {
         const leadInsights = await generateLeadInsights(conversation.lead_id, {
-          conversation_data: extractionData,
-          transcript: conversation.transcript
+          transcript: conversation.transcript,
+          extraction_data: extractionData
         });
 
         // Step 3: Generate recommendations
         if (leadInsights) {
-          await generateRecommendations(leadInsights, extractionData);
+          await generateRecommendations(conversation.leadInfo, extractionData);
         }
       }
 
@@ -67,7 +65,6 @@ export function useConversationIntegration(conversationId?: string) {
 
   return {
     isProcessing,
-    handleNewConversation,
-    getConversationsByLead
+    handleNewConversation
   };
 }

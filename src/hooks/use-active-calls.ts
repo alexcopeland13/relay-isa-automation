@@ -70,6 +70,17 @@ export function useActiveCalls() {
     }
   };
 
+  // Helper functions that components expect
+  const activeCallLeadIds = activeCalls.map(call => call.lead_id);
+  
+  const isLeadOnCall = (leadId: string) => {
+    return activeCallLeadIds.includes(leadId);
+  };
+  
+  const getActiveCallForLead = (leadId: string) => {
+    return activeCalls.find(call => call.lead_id === leadId);
+  };
+
   // Set up real-time subscription for active calls
   useEffect(() => {
     fetchActiveCalls();
@@ -118,7 +129,10 @@ export function useActiveCalls() {
 
   return {
     activeCalls,
+    activeCallLeadIds,
     isLoading,
+    isLeadOnCall,
+    getActiveCallForLead,
     fetchActiveCalls
   };
 }

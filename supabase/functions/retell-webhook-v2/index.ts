@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -9,6 +10,19 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // Handle GET requests for testing
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ 
+      status: 'Retell webhook v2 endpoint is active',
+      timestamp: new Date().toISOString(),
+      method: 'GET',
+      version: 'v2'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
   }
 
   try {
@@ -24,13 +38,28 @@ serve(async (req) => {
 
     let body;
     try {
-      body = await req.json();
+      const text = await req.text();
+      console.log('Raw request body:', text);
+      
+      if (!text || text.trim() === '') {
+        console.log('Empty request body received');
+        return new Response(JSON.stringify({ 
+          status: 'success', 
+          message: 'Empty body received, likely a health check',
+          version: 'v2'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+      
+      body = JSON.parse(text);
       console.log('=== WEBHOOK PAYLOAD START ===');
       console.log(JSON.stringify(body, null, 2));
       console.log('=== WEBHOOK PAYLOAD END ===');
     } catch (parseError) {
       console.error('Failed to parse JSON body:', parseError);
-      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      return new Response(JSON.stringify({ error: 'Invalid JSON', details: parseError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });

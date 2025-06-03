@@ -12,6 +12,18 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Handle GET requests for testing
+  if (req.method === 'GET') {
+    return new Response(JSON.stringify({ 
+      status: 'Retell webhook endpoint is active',
+      timestamp: new Date().toISOString(),
+      method: 'GET'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+  }
+
   try {
     console.log('=== RETELL WEBHOOK RECEIVED ===');
     console.log('Method:', req.method);
@@ -25,11 +37,25 @@ serve(async (req) => {
 
     let body;
     try {
-      body = await req.json();
-      console.log('Raw webhook body:', JSON.stringify(body, null, 2));
+      const text = await req.text();
+      console.log('Raw request body:', text);
+      
+      if (!text || text.trim() === '') {
+        console.log('Empty request body received');
+        return new Response(JSON.stringify({ 
+          status: 'success', 
+          message: 'Empty body received, likely a health check' 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+      
+      body = JSON.parse(text);
+      console.log('Parsed webhook body:', JSON.stringify(body, null, 2));
     } catch (parseError) {
       console.error('Failed to parse JSON body:', parseError);
-      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      return new Response(JSON.stringify({ error: 'Invalid JSON', details: parseError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });

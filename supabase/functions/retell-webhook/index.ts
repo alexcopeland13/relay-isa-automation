@@ -13,46 +13,101 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== RETELL WEBHOOK RECEIVED ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Headers:', Object.fromEntries(req.headers.entries()));
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const body = await req.json();
-    console.log('Retell webhook received:', JSON.stringify(body, null, 2));
+    let body;
+    try {
+      body = await req.json();
+      console.log('Raw webhook body:', JSON.stringify(body, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse JSON body:', parseError);
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
 
-    const { event, data } = body;
-
-    // Log webhook event
+    // Log webhook event for debugging
     await supabaseClient
       .from('webhook_events')
       .insert({
         provider: 'retell',
-        event_id: data.call_id,
+        event_id: body.call?.call_id || body.event || 'unknown',
         payload: body
       });
 
-    if (event === 'call_started') {
+    console.log('✅ Webhook event logged to database');
+
+    // Handle different webhook formats
+    let eventType, callData;
+    
+    if (body.event && body.call) {
+      // New format: { event: "call_started", call: {...} }
+      eventType = body.event;
+      callData = body.call;
+      console.log('New webhook format detected:', eventType);
+    } else if (body.event_type) {
+      // Alternative format
+      eventType = body.event_type;
+      callData = body.data || body;
+      console.log('Alternative webhook format detected:', eventType);
+    } else {
+      // Legacy or unknown format
+      eventType = body.type || 'unknown';
+      callData = body;
+      console.log('Legacy/unknown webhook format detected:', eventType);
+    }
+
+    console.log('Processing event type:', eventType);
+    console.log('Call data:', JSON.stringify(callData, null, 2));
+
+    if (eventType === 'call_started') {
       console.log('Processing call_started event');
       
-      // Look up lead by phone number
-      const { data: phoneMapping, error: lookupError } = await supabaseClient
-        .from('phone_lead_mapping')
-        .select('lead_id, lead_name')
-        .eq('phone_e164', data.from_number || data.to_number)
-        .single();
+      // Look up lead by phone number - try multiple phone fields
+      const phoneNumbers = [
+        callData.from_number,
+        callData.to_number,
+        callData.caller_number,
+        callData.phone_number
+      ].filter(Boolean);
 
-      if (lookupError) {
-        console.log('No lead found for phone number:', data.from_number || data.to_number);
+      console.log('Looking up lead by phone numbers:', phoneNumbers);
+
+      let phoneMapping = null;
+      for (const phone of phoneNumbers) {
+        const { data, error } = await supabaseClient
+          .from('phone_lead_mapping')
+          .select('lead_id, lead_name')
+          .eq('phone_e164', phone)
+          .single();
+        
+        if (!error && data) {
+          phoneMapping = data;
+          console.log('Found lead mapping for phone:', phone, 'Lead:', data);
+          break;
+        }
+      }
+
+      if (!phoneMapping) {
+        console.log('No lead found for phone numbers:', phoneNumbers);
       }
 
       // Create conversation record with active status
       const { data: conversation, error: convError } = await supabaseClient
         .from('conversations')
         .insert({
-          call_sid: data.call_id,
+          call_sid: callData.call_id,
           lead_id: phoneMapping?.lead_id || null,
-          direction: data.direction || 'inbound',
+          direction: callData.direction || 'inbound',
           call_status: 'active',
           started_at: new Date().toISOString(),
           agent_id: 'retell_ai'
@@ -77,7 +132,9 @@ serve(async (req) => {
           extraction_version: '1.0'
         });
 
-    } else if (event === 'call_ended') {
+      console.log('Created initial extraction record');
+
+    } else if (eventType === 'call_ended') {
       console.log('Processing call_ended event');
       
       // Update conversation with end status
@@ -86,11 +143,11 @@ serve(async (req) => {
         .update({
           call_status: 'completed',
           ended_at: new Date().toISOString(),
-          duration: data.call_length_seconds || 0,
-          recording_url: data.recording_url || null,
-          transcript: data.transcript || null
+          duration: callData.duration_ms ? Math.round(callData.duration_ms / 1000) : 0,
+          recording_url: callData.recording_url || null,
+          transcript: callData.transcript || null
         })
-        .eq('call_sid', data.call_id)
+        .eq('call_sid', callData.call_id)
         .select()
         .single();
 
@@ -99,33 +156,34 @@ serve(async (req) => {
         throw updateError;
       }
 
-      console.log('Updated conversation to completed:', conversation.id);
+      console.log('Updated conversation to completed:', conversation?.id);
 
       // Update lead's last contacted timestamp
-      if (conversation.lead_id) {
+      if (conversation?.lead_id) {
         await supabaseClient
           .from('leads')
           .update({ last_contacted: new Date().toISOString() })
           .eq('id', conversation.lead_id);
+        console.log('Updated lead last_contacted timestamp');
       }
 
       // Process post-call analysis data if available
-      if (data.post_call_analysis) {
+      if (callData.post_call_analysis) {
         console.log('Processing post-call analysis data');
-        await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, data.post_call_analysis);
+        await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, callData.post_call_analysis);
       }
 
-    } else if (event === 'call_analyzed') {
+    } else if (eventType === 'call_analyzed') {
       console.log('Processing call_analyzed event');
       
       // Update conversation with analysis data
       const { error: analysisError } = await supabaseClient
         .from('conversations')
         .update({
-          sentiment_score: data.sentiment_score || null,
-          transcript: data.transcript || null
+          sentiment_score: callData.sentiment_score || null,
+          transcript: callData.transcript || null
         })
-        .eq('call_sid', data.call_id);
+        .eq('call_sid', callData.call_id);
 
       if (analysisError) {
         console.error('Error updating conversation analysis:', analysisError);
@@ -135,28 +193,28 @@ serve(async (req) => {
       console.log('Updated conversation with analysis data');
 
       // Process post-call analysis if available
-      if (data.post_call_analysis) {
+      if (callData.post_call_analysis) {
         const { data: conversation } = await supabaseClient
           .from('conversations')
           .select('id, lead_id')
-          .eq('call_sid', data.call_id)
+          .eq('call_sid', callData.call_id)
           .single();
         
         if (conversation) {
-          await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, data.post_call_analysis);
+          await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, callData.post_call_analysis);
         }
       }
       
-    } else if (event === 'transcript_update') {
+    } else if (eventType === 'transcript_update') {
       console.log('Processing transcript_update event');
       
       // Update conversation with latest transcript
       const { error: transcriptError } = await supabaseClient
         .from('conversations')
         .update({
-          transcript: data.transcript || null
+          transcript: callData.transcript || null
         })
-        .eq('call_sid', data.call_id);
+        .eq('call_sid', callData.call_id);
 
       if (transcriptError) {
         console.error('Error updating transcript:', transcriptError);
@@ -164,7 +222,11 @@ serve(async (req) => {
       }
 
       console.log('Updated conversation transcript');
+    } else {
+      console.log('Unknown event type received:', eventType);
     }
+
+    console.log('=== WEBHOOK PROCESSING COMPLETE ===');
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -172,7 +234,9 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('=== WEBHOOK ERROR ===');
+    console.error('Error details:', error);
+    console.error('Stack trace:', error.stack);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

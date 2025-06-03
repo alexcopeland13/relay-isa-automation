@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { LeadAssignmentModal } from '@/components/leads/LeadAssignmentModal';
 import { LeadsHeader } from '@/components/leads/LeadsHeader';
 import { LeadsStatsPanel } from '@/components/leads/LeadsStatsPanel';
 import { LeadsViewTabs } from '@/components/leads/LeadsViewTabs';
+import { RetellCallHistory } from '@/components/leads/RetellCallHistory';
 import { useLeadsData } from '@/hooks/use-leads-data';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorContainer } from '@/components/ui/error-container';
@@ -19,13 +19,14 @@ import {
   StatCardSkeleton, 
   ChartSkeleton 
 } from '@/components/ui/loading-skeleton';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Phone } from 'lucide-react';
 
 const Leads = () => {
   const [activeView, setActiveView] = useState<'list' | 'board'>('list');
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showCallHistory, setShowCallHistory] = useState(false);
   const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
   
@@ -197,14 +198,31 @@ const Leads = () => {
       
       <LeadsStatsPanel leads={leads} />
       
-      <LeadsViewTabs
-        leads={leads}
-        activeView={activeView}
-        onActiveViewChange={setActiveView}
-        onSelectLead={handleSelectLead}
-        onOpenAssignmentModal={handleOpenAssignmentModal}
-        onScheduleFollowUp={handleScheduleFollowUp}
-      />
+      <div className="flex justify-between items-center mb-4">
+        <LeadsViewTabs
+          leads={leads}
+          activeView={activeView}
+          onActiveViewChange={setActiveView}
+          onSelectLead={handleSelectLead}
+          onOpenAssignmentModal={handleOpenAssignmentModal}
+          onScheduleFollowUp={handleScheduleFollowUp}
+        />
+        
+        <Button
+          variant="outline"
+          onClick={() => setShowCallHistory(!showCallHistory)}
+          className="gap-2"
+        >
+          <Phone className="h-4 w-4" />
+          {showCallHistory ? 'Hide' : 'Show'} Call History
+        </Button>
+      </div>
+
+      {showCallHistory && (
+        <div className="mb-6">
+          <RetellCallHistory />
+        </div>
+      )}
       
       {showLeadForm && (
         <LeadFormModal 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Table, 
@@ -81,26 +80,25 @@ export const LeadsList = ({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[25%]">Lead Name</TableHead>
-              {/* Consider adding a phone column if important for quick view */}
-              {/* <TableHead className="w-[15%]">Phone</TableHead> */}
               <TableHead className="w-[12%]">Status</TableHead>
               <TableHead className="w-[12%]">Type</TableHead>
               <TableHead className="w-[15%]">Source</TableHead>
               <TableHead className="w-[10%]">Score</TableHead>
+              <TableHead className="w-[15%]">Created</TableHead>
               <TableHead className="w-[15%]">Last Contact</TableHead>
               <TableHead className="w-[11%] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredLeads.length === 0 ? (
-              <LeadEmptyState colSpan={7} /> /* Adjusted colSpan */
+              <LeadEmptyState colSpan={8} />
             ) : (
               filteredLeads.map((lead) => (
                 <LeadTableRow 
                   key={lead.id}
                   lead={lead}
-                  onSelectLead={onSelectLead}
-                  onAssignLead={onAssignLead}
+                  onSelect={onSelectLead}
+                  onAssign={onAssignLead}
                   onScheduleFollowUp={onScheduleFollowUp}
                 />
               ))
@@ -111,4 +109,3 @@ export const LeadsList = ({
     </div>
   );
 };
-

@@ -109,6 +109,12 @@ serve(async (req) => {
           .eq('id', conversation.lead_id);
       }
 
+      // Process post-call analysis data if available
+      if (data.post_call_analysis) {
+        console.log('Processing post-call analysis data');
+        await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, data.post_call_analysis);
+      }
+
     } else if (event === 'call_analyzed') {
       console.log('Processing call_analyzed event');
       
@@ -127,6 +133,19 @@ serve(async (req) => {
       }
 
       console.log('Updated conversation with analysis data');
+
+      // Process post-call analysis if available
+      if (data.post_call_analysis) {
+        const { data: conversation } = await supabaseClient
+          .from('conversations')
+          .select('id, lead_id')
+          .eq('call_sid', data.call_id)
+          .single();
+        
+        if (conversation) {
+          await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, data.post_call_analysis);
+        }
+      }
       
     } else if (event === 'transcript_update') {
       console.log('Processing transcript_update event');
@@ -160,3 +179,190 @@ serve(async (req) => {
     });
   }
 });
+
+// Helper function to process post-call analysis data
+async function processPostCallAnalysis(supabaseClient: any, conversationId: string, leadId: string | null, analysisData: any) {
+  try {
+    console.log('Processing post-call analysis for conversation:', conversationId);
+    
+    // Prepare extraction data with all new fields
+    const extractionData = {
+      conversation_id: conversationId,
+      lead_id: leadId,
+      extraction_timestamp: new Date().toISOString(),
+      extraction_version: '2.0',
+      
+      // Lead qualification and scoring
+      lead_temperature: analysisData.lead_temperature || null,
+      lead_score: analysisData.lead_score ? parseInt(analysisData.lead_score) : null,
+      lead_qualification_status: analysisData.lead_qualification_status || null,
+      call_outcome: analysisData.call_outcome || null,
+      
+      // Property information
+      property_address: analysisData.property_address || null,
+      property_mls_number: analysisData.property_mls_number || null,
+      property_price: analysisData.property_price ? parseInt(analysisData.property_price) : null,
+      property_type: analysisData.property_type || null,
+      property_use: analysisData.property_use || null,
+      multiple_properties_interested: analysisData.multiple_properties_interested === 'true' || analysisData.multiple_properties_interested === true,
+      
+      // Contact preferences
+      preferred_contact_method: analysisData.preferred_contact_method || null,
+      best_time_to_call: analysisData.best_time_to_call || null,
+      
+      // Financial information
+      credit_score_range: analysisData.credit_score_range || null,
+      annual_income: analysisData.annual_income ? parseInt(analysisData.annual_income) : null,
+      monthly_debt_payments: analysisData.monthly_debt_payments ? parseInt(analysisData.monthly_debt_payments) : null,
+      employment_status: analysisData.employment_status || null,
+      employment_length: analysisData.employment_length || null,
+      is_self_employed: analysisData.is_self_employed === 'true' || analysisData.is_self_employed === true,
+      
+      // Loan details
+      loan_amount: analysisData.loan_amount ? parseInt(analysisData.loan_amount) : null,
+      loan_type: analysisData.loan_type || null,
+      down_payment_amount: analysisData.down_payment_amount ? parseInt(analysisData.down_payment_amount) : null,
+      down_payment_percentage: analysisData.down_payment_percentage ? parseInt(analysisData.down_payment_percentage) : null,
+      has_co_borrower: analysisData.has_co_borrower === 'true' || analysisData.has_co_borrower === true,
+      
+      // Buyer profile
+      first_time_buyer: analysisData.first_time_buyer === 'true' || analysisData.first_time_buyer === true,
+      va_eligible: analysisData.va_eligible === 'true' || analysisData.va_eligible === true,
+      ready_to_buy_timeline: analysisData.ready_to_buy_timeline || null,
+      
+      // Current situation
+      pre_approval_status: analysisData.pre_approval_status || null,
+      current_lender: analysisData.current_lender || null,
+      has_realtor: analysisData.has_realtor === 'true' || analysisData.has_realtor === true,
+      realtor_name: analysisData.realtor_name || null,
+      
+      // Preferences and concerns
+      wants_credit_review: analysisData.wants_credit_review === 'true' || analysisData.wants_credit_review === true,
+      wants_down_payment_assistance: analysisData.wants_down_payment_assistance === 'true' || analysisData.wants_down_payment_assistance === true,
+      credit_concerns: analysisData.credit_concerns === 'true' || analysisData.credit_concerns === true,
+      debt_concerns: analysisData.debt_concerns === 'true' || analysisData.debt_concerns === true,
+      down_payment_concerns: analysisData.down_payment_concerns === 'true' || analysisData.down_payment_concerns === true,
+      job_change_concerns: analysisData.job_change_concerns === 'true' || analysisData.job_change_concerns === true,
+      interest_rate_concerns: analysisData.interest_rate_concerns === 'true' || analysisData.interest_rate_concerns === true,
+      
+      // Complex data as JSONB
+      objection_details: analysisData.objection_details || null,
+      next_steps: analysisData.next_steps || null,
+      primary_concerns: analysisData.primary_concerns || null,
+      interested_properties: analysisData.interested_properties || null,
+      requested_actions: analysisData.requested_actions || null,
+      
+      // Timeline and follow-up
+      buying_timeline: analysisData.buying_timeline || null,
+      follow_up_date: analysisData.follow_up_date || null,
+      overlay_education_completed: analysisData.overlay_education_completed === 'true' || analysisData.overlay_education_completed === true,
+      knows_overlays: analysisData.knows_overlays === 'true' || analysisData.knows_overlays === true,
+      
+      // Summary and raw data
+      conversation_summary: analysisData.conversation_summary || null,
+      raw_extraction_data: analysisData
+    };
+
+    // Update existing extraction record or create new one
+    const { error: extractionError } = await supabaseClient
+      .from('conversation_extractions')
+      .upsert(extractionData, {
+        onConflict: 'conversation_id',
+        ignoreDuplicates: false
+      });
+
+    if (extractionError) {
+      console.error('Error updating conversation extraction:', extractionError);
+      throw extractionError;
+    }
+
+    console.log('✅ Successfully processed post-call analysis data');
+
+    // Update qualification_data table if lead exists
+    if (leadId && analysisData) {
+      await updateQualificationData(supabaseClient, leadId, conversationId, analysisData);
+    }
+
+  } catch (error) {
+    console.error('Error processing post-call analysis:', error);
+    throw error;
+  }
+}
+
+// Helper function to update qualification_data table
+async function updateQualificationData(supabaseClient: any, leadId: string, conversationId: string, analysisData: any) {
+  try {
+    const qualificationUpdate = {
+      lead_id: leadId,
+      conversation_id: conversationId,
+      
+      // Financial qualification
+      annual_income: analysisData.annual_income ? parseInt(analysisData.annual_income) : null,
+      loan_amount: analysisData.loan_amount ? parseInt(analysisData.loan_amount) : null,
+      down_payment_percentage: analysisData.down_payment_percentage ? parseInt(analysisData.down_payment_percentage) : null,
+      estimated_credit_score: analysisData.credit_score_range || null,
+      
+      // Employment details
+      is_self_employed: analysisData.is_self_employed === 'true' || analysisData.is_self_employed === true,
+      has_co_borrower: analysisData.has_co_borrower === 'true' || analysisData.has_co_borrower === true,
+      
+      // Property details
+      property_type: analysisData.property_type || null,
+      property_use: analysisData.property_use || null,
+      property_price: analysisData.property_price ? parseInt(analysisData.property_price) : null,
+      property_address: analysisData.property_address || null,
+      property_mls_number: analysisData.property_mls_number || null,
+      has_specific_property: analysisData.property_address ? true : false,
+      multiple_properties_interested: analysisData.multiple_properties_interested === 'true' || analysisData.multiple_properties_interested === true,
+      
+      // Loan details
+      loan_type: analysisData.loan_type || null,
+      pre_approval_status: analysisData.pre_approval_status || null,
+      current_lender: analysisData.current_lender || null,
+      
+      // Buyer profile
+      first_time_buyer: analysisData.first_time_buyer === 'true' || analysisData.first_time_buyer === true,
+      va_eligible: analysisData.va_eligible === 'true' || analysisData.va_eligible === true,
+      
+      // Timeline and preferences
+      ready_to_buy_timeline: analysisData.ready_to_buy_timeline || null,
+      lead_temperature: analysisData.lead_temperature || null,
+      preferred_contact_method: analysisData.preferred_contact_method || null,
+      best_time_to_call: analysisData.best_time_to_call || null,
+      
+      // Concerns and preferences
+      wants_credit_review: analysisData.wants_credit_review === 'true' || analysisData.wants_credit_review === true,
+      wants_down_payment_assistance: analysisData.wants_down_payment_assistance === 'true' || analysisData.wants_down_payment_assistance === true,
+      credit_concerns: analysisData.credit_concerns === 'true' || analysisData.credit_concerns === true,
+      debt_concerns: analysisData.debt_concerns === 'true' || analysisData.debt_concerns === true,
+      down_payment_concerns: analysisData.down_payment_concerns === 'true' || analysisData.down_payment_concerns === true,
+      job_change_concerns: analysisData.job_change_concerns === 'true' || analysisData.job_change_concerns === true,
+      interest_rate_concerns: analysisData.interest_rate_concerns === 'true' || analysisData.interest_rate_concerns === true,
+      
+      // Education and knowledge
+      knows_about_overlays: analysisData.knows_overlays === 'true' || analysisData.knows_overlays === true,
+      overlay_education_completed: analysisData.overlay_education_completed === 'true' || analysisData.overlay_education_completed === true,
+      
+      // Complex data
+      objection_details: analysisData.objection_details || null,
+      qualifying_notes: analysisData.conversation_summary || null
+    };
+
+    // Upsert qualification data
+    const { error: qualError } = await supabaseClient
+      .from('qualification_data')
+      .upsert(qualificationUpdate, {
+        onConflict: 'lead_id,conversation_id',
+        ignoreDuplicates: false
+      });
+
+    if (qualError) {
+      console.error('Error updating qualification data:', qualError);
+    } else {
+      console.log('✅ Successfully updated qualification data for lead:', leadId);
+    }
+
+  } catch (error) {
+    console.error('Error updating qualification data:', error);
+  }
+}

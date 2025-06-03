@@ -119,58 +119,172 @@ export type Database = {
       }
       conversation_extractions: {
         Row: {
+          annual_income: number | null
+          best_time_to_call: string | null
           buying_timeline: string | null
+          call_outcome: string | null
           conversation_id: string | null
           conversation_summary: string | null
           created_at: string | null
+          credit_concerns: boolean | null
+          credit_score_range: string | null
           current_lender: string | null
+          debt_concerns: boolean | null
+          down_payment_amount: number | null
+          down_payment_concerns: boolean | null
+          down_payment_percentage: number | null
+          employment_length: string | null
+          employment_status: string | null
           extraction_timestamp: string | null
           extraction_version: string | null
+          first_time_buyer: boolean | null
+          follow_up_date: string | null
+          has_co_borrower: boolean | null
+          has_realtor: boolean | null
           id: string
+          interest_rate_concerns: boolean | null
           interested_properties: Json | null
+          is_self_employed: boolean | null
+          job_change_concerns: boolean | null
           knows_overlays: boolean | null
           lead_id: string | null
           lead_qualification_status: string | null
+          lead_score: number | null
+          lead_temperature: string | null
+          loan_amount: number | null
+          loan_type: string | null
+          monthly_debt_payments: number | null
+          multiple_properties_interested: boolean | null
+          next_steps: Json | null
+          objection_details: Json | null
+          overlay_education_completed: boolean | null
           pre_approval_status: string | null
+          preferred_contact_method: string | null
           primary_concerns: Json | null
+          property_address: string | null
+          property_mls_number: string | null
+          property_price: number | null
+          property_type: string | null
+          property_use: string | null
           raw_extraction_data: Json | null
+          ready_to_buy_timeline: string | null
+          realtor_name: string | null
           requested_actions: Json | null
+          va_eligible: boolean | null
+          wants_credit_review: boolean | null
+          wants_down_payment_assistance: boolean | null
         }
         Insert: {
+          annual_income?: number | null
+          best_time_to_call?: string | null
           buying_timeline?: string | null
+          call_outcome?: string | null
           conversation_id?: string | null
           conversation_summary?: string | null
           created_at?: string | null
+          credit_concerns?: boolean | null
+          credit_score_range?: string | null
           current_lender?: string | null
+          debt_concerns?: boolean | null
+          down_payment_amount?: number | null
+          down_payment_concerns?: boolean | null
+          down_payment_percentage?: number | null
+          employment_length?: string | null
+          employment_status?: string | null
           extraction_timestamp?: string | null
           extraction_version?: string | null
+          first_time_buyer?: boolean | null
+          follow_up_date?: string | null
+          has_co_borrower?: boolean | null
+          has_realtor?: boolean | null
           id?: string
+          interest_rate_concerns?: boolean | null
           interested_properties?: Json | null
+          is_self_employed?: boolean | null
+          job_change_concerns?: boolean | null
           knows_overlays?: boolean | null
           lead_id?: string | null
           lead_qualification_status?: string | null
+          lead_score?: number | null
+          lead_temperature?: string | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          monthly_debt_payments?: number | null
+          multiple_properties_interested?: boolean | null
+          next_steps?: Json | null
+          objection_details?: Json | null
+          overlay_education_completed?: boolean | null
           pre_approval_status?: string | null
+          preferred_contact_method?: string | null
           primary_concerns?: Json | null
+          property_address?: string | null
+          property_mls_number?: string | null
+          property_price?: number | null
+          property_type?: string | null
+          property_use?: string | null
           raw_extraction_data?: Json | null
+          ready_to_buy_timeline?: string | null
+          realtor_name?: string | null
           requested_actions?: Json | null
+          va_eligible?: boolean | null
+          wants_credit_review?: boolean | null
+          wants_down_payment_assistance?: boolean | null
         }
         Update: {
+          annual_income?: number | null
+          best_time_to_call?: string | null
           buying_timeline?: string | null
+          call_outcome?: string | null
           conversation_id?: string | null
           conversation_summary?: string | null
           created_at?: string | null
+          credit_concerns?: boolean | null
+          credit_score_range?: string | null
           current_lender?: string | null
+          debt_concerns?: boolean | null
+          down_payment_amount?: number | null
+          down_payment_concerns?: boolean | null
+          down_payment_percentage?: number | null
+          employment_length?: string | null
+          employment_status?: string | null
           extraction_timestamp?: string | null
           extraction_version?: string | null
+          first_time_buyer?: boolean | null
+          follow_up_date?: string | null
+          has_co_borrower?: boolean | null
+          has_realtor?: boolean | null
           id?: string
+          interest_rate_concerns?: boolean | null
           interested_properties?: Json | null
+          is_self_employed?: boolean | null
+          job_change_concerns?: boolean | null
           knows_overlays?: boolean | null
           lead_id?: string | null
           lead_qualification_status?: string | null
+          lead_score?: number | null
+          lead_temperature?: string | null
+          loan_amount?: number | null
+          loan_type?: string | null
+          monthly_debt_payments?: number | null
+          multiple_properties_interested?: boolean | null
+          next_steps?: Json | null
+          objection_details?: Json | null
+          overlay_education_completed?: boolean | null
           pre_approval_status?: string | null
+          preferred_contact_method?: string | null
           primary_concerns?: Json | null
+          property_address?: string | null
+          property_mls_number?: string | null
+          property_price?: number | null
+          property_type?: string | null
+          property_use?: string | null
           raw_extraction_data?: Json | null
+          ready_to_buy_timeline?: string | null
+          realtor_name?: string | null
           requested_actions?: Json | null
+          va_eligible?: boolean | null
+          wants_credit_review?: boolean | null
+          wants_down_payment_assistance?: boolean | null
         }
         Relationships: [
           {

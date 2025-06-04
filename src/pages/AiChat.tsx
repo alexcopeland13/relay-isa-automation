@@ -1,14 +1,22 @@
 
-import React from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { AiChatInterface } from '@/components/ai-integration/AiChatInterface';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function AiChat() {
+const AiChat = () => {
   return (
     <PageLayout>
-      <div className="p-6">
-        <AiChatInterface />
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Chat Interface</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>AI chat interface coming soon.</p>
+          </CardContent>
+        </Card>
       </div>
     </PageLayout>
   );
-}
+};
+
+export default AiChat;

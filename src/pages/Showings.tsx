@@ -1,5 +1,5 @@
 
-import { PageLayout } from '@/components/layout/PageLayout'; // Changed to named import
+import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Showings = () => {
@@ -8,10 +8,10 @@ const Showings = () => {
       <div className="container mx-auto py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Showing Agent Queue</CardTitle>
+            <CardTitle>Property Showings</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Showing-Agent queue coming soon.</p>
+            <p>Showing management coming soon.</p>
           </CardContent>
         </Card>
       </div>

@@ -14,7 +14,10 @@ import {
   MapPin,
   Phone,
   Stethoscope,
-  Bot
+  Bot,
+  TestTube,
+  Calendar,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -103,12 +106,15 @@ export const Sidebar = () => {
     { icon: MessageSquare, label: 'Conversations', path: '/conversations', badgeCount: 5 },
     { icon: Users, label: 'Leads', path: '/leads', badgeCount: 2 },
     { icon: Bot, label: 'AI Chat', path: '/ai-chat' },
+    { icon: TestTube, label: 'AI Testing', path: '/ai-testing' },
     { icon: MapPin, label: 'Marketplace', path: '/marketplace' },
     { icon: Phone, label: 'Call Center', path: '/inbound-call-center' },
   ];
   
   const manageItems: NavItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: Calendar, label: 'Showings', path: '/showings' },
+    { icon: UserCheck, label: 'Specialists', path: '/specialists' },
     { icon: MessageSquare, label: 'Follow-ups', path: '/follow-ups', badgeCount: 3 },
     { icon: Users, label: 'Team', path: '/agents', badgeCount: 1 },
   ];

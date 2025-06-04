@@ -24,30 +24,42 @@ const Dashboard = () => {
           <StatCard
             title="Total Leads"
             value="2,429"
-            description="+20.1% from last month"
-            icon={Users}
-            trend="up"
+            icon={<Users className="h-4 w-4" />}
+            trend={{
+              value: 20.1,
+              label: "from last month",
+              positive: true
+            }}
           />
           <StatCard
             title="Active Calls"
             value="12"
-            description="+5 from yesterday"
-            icon={Phone}
-            trend="up"
+            icon={<Phone className="h-4 w-4" />}
+            trend={{
+              value: 5,
+              label: "from yesterday",
+              positive: true
+            }}
           />
           <StatCard
             title="Conversion Rate"
             value="12.5%"
-            description="+2.1% from last month"
-            icon={TrendingUp}
-            trend="up"
+            icon={<TrendingUp className="h-4 w-4" />}
+            trend={{
+              value: 2.1,
+              label: "from last month",
+              positive: true
+            }}
           />
           <StatCard
             title="Scheduled Today"
             value="24"
-            description="3 upcoming in 2 hours"
-            icon={Calendar}
-            trend="neutral"
+            icon={<Calendar className="h-4 w-4" />}
+            trend={{
+              value: 0,
+              label: "3 upcoming in 2 hours",
+              positive: true
+            }}
           />
         </div>
 

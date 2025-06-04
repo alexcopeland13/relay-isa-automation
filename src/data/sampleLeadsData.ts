@@ -184,3 +184,6 @@ export const sampleLeads: Lead[] = [
     score: 90
   }
 ];
+
+// Also export as sampleLeadsData for backward compatibility
+export const sampleLeadsData = sampleLeads;

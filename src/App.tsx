@@ -9,6 +9,13 @@ import Specialists from '@/pages/Specialists';
 import AiChat from '@/pages/AiChat';
 import AITestingPage from '@/pages/AITestingPage';
 import Conversations from '@/pages/Conversations';
+import FollowUps from '@/pages/FollowUps';
+import Marketplace from '@/pages/Marketplace';
+import Analytics from '@/pages/Analytics';
+import Settings from '@/pages/Settings';
+import Agents from '@/pages/Agents';
+import InboundCallCenter from '@/pages/InboundCallCenter';
+import Diagnostics from '@/pages/Diagnostics';
 
 const queryClient = new QueryClient();
 
@@ -25,6 +32,13 @@ function App() {
             <Route path="/ai-chat" element={<AiChat />} />
             <Route path="/ai-testing" element={<AITestingPage />} />
             <Route path="/conversations" element={<Conversations />} />
+            <Route path="/follow-ups" element={<FollowUps />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/agents" element={<Agents />} />
+            <Route path="/inbound-call-center" element={<InboundCallCenter />} />
+            <Route path="/diagnostics" element={<Diagnostics />} />
           </Routes>
         </div>
         <Toaster />

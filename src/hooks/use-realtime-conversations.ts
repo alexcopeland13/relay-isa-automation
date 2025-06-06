@@ -75,8 +75,21 @@ export function useRealtimeConversations(conversationIds: string[]) {
           description: "Lost connection to conversation updates.",
           variant: "destructive",
         });
-      })
-      .subscribe();
+      });
+
+    // Subscribe using v2 pattern (zero arguments)
+    const subscribeToConversations = async () => {
+      try {
+        await channelRef.current.subscribe();
+        console.log('📡 Conversations subscription successful');
+        setConnectionError(null);
+      } catch (error) {
+        console.error('📡 Conversations subscription error:', error);
+        setConnectionError('Failed to connect to conversation updates');
+      }
+    };
+
+    subscribeToConversations();
 
     return () => {
       if (channelRef.current) {

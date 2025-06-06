@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -107,7 +106,7 @@ export const Sidebar = () => {
     { icon: Users, label: 'Leads', path: '/leads', badgeCount: 2 },
     { icon: Bot, label: 'AI Chat', path: '/ai-chat' },
     { icon: TestTube, label: 'AI Testing', path: '/ai-testing' },
-    { icon: MapPin, label: 'Marketplace', path: '/marketplace' },
+    { icon: MapPin, label: 'Showings', path: '/showings' },
     { icon: Phone, label: 'Call Center', path: '/inbound-call-center' },
   ];
   

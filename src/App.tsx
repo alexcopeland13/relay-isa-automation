@@ -1,5 +1,4 @@
-
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import LandingPage from '@/pages/LandingPage';
@@ -37,7 +36,7 @@ function App() {
             <Route path="/ai-testing" element={<AITestingPage />} />
             <Route path="/conversations" element={<Conversations />} />
             <Route path="/follow-ups" element={<FollowUps />} />
-            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/marketplace" element={<Navigate to="/showings" replace />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/agents" element={<Agents />} />

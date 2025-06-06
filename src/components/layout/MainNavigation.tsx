@@ -31,7 +31,7 @@ export function MainNavigation({
     { name: 'Follow-ups', href: '/follow-ups', icon: Calendar, current: false },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, current: false },
     { name: 'Agents', href: '/agents', icon: UserCheck, current: false },
-    { name: 'Marketplace', href: '/marketplace', icon: Building, current: false },
+    { name: 'Showings', href: '/showings', icon: Building, current: false },
     { name: 'Call Center', href: '/inbound-call-center', icon: Phone, current: false },
     { name: 'Settings', href: '/settings', icon: Settings, current: false },
     { name: 'Diagnostics', href: '/diagnostics', icon: Activity, current: false },

@@ -71,7 +71,7 @@ export function useRealtimeExtractions(conversationIds: string[]) {
           });
         }
       })
-      .on('error', (error) => {
+      .on('error', {}, (error) => {
         console.error('📡 Extractions channel error:', error);
         setConnectionError('Failed to connect to extraction updates');
         toast({

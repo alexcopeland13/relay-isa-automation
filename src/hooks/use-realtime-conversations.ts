@@ -67,7 +67,7 @@ export function useRealtimeConversations(conversationIds: string[]) {
           });
         }
       })
-      .on('error', (error) => {
+      .on('error', {}, (error) => {
         console.error('📡 Conversations channel error:', error);
         setConnectionError('Failed to connect to conversation updates');
         toast({

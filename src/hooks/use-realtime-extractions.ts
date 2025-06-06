@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,42 +20,79 @@ interface ExtractionData {
 export function useRealtimeExtractions(conversationIds: string[]) {
   const [extractionUpdates, setExtractionUpdates] = useState<Record<string, ExtractionData>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     if (conversationIds.length === 0) return;
 
-    const channel = supabase
+    // Clean up existing channel
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+    }
+
+    // Create new channel with dynamic filter
+    channelRef.current = supabase
       .channel('extractions-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversation_extractions',
-          filter: `conversation_id=in.(${conversationIds.join(',')})`
-        },
-        (payload) => {
-          const extraction = payload.new as ExtractionData;
-          
+      .on('postgres_changes', {
+        event: '*', // Listen for INSERT, UPDATE, and DELETE
+        schema: 'public',
+        table: 'conversation_extractions',
+        filter: `conversation_id=in.(${conversationIds.join(',')})`
+      }, (payload) => {
+        const extraction = payload.new as ExtractionData;
+        
+        if (payload.eventType === 'INSERT') {
           setExtractionUpdates(prev => ({
             ...prev,
             [extraction.conversation_id]: extraction
           }));
 
-          // Show toast for new extractions
-          if (payload.eventType === 'INSERT') {
-            toast({
-              title: "New Insights Available",
-              description: "AI has extracted new information from the conversation.",
-            });
-          }
+          toast({
+            title: "New Insights Available",
+            description: "AI has extracted new information from the conversation.",
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          setExtractionUpdates(prev => ({
+            ...prev,
+            [extraction.conversation_id]: extraction
+          }));
+
+          toast({
+            title: "Insights Updated",
+            description: "AI analysis has been updated with new information.",
+          });
+        } else if (payload.eventType === 'DELETE') {
+          setExtractionUpdates(prev => {
+            const updated = { ...prev };
+            delete updated[payload.old.conversation_id];
+            return updated;
+          });
         }
-      )
-      .subscribe();
+      })
+      .on('error', (error) => {
+        console.error('📡 Extractions channel error:', error);
+        setConnectionError('Failed to connect to extraction updates');
+        toast({
+          title: "Connection Error",
+          description: "Lost connection to AI insights updates.",
+          variant: "destructive",
+        });
+      })
+      .subscribe((status) => {
+        console.log('📡 Extractions subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setConnectionError(null);
+        } else if (status === 'CHANNEL_ERROR') {
+          setConnectionError('Failed to connect to extraction updates');
+        }
+      });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+      }
     };
   }, [conversationIds, toast]);
 
@@ -70,6 +107,7 @@ export function useRealtimeExtractions(conversationIds: string[]) {
   return {
     extractionUpdates,
     isLoading,
+    connectionError,
     getExtraction,
     getLatestExtractions
   };

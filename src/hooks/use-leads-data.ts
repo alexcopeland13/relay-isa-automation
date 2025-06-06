@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Lead } from '@/types/lead';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +9,11 @@ export function useLeadsData() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [realTimeStatus, setRealTimeStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const leadsChannelRef = useRef<any>(null);
+  const extractionsChannelRef = useRef<any>(null);
 
   const fetchLeads = async () => {
     try {
@@ -70,6 +75,83 @@ export function useLeadsData() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const transformLeadFromDatabase = (lead: any): Lead => {
+    return {
+      id: lead.id,
+      name: `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || 'Unnamed Lead',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      phone_raw: lead.phone_raw || lead.phone,
+      phone_e164: lead.phone_e164,
+      cinc_lead_id: lead.cinc_lead_id,
+      status: mapStatus(lead.status),
+      source: lead.source || 'Unknown',
+      createdAt: lead.created_at,
+      lastContact: lead.last_contacted || lead.created_at,
+      assignedTo: lead.assigned_to || 'unassigned',
+      type: determineType(lead),
+      interestType: determineInterestType(lead),
+      location: determineLocation(lead),
+      score: calculateScore(lead),
+      notes: lead.notes || '',
+      qualification_data: lead.qualification_data || [],
+      conversations: lead.conversations || []
+    };
+  };
+
+  const handleLeadChange = (payload: any) => {
+    console.log('📡 Real-time lead change:', payload);
+    
+    if (payload.eventType === 'INSERT') {
+      const newLead = transformLeadFromDatabase(payload.new);
+      setLeads(prev => [newLead, ...prev]);
+      
+      toast({
+        title: 'New Lead Added',
+        description: `${newLead.name} has been added to the system.`,
+      });
+    } else if (payload.eventType === 'UPDATE') {
+      const updatedLead = transformLeadFromDatabase(payload.new);
+      setLeads(prev => prev.map(lead => 
+        lead.id === updatedLead.id ? updatedLead : lead
+      ));
+      
+      toast({
+        title: 'Lead Updated',
+        description: `${updatedLead.name} has been updated.`,
+      });
+    } else if (payload.eventType === 'DELETE') {
+      setLeads(prev => prev.filter(lead => lead.id !== payload.old.id));
+      
+      toast({
+        title: 'Lead Removed',
+        description: 'A lead has been removed from the system.',
+      });
+    }
+  };
+
+  const handleExtractionChange = (payload: any) => {
+    console.log('📡 Real-time extraction change:', payload);
+    
+    if (payload.eventType === 'INSERT') {
+      toast({
+        title: 'New Insights Available',
+        description: 'AI has extracted new information from a conversation.',
+      });
+      
+      // Update the specific lead's qualification data
+      setLeads(prev => prev.map(lead => {
+        if (lead.id === payload.new.lead_id) {
+          return {
+            ...lead,
+            score: calculateScore({ ...lead, qualification_data: [payload.new] })
+          };
+        }
+        return lead;
+      }));
     }
   };
 
@@ -172,70 +254,65 @@ export function useLeadsData() {
     }
   };
 
-  // Set up real-time subscription with enhanced monitoring
+  // Set up real-time subscriptions with proper cleanup
   useEffect(() => {
     fetchLeads();
 
-    const channel = supabase
+    // Clean up existing channels
+    if (leadsChannelRef.current) {
+      supabase.removeChannel(leadsChannelRef.current);
+    }
+    if (extractionsChannelRef.current) {
+      supabase.removeChannel(extractionsChannelRef.current);
+    }
+
+    // Set up leads channel
+    leadsChannelRef.current = supabase
       .channel('leads-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'leads'
-        },
-        (payload) => {
-          console.log('📡 Real-time lead change:', payload);
-          
-          // Show toast notification for real-time updates
-          if (payload.eventType === 'INSERT') {
-            const newLead = payload.new as any;
-            toast({
-              title: 'New Lead Added',
-              description: `${newLead.first_name} ${newLead.last_name} has been added to the system.`,
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedLead = payload.new as any;
-            toast({
-              title: 'Lead Updated',
-              description: `${updatedLead.first_name} ${updatedLead.last_name} has been updated.`,
-            });
-          }
-          
-          // Refresh leads data
-          fetchLeads();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations'
-        },
-        (payload) => {
-          console.log('📡 Real-time conversation change:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            toast({
-              title: 'New Conversation',
-              description: 'A new conversation has been recorded.',
-            });
-          }
-          
-          // Refresh leads data to include updated conversation counts
-          fetchLeads();
-        }
-      )
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'leads'
+      }, handleLeadChange)
+      .on('error', (error) => {
+        console.error('📡 Leads channel error:', error);
+        setConnectionError('Leads real-time connection error');
+        setRealTimeStatus('disconnected');
+      })
       .subscribe((status) => {
-        console.log('📡 Real-time subscription status:', status);
-        setRealTimeStatus(status === 'SUBSCRIBED' ? 'connected' : 'connecting');
+        console.log('📡 Leads subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setRealTimeStatus('connected');
+          setConnectionError(null);
+        } else if (status === 'CHANNEL_ERROR') {
+          setRealTimeStatus('disconnected');
+          setConnectionError('Failed to connect to leads updates');
+        } else {
+          setRealTimeStatus('connecting');
+        }
       });
 
+    // Set up extractions channel
+    extractionsChannelRef.current = supabase
+      .channel('extractions-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_extractions'
+      }, handleExtractionChange)
+      .on('error', (error) => {
+        console.error('📡 Extractions channel error:', error);
+      })
+      .subscribe();
+
     return () => {
-      console.log('📡 Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      console.log('📡 Cleaning up real-time subscriptions');
+      if (leadsChannelRef.current) {
+        supabase.removeChannel(leadsChannelRef.current);
+      }
+      if (extractionsChannelRef.current) {
+        supabase.removeChannel(extractionsChannelRef.current);
+      }
       setRealTimeStatus('disconnected');
     };
   }, []);
@@ -245,6 +322,7 @@ export function useLeadsData() {
     isLoading,
     error,
     realTimeStatus,
+    connectionError,
     fetchLeads,
     createLead,
     updateLead,

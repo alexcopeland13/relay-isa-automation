@@ -8,7 +8,7 @@ import { useLeadsData } from '@/hooks/use-leads-data';
 import { Lead } from '@/types/lead';
 
 const Leads = () => {
-  const { leads, isLoading, error, realTimeStatus, createLead, updateLead, deleteLead } = useLeadsData();
+  const { leads, isLoading, error, realTimeStatus, connectionError, createLead, updateLead, deleteLead } = useLeadsData();
   
   const handleSelectLead = (lead: Lead) => {
     console.log('Selected lead:', lead);
@@ -70,7 +70,10 @@ const Leads = () => {
               onNewLeadClick={handleNewLeadClick}
             />
           </div>
-          <RealTimeStatusIndicator status={realTimeStatus} />
+          <RealTimeStatusIndicator 
+            status={realTimeStatus} 
+            connectionError={connectionError}
+          />
         </div>
         
         <LeadsStatsPanel leads={leads} />

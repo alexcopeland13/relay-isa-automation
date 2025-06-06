@@ -129,8 +129,39 @@ serve(async (req) => {
         }
       }
 
+      // Create lead if no mapping found
       if (!phoneMapping) {
         console.log('⚠️ No lead found for phone numbers:', phoneNumbers);
+        console.log('🔄 Creating new lead for unknown caller');
+        
+        const { data: newLead, error: leadError } = await supabaseClient
+          .from('leads')
+          .insert({
+            first_name: 'Unknown',
+            last_name: 'Caller',
+            phone_raw: phoneNumbers[0],
+            phone_e164: phoneNumbers[0],
+            source: 'Retell Voice Agent',
+            status: 'new'
+          })
+          .select()
+          .single();
+
+        if (leadError) {
+          console.error('❌ Error creating new lead:', leadError);
+        } else {
+          console.log('✅ Created new lead:', newLead);
+          
+          // Create phone mapping for the new lead
+          await supabaseClient.from('phone_lead_mapping').insert({
+            phone_e164: phoneNumbers[0],
+            lead_id: newLead.id,
+            lead_name: `${newLead.first_name} ${newLead.last_name}`
+          });
+
+          phoneMapping = { lead_id: newLead.id, lead_name: `${newLead.first_name} ${newLead.last_name}` };
+          console.log('✅ Created phone mapping for new lead');
+        }
       }
 
       // Create conversation record with active status

@@ -1,16 +1,14 @@
 
-import { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { LeadsHeader } from '@/components/leads/LeadsHeader';
 import { LeadsViewTabs } from '@/components/leads/LeadsViewTabs';
 import { LeadsStatsPanel } from '@/components/leads/LeadsStatsPanel';
-import { sampleLeads } from '@/data/sampleLeadsData';
+import { useLeadsData } from '@/hooks/use-leads-data';
 import { Lead } from '@/types/lead';
 
 const Leads = () => {
-  const [currentView, setCurrentView] = useState<'list' | 'board'>('list');
-  const [leads] = useState(sampleLeads);
-
+  const { leads, isLoading, error, createLead, updateLead, deleteLead } = useLeadsData();
+  
   const handleSelectLead = (lead: Lead) => {
     console.log('Selected lead:', lead);
   };
@@ -25,6 +23,7 @@ const Leads = () => {
 
   const handleManualRefresh = () => {
     console.log('Refreshing leads...');
+    // The useLeadsData hook already handles real-time updates, but we can call fetchLeads if needed
   };
 
   const handleExportData = async (format: string, options: any) => {
@@ -35,11 +34,33 @@ const Leads = () => {
     console.log('New lead clicked');
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading leads...</div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-600">Error loading leads: {error}</div>
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout>
       <div className="space-y-6">
         <LeadsHeader 
-          isLoading={false}
+          isLoading={isLoading}
           onManualRefresh={handleManualRefresh}
           leads={leads}
           onExportData={handleExportData}
@@ -48,8 +69,8 @@ const Leads = () => {
         <LeadsStatsPanel leads={leads} />
         <LeadsViewTabs 
           leads={leads}
-          activeView={currentView}
-          onActiveViewChange={setCurrentView}
+          activeView="list"
+          onActiveViewChange={() => {}}
           onSelectLead={handleSelectLead}
           onOpenAssignmentModal={handleAssignLead}
           onScheduleFollowUp={handleScheduleFollowUp}

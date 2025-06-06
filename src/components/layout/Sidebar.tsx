@@ -112,7 +112,6 @@ export const Sidebar = () => {
   
   const manageItems: NavItem[] = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: Calendar, label: 'Showings', path: '/showings' },
     { icon: UserCheck, label: 'Specialists', path: '/specialists' },
     { icon: MessageSquare, label: 'Follow-ups', path: '/follow-ups', badgeCount: 3 },
     { icon: Users, label: 'Team', path: '/agents', badgeCount: 1 },

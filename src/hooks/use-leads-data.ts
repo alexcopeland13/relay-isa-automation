@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Lead } from '@/types/lead';
@@ -274,7 +273,7 @@ export function useLeadsData() {
         schema: 'public',
         table: 'leads'
       }, handleLeadChange)
-      .on('error', {}, (error) => {
+      .on('error', (error) => {
         console.error('📡 Leads channel error:', error);
         setConnectionError('Leads real-time connection error');
         setRealTimeStatus('disconnected');
@@ -306,7 +305,7 @@ export function useLeadsData() {
         schema: 'public',
         table: 'conversation_extractions'
       }, handleExtractionChange)
-      .on('error', {}, (error) => {
+      .on('error', (error) => {
         console.error('📡 Extractions channel error:', error);
       });
 

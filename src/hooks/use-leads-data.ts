@@ -279,18 +279,25 @@ export function useLeadsData() {
         setConnectionError('Leads real-time connection error');
         setRealTimeStatus('disconnected');
       })
-      .subscribe((status) => {
-        console.log('📡 Leads subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          setRealTimeStatus('connected');
-          setConnectionError(null);
-        } else if (status === 'CHANNEL_ERROR') {
-          setRealTimeStatus('disconnected');
-          setConnectionError('Failed to connect to leads updates');
-        } else {
-          setRealTimeStatus('connecting');
-        }
-      });
+      .subscribe();
+
+    // Monitor subscription status
+    const checkStatus = () => {
+      const status = leadsChannelRef.current?.state;
+      if (status === 'joined') {
+        setRealTimeStatus('connected');
+        setConnectionError(null);
+      } else if (status === 'errored') {
+        setRealTimeStatus('disconnected');
+        setConnectionError('Failed to connect to leads updates');
+      } else {
+        setRealTimeStatus('connecting');
+      }
+    };
+
+    // Check status periodically
+    const statusInterval = setInterval(checkStatus, 1000);
+    setTimeout(() => clearInterval(statusInterval), 5000);
 
     // Set up extractions channel
     extractionsChannelRef.current = supabase

@@ -76,14 +76,7 @@ export function useRealtimeConversations(conversationIds: string[]) {
           variant: "destructive",
         });
       })
-      .subscribe((status) => {
-        console.log('📡 Conversations subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          setConnectionError(null);
-        } else if (status === 'CHANNEL_ERROR') {
-          setConnectionError('Failed to connect to conversation updates');
-        }
-      });
+      .subscribe();
 
     return () => {
       if (channelRef.current) {

@@ -80,14 +80,7 @@ export function useRealtimeExtractions(conversationIds: string[]) {
           variant: "destructive",
         });
       })
-      .subscribe((status) => {
-        console.log('📡 Extractions subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          setConnectionError(null);
-        } else if (status === 'CHANNEL_ERROR') {
-          setConnectionError('Failed to connect to extraction updates');
-        }
-      });
+      .subscribe();
 
     return () => {
       if (channelRef.current) {

@@ -2,6 +2,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
+import LandingPage from '@/pages/LandingPage';
+import Auth from '@/pages/Auth';
 import Dashboard from '@/pages/Dashboard';
 import Leads from '@/pages/Leads';
 import Showings from '@/pages/Showings';
@@ -25,7 +27,9 @@ function App() {
       <Router>
         <div className="min-h-screen bg-gray-50">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/showings" element={<Showings />} />
             <Route path="/specialists" element={<Specialists />} />

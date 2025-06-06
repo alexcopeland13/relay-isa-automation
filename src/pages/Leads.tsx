@@ -3,11 +3,12 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { LeadsHeader } from '@/components/leads/LeadsHeader';
 import { LeadsViewTabs } from '@/components/leads/LeadsViewTabs';
 import { LeadsStatsPanel } from '@/components/leads/LeadsStatsPanel';
+import { RealTimeStatusIndicator } from '@/components/leads/RealTimeStatusIndicator';
 import { useLeadsData } from '@/hooks/use-leads-data';
 import { Lead } from '@/types/lead';
 
 const Leads = () => {
-  const { leads, isLoading, error, createLead, updateLead, deleteLead } = useLeadsData();
+  const { leads, isLoading, error, realTimeStatus, createLead, updateLead, deleteLead } = useLeadsData();
   
   const handleSelectLead = (lead: Lead) => {
     console.log('Selected lead:', lead);
@@ -59,14 +60,21 @@ const Leads = () => {
   return (
     <PageLayout>
       <div className="space-y-6">
-        <LeadsHeader 
-          isLoading={isLoading}
-          onManualRefresh={handleManualRefresh}
-          leads={leads}
-          onExportData={handleExportData}
-          onNewLeadClick={handleNewLeadClick}
-        />
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <LeadsHeader 
+              isLoading={isLoading}
+              onManualRefresh={handleManualRefresh}
+              leads={leads}
+              onExportData={handleExportData}
+              onNewLeadClick={handleNewLeadClick}
+            />
+          </div>
+          <RealTimeStatusIndicator status={realTimeStatus} />
+        </div>
+        
         <LeadsStatsPanel leads={leads} />
+        
         <LeadsViewTabs 
           leads={leads}
           activeView="list"

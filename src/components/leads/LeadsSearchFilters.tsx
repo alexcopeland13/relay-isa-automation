@@ -27,7 +27,7 @@ interface LeadSearchFiltersProps {
   availableTypes: Lead['type'][];
 }
 
-export const LeadSearchFilters = ({
+export const LeadsSearchFilters = ({
   searchQuery,
   filterStatus,
   filterSource,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Lead } from '@/types/lead';
@@ -8,6 +7,7 @@ export function useLeadsData() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [realTimeStatus, setRealTimeStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const { toast } = useToast();
 
   const fetchLeads = async () => {
@@ -105,7 +105,6 @@ export function useLeadsData() {
         description: `${data.first_name} ${data.last_name} has been added successfully.`,
       });
 
-      await fetchLeads(); // Refresh the list
       return data;
     } catch (err) {
       console.error('❌ Error creating lead:', err);
@@ -145,7 +144,6 @@ export function useLeadsData() {
         description: `${data.first_name} ${data.last_name} has been updated successfully.`,
       });
 
-      await fetchLeads(); // Refresh the list
       return data;
     } catch (err) {
       console.error('❌ Error updating lead:', err);
@@ -168,20 +166,18 @@ export function useLeadsData() {
         title: 'Lead Deleted',
         description: 'Lead has been removed successfully.',
       });
-
-      await fetchLeads(); // Refresh the list
     } catch (err) {
       console.error('❌ Error deleting lead:', err);
       throw err;
     }
   };
 
-  // Set up real-time subscription
+  // Set up real-time subscription with enhanced monitoring
   useEffect(() => {
     fetchLeads();
 
     const channel = supabase
-      .channel('leads-changes')
+      .channel('leads-realtime')
       .on(
         'postgres_changes',
         {
@@ -191,13 +187,56 @@ export function useLeadsData() {
         },
         (payload) => {
           console.log('📡 Real-time lead change:', payload);
-          fetchLeads(); // Refresh on any change
+          
+          // Show toast notification for real-time updates
+          if (payload.eventType === 'INSERT') {
+            const newLead = payload.new as any;
+            toast({
+              title: 'New Lead Added',
+              description: `${newLead.first_name} ${newLead.last_name} has been added to the system.`,
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedLead = payload.new as any;
+            toast({
+              title: 'Lead Updated',
+              description: `${updatedLead.first_name} ${updatedLead.last_name} has been updated.`,
+            });
+          }
+          
+          // Refresh leads data
+          fetchLeads();
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations'
+        },
+        (payload) => {
+          console.log('📡 Real-time conversation change:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: 'New Conversation',
+              description: 'A new conversation has been recorded.',
+            });
+          }
+          
+          // Refresh leads data to include updated conversation counts
+          fetchLeads();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Real-time subscription status:', status);
+        setRealTimeStatus(status === 'SUBSCRIBED' ? 'connected' : 'connecting');
+      });
 
     return () => {
+      console.log('📡 Cleaning up real-time subscription');
       supabase.removeChannel(channel);
+      setRealTimeStatus('disconnected');
     };
   }, []);
 
@@ -205,6 +244,7 @@ export function useLeadsData() {
     leads,
     isLoading,
     error,
+    realTimeStatus,
     fetchLeads,
     createLead,
     updateLead,
@@ -212,7 +252,7 @@ export function useLeadsData() {
   };
 }
 
-// Helper functions
+// Helper functions remain the same
 const mapStatus = (status: string | null): Lead['status'] => {
   const statusMap: Record<string, Lead['status']> = {
     'new': 'New',

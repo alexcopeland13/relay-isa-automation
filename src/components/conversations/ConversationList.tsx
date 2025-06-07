@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,6 @@ import {
   PhoneOff,
   PhoneMissed
 } from 'lucide-react';
-import { sampleConversation } from '@/data/sampleConversation';
 import { format, parseISO } from 'date-fns';
 import {
   DropdownMenu,
@@ -31,127 +31,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { CallSchedulerModal } from './CallSchedulerModal';
 import { useActiveCalls } from '@/hooks/use-active-calls';
+import { useConversationHistory } from '@/hooks/use-conversation-history';
 
-// Create several copies of the sample conversation with modified properties for the list
-const generateSampleConversations = () => {
-  const baseConversation = sampleConversation;
-  const conversations = [];
-  
-  // Use the original conversation
-  conversations.push({ ...baseConversation });
-  
-  // Create some variations
-  conversations.push({
-    ...baseConversation,
-    id: "conv-12346",
-    leadInfo: { ...baseConversation.leadInfo, name: "Jennifer Williams" },
-    timestamp: "2025-04-05T10:15:00Z",
-    type: "Outbound Call",
-    duration: "8m 24s",
-    callStatus: "completed",
-    extractedInfo: {
-      ...baseConversation.extractedInfo,
-      qualification: {
-        ...baseConversation.extractedInfo.qualification,
-        status: "Highly Qualified"
-      }
-    }
-  });
-  
-  conversations.push({
-    ...baseConversation,
-    id: "conv-12347",
-    leadInfo: { ...baseConversation.leadInfo, name: "Robert Chen" },
-    timestamp: "2025-04-04T16:45:00Z",
-    type: "Email Thread",
-    extractedInfo: {
-      ...baseConversation.extractedInfo,
-      qualification: {
-        ...baseConversation.extractedInfo.qualification,
-        status: "Needs More Information"
-      }
-    }
-  });
-  
-  conversations.push({
-    ...baseConversation,
-    id: "conv-12348",
-    leadInfo: { ...baseConversation.leadInfo, name: "Sarah Martinez" },
-    timestamp: "2025-04-04T09:30:00Z",
-    type: "Text Message",
-    extractedInfo: {
-      ...baseConversation.extractedInfo,
-      qualification: {
-        ...baseConversation.extractedInfo.qualification,
-        status: "Not Qualified"
-      }
-    }
-  });
-  
-  conversations.push({
-    ...baseConversation,
-    id: "conv-12349",
-    leadInfo: { ...baseConversation.leadInfo, name: "David Thompson" },
-    timestamp: "2025-04-03T14:00:00Z",
-    type: "Inbound Call",
-    duration: "12m 36s",
-    callStatus: "completed",
-    extractedInfo: {
-      ...baseConversation.extractedInfo,
-      qualification: {
-        ...baseConversation.extractedInfo.qualification,
-        status: "Qualified"
-      }
-    }
-  });
-
-  conversations.push({
-    ...baseConversation,
-    id: "conv-12350",
-    leadInfo: { ...baseConversation.leadInfo, name: "Emily Johnson" },
-    timestamp: "2025-04-11T11:30:00Z",
-    type: "Outbound Call",
-    duration: "0m 0s",
-    callStatus: "scheduled",
-    extractedInfo: {
-      ...baseConversation.extractedInfo,
-      qualification: {
-        ...baseConversation.extractedInfo.qualification,
-        status: "New Lead"
-      }
-    }
-  });
-
-  conversations.push({
-    ...baseConversation,
-    id: "conv-12351",
-    leadInfo: { ...baseConversation.leadInfo, name: "Alex Rodriguez" },
-    timestamp: "2025-04-02T15:15:00Z",
-    type: "Inbound Call",
-    duration: "0m 0s",
-    callStatus: "missed",
-    extractedInfo: {
-      ...baseConversation.extractedInfo,
-      qualification: {
-        ...baseConversation.extractedInfo.qualification,
-        status: "Needs Follow-up"
-      }
-    }
-  });
-  
-  return conversations;
-};
-
-const getConversationTypeIcon = (type: string) => {
-  switch (type) {
-    case 'Inbound Call':
+const getConversationTypeIcon = (direction: string) => {
+  switch (direction) {
+    case 'inbound':
       return <PhoneIncoming className="h-4 w-4" />;
-    case 'Outbound Call':
+    case 'outbound':
       return <PhoneOutgoing className="h-4 w-4" />;
-    case 'Email Thread':
-      return <Mail className="h-4 w-4" />;
-    case 'Text Message':
-      return <MessageSquare className="h-4 w-4" />;
     default:
       return <MessageSquare className="h-4 w-4" />;
   }
@@ -163,8 +50,8 @@ const getCallStatusBadge = (status?: string) => {
   switch (status) {
     case 'completed':
       return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
-    case 'scheduled':
-      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Scheduled</Badge>;
+    case 'active':
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Active</Badge>;
     case 'missed':
       return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Missed</Badge>;
     case 'recording':
@@ -174,48 +61,51 @@ const getCallStatusBadge = (status?: string) => {
   }
 };
 
-const getQualificationBadgeColor = (status: string) => {
-  switch (status) {
-    case 'Highly Qualified':
-      return 'bg-green-100 text-green-800';
-    case 'Qualified':
-      return 'bg-blue-100 text-blue-800';
-    case 'Needs More Information':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'Not Qualified':
-      return 'bg-red-100 text-red-800';
-    case 'New Lead':
-      return 'bg-purple-100 text-purple-800';
-    case 'Needs Follow-up':
-      return 'bg-orange-100 text-orange-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
+const getQualificationBadgeColor = (extractionsCount: number) => {
+  if (extractionsCount > 0) {
+    return 'bg-green-100 text-green-800';
   }
+  return 'bg-gray-100 text-gray-800';
+};
+
+const formatDuration = (duration: number | null) => {
+  if (!duration) return '0m 0s';
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  return `${minutes}m ${seconds}s`;
 };
 
 interface ConversationListProps {
-  onSelectConversation: () => void;
+  onSelectConversation: (conversation: any) => void;
 }
 
 export const ConversationList = ({ onSelectConversation }: ConversationListProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string | null>(null);
   const { activeCallLeadIds, isLeadOnCall } = useActiveCalls();
-  const conversations = generateSampleConversations();
+  const { conversations, isLoading } = useConversationHistory();
   
   const filteredConversations = conversations.filter(conv => {
     // Apply search filter
-    const matchesSearch = conv.leadInfo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.extractedInfo.qualification.status.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = conv.lead_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.direction.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.call_status.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Apply type filter
     const matchesType = !filterType || 
-      (filterType === 'calls' && (conv.type.includes('Call'))) ||
-      (filterType === 'messages' && (conv.type.includes('Text') || conv.type.includes('Email')));
+      (filterType === 'calls' && (conv.direction === 'inbound' || conv.direction === 'outbound')) ||
+      (filterType === 'messages' && false); // No message types in current data
     
     return matchesSearch && matchesType;
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Loading conversations...</div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-4">
@@ -246,10 +136,6 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
               <Phone className="mr-2 h-4 w-4" />
               <span>Voice Calls Only</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setFilterType('messages')}>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              <span>Messages Only</span>
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -264,73 +150,87 @@ export const ConversationList = ({ onSelectConversation }: ConversationListProps
         </Dialog>
       </div>
       
-      <div className="grid grid-cols-1 gap-4">
-        {filteredConversations.map((conversation) => {
-          // Check if this lead is currently on a live call using real data
-          const isLive = isLeadOnCall(conversation.leadInfo.name); // Using name as mock ID match
-          
-          return (
-            <Card 
-              key={conversation.id} 
-              className={`hover:border-primary/50 transition-all cursor-pointer ${
-                isLive ? 'border-green-500 ring-2 ring-green-200' : ''
-              }`} 
-              onClick={onSelectConversation}
-            >
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <div className="font-medium text-lg">{conversation.leadInfo.name}</div>
-                      {isLive && (
-                        <Badge className="bg-green-500 text-white animate-pulse">
-                          LIVE CALL
-                        </Badge>
+      {filteredConversations.length === 0 ? (
+        <div className="text-center p-8 text-muted-foreground">
+          {conversations.length === 0 
+            ? "No conversations found. Make a test call to see conversations appear here."
+            : "No conversations match your search criteria."
+          }
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredConversations.map((conversation) => {
+            // Check if this lead is currently on a live call using real data
+            const isLive = isLeadOnCall(conversation.lead_name);
+            
+            return (
+              <Card 
+                key={conversation.id} 
+                className={`hover:border-primary/50 transition-all cursor-pointer ${
+                  isLive ? 'border-green-500 ring-2 ring-green-200' : ''
+                }`} 
+                onClick={() => onSelectConversation(conversation)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-lg">{conversation.lead_name}</div>
+                        {isLive && (
+                          <Badge className="bg-green-500 text-white animate-pulse">
+                            LIVE CALL
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                        {getConversationTypeIcon(conversation.direction)}
+                        <span className="capitalize">{conversation.direction} Call</span>
+                        <span className="mx-1">•</span>
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>{formatDuration(conversation.duration)}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <div className={`text-xs font-medium px-2 py-1 rounded-full ${getQualificationBadgeColor(conversation.extractions.length)}`}>
+                        {conversation.extractions.length > 0 ? 'AI Analyzed' : 'Not Analyzed'}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {format(parseISO(conversation.created_at), 'MMM d, yyyy')}
+                      </div>
+                      {conversation.call_status && (
+                        <div className="mt-1">
+                          {getCallStatusBadge(conversation.call_status)}
+                        </div>
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                      {getConversationTypeIcon(conversation.type)}
-                      <span>{conversation.type}</span>
-                      <span className="mx-1">•</span>
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>{conversation.duration}</span>
-                    </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${getQualificationBadgeColor(conversation.extractedInfo.qualification.status)}`}>
-                      {conversation.extractedInfo.qualification.status}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {format(parseISO(conversation.timestamp), 'MMM d, yyyy')}
-                    </div>
-                    {conversation.callStatus && (
-                      <div className="mt-1">
-                        {getCallStatusBadge(conversation.callStatus)}
+                  
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="text-sm">
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">Sentiment:</span>
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${
+                          conversation.sentiment_score > 0.6 ? 'bg-green-100 text-green-800' :
+                          conversation.sentiment_score > 0.3 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {conversation.sentiment_score > 0.6 ? 'Positive' :
+                           conversation.sentiment_score > 0.3 ? 'Neutral' : 'Negative'}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center mt-4">
-                  <div className="text-sm">
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">Refinance Goals:</span>
-                      {conversation.extractedInfo.refinanceGoals.lowerRate && <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded">Lower Rate</span>}
-                      {conversation.extractedInfo.refinanceGoals.shortenTerm && <span className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded">Shorter Term</span>}
-                      {conversation.extractedInfo.refinanceGoals.cashOut && <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">Cash Out</span>}
                     </div>
+                    <Button variant="ghost" size="sm" className="gap-1">
+                      <span>Details</span>
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    <span>Details</span>
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

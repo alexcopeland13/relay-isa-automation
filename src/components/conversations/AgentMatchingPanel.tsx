@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Conversation } from '@/data/sampleConversation';
+import { ConversationData } from '@/types/conversation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -26,7 +25,7 @@ import {
 } from '@/types/conversation';
 
 interface AgentMatchingPanelProps {
-  conversation: Conversation;
+  conversation: ConversationData;
 }
 
 export function AgentMatchingPanel({ conversation }: AgentMatchingPanelProps) {

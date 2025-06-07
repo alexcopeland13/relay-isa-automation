@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   MapPin, 
@@ -12,7 +11,7 @@ import {
 import { CategoryItemDisplay } from './CategoryItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { CategoryItem } from '@/data/sampleConversation';
+import { CategoryItem } from '@/types/conversation';
 
 interface LocationPreferencesSectionProps {
   locationPreferences: {

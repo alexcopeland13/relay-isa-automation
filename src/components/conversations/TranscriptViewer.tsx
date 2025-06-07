@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Message } from '@/data/sampleConversation';
+import { Message } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,7 +38,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
     
     const matches: number[] = [];
     messages.forEach((message, index) => {
-      if (message.text.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (message.content.toLowerCase().includes(searchQuery.toLowerCase())) {
         matches.push(index);
       }
     });
@@ -69,7 +69,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
   const filteredMessages = messages.filter(message => {
     if (activeView === 'all') return true;
     if (activeView === 'highlights') return message.highlights && message.highlights.length > 0;
-    if (activeView === 'questions') return message.text.includes('?');
+    if (activeView === 'questions') return message.content.includes('?');
     return true;
   });
 
@@ -123,9 +123,9 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
                 ref={(el) => {
                   messageRefs.current[index] = el;
                 }}
-                speaker={message.speaker}
+                speaker={message.role === 'user' ? 'Lead' : 'AI Agent'}
                 timestamp={message.timestamp}
-                text={message.text}
+                text={message.content}
                 sentiment={message.sentiment}
                 highlights={message.highlights}
                 searchQuery={searchQuery}

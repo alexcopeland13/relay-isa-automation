@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Conversation } from '@/data/sampleConversation';
+import { ConversationData } from '@/types/conversation';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Mail, MessageSquare, Phone, AlertCircle } from 'lucide-react';
 import {
@@ -27,7 +26,7 @@ import { format } from 'date-fns';
 import { ReactNode } from 'react';
 
 interface FollowUpPanelProps {
-  conversation: Conversation;
+  conversation: ConversationData;
 }
 
 interface ChannelOption {

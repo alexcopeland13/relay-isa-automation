@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   User, 
@@ -10,7 +9,7 @@ import {
 import { CategoryItemDisplay } from './CategoryItem';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { CategoryItem } from '@/data/sampleConversation';
+import { CategoryItem } from '@/types/conversation';
 
 interface TransactionTypeSectionProps {
   transactionType: {

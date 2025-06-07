@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   TrendingUp, 
@@ -13,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { CategoryItem } from '@/data/sampleConversation';
+import { CategoryItem } from '@/types/conversation';
 
 interface MotivationFactorsSectionProps {
   motivationFactors: {

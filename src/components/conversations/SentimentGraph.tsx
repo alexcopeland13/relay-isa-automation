@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Message } from '@/data/sampleConversation';
+import { Message } from '@/types/conversation';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,13 +32,9 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
   const [selectedPoint, setSelectedPoint] = useState<SentimentPoint | null>(null);
   
   // Convert sentiment strings to numerical values
-  const sentimentToNumber = (sentiment: string): number => {
-    switch (sentiment) {
-      case 'positive': return 1;
-      case 'neutral': return 0;
-      case 'negative': return -1;
-      default: return 0;
-    }
+  const sentimentToNumber = (sentiment?: number): number => {
+    if (typeof sentiment === 'number') return sentiment;
+    return 0; // Default to neutral if no sentiment provided
   };
   
   // Create data points for the chart
@@ -60,11 +55,11 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
       const message = messages[i];
       
       // Only customer messages affect interest level
-      if (message.speaker === 'Lead') {
+      if (message.role === 'user') {
         // Positive sentiment increases interest
-        if (message.sentiment === 'positive') interest += 0.05;
+        if (message.sentiment && message.sentiment > 0) interest += 0.05;
         // Negative sentiment decreases interest
-        else if (message.sentiment === 'negative') interest -= 0.08;
+        else if (message.sentiment && message.sentiment < 0) interest -= 0.08;
         
         // If message has highlights, it often indicates engagement
         if (message.highlights && message.highlights.length > 0) {
@@ -72,19 +67,14 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
         }
         
         // Look for specific keywords that might indicate interest
-        const text = message.text.toLowerCase();
+        const text = message.content.toLowerCase();
         if (text.includes('interested') || text.includes('sounds good') || text.includes('thank you')) {
           interest += 0.07;
-        }
-        
-        // Look for objections or hesitation
-        if (text.includes('not sure') || text.includes('expensive') || text.includes('think about it')) {
-          interest -= 0.1;
         }
       }
     }
     
-    // Ensure interest level stays between 0 and 1
+    // Clamp between 0 and 1
     return Math.max(0, Math.min(1, interest));
   };
   
@@ -183,7 +173,7 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
               <h3 className="font-medium flex items-center gap-1.5">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 {selectedPoint.message.timestamp}
-                <span className="text-xs ml-1 text-muted-foreground">({selectedPoint.message.speaker})</span>
+                <span className="text-xs ml-1 text-muted-foreground">({selectedPoint.message.role})</span>
               </h3>
             </div>
             <div>

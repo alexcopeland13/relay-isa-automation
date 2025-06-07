@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Home, 
@@ -18,7 +17,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CategoryItem } from '@/data/sampleConversation';
+import { CategoryItem } from '@/types/conversation';
 
 interface PropertyInterestsSectionProps {
   propertyInterests: {

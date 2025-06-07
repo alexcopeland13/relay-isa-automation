@@ -1,5 +1,97 @@
 
-import { CategoryItem } from '@/data/sampleConversation';
+export interface CategoryItem {
+  value: string;
+  confidence: number;
+  source: 'AI' | 'User' | 'Agent';
+  verified: boolean;
+}
+
+export interface SuggestedAction {
+  id: string;
+  type: 'follow_up' | 'task' | 'call' | 'email';
+  content: string;
+  priority?: 'High' | 'Medium' | 'Low';
+  status: 'Pending Approval' | 'Approved' | 'Rejected';
+  reasoning: string;
+  scheduledFor?: string;
+  assignedTo?: string;
+  channel?: string;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  role: 'ai' | 'user' | 'system';
+  timestamp: string;
+  sentiment?: number;
+  highlights?: string[];
+}
+
+export interface ExtractedInfo {
+  propertyInfo: {
+    currentMortgage: string;
+    currentTerm: string;
+    estimatedValue: string;
+    location: string;
+    confidence: number;
+  };
+  refinanceGoals: {
+    lowerRate: boolean;
+    cashOut: boolean;
+    shortenTerm: boolean;
+    confidence: number;
+  };
+  timeline: {
+    urgency: string;
+    lookingToDecide: string;
+    confidence: number;
+  };
+  financialInfo: {
+    estimatedCredit: string;
+    hasOtherDebts: boolean;
+    confidence: number;
+  };
+  qualification: {
+    status: string;
+    confidenceScore: number;
+    reasoning: string;
+  };
+  propertyInterests: PropertyInterests;
+  locationPreferences: LocationPreferences;
+  transactionType: TransactionType;
+  motivationFactors: MotivationFactors;
+  matchingWeights: {
+    propertyType: number;
+    location: number;
+    priceRange: number;
+    timeline: number;
+    financing: number;
+  };
+}
+
+export interface AIPerformance {
+  informationGathering: number;
+  leadEngagement: number;
+  qualificationAccuracy: number;
+  actionRecommendation: number;
+}
+
+export interface ConversationData {
+  id: string;
+  leadInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    source: string;
+  };
+  timestamp: string;
+  duration: string;
+  type: string;
+  messages: Message[];
+  extractedInfo: ExtractedInfo;
+  suggestedActions: SuggestedAction[];
+  aiPerformance: AIPerformance;
+}
 
 export interface LocationPreferences {
   areasOfInterest: CategoryItem[];

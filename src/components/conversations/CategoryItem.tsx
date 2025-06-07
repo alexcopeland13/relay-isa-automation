@@ -2,11 +2,11 @@
 import React from 'react';
 import { Check, Circle, CircleX, Edit, User, Bot, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { CategoryItem as CategoryItemType } from '@/data/sampleConversation';
+import { CategoryItem as CategoryItemType } from '@/types/conversation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface CategoryItemProps {
-  item: CategoryItemType;
+  item?: CategoryItemType;
   onVerify?: (item: CategoryItemType) => void;
   onEdit?: (item: CategoryItemType) => void;
   className?: string;
@@ -19,6 +19,15 @@ interface SimpleCategoryProps {
 }
 
 export const CategoryItemDisplay = ({ item, onVerify, onEdit, className }: CategoryItemProps) => {
+  // Null guard
+  if (!item) {
+    return (
+      <Badge variant="outline" className={`px-2 py-1 ${className}`}>
+        No data available
+      </Badge>
+    );
+  }
+
   const getConfidenceIcon = () => {
     if (item.confidence > 0.85) {
       return <Check className="h-3 w-3 text-green-600" />;

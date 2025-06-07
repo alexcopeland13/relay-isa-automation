@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SuggestedAction } from '@/data/sampleConversation';
+import { SuggestedAction } from '@/types/conversation';
 import { 
   Mail, 
   Calendar, 
@@ -23,10 +22,22 @@ import {
 } from 'lucide-react';
 
 interface ActionReviewProps {
-  suggestedActions: SuggestedAction[];
+  suggestedActions?: SuggestedAction[];
 }
 
-export const ActionReview = ({ suggestedActions }: ActionReviewProps) => {
+export const ActionReview = ({ suggestedActions = [] }: ActionReviewProps) => {
+  // Null guard
+  if (!suggestedActions || suggestedActions.length === 0) {
+    return (
+      <div className="p-6 h-[600px] flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p>No suggested actions available</p>
+        </div>
+      </div>
+    );
+  }
+
   const [actions, setActions] = useState(suggestedActions);
   const [editingAction, setEditingAction] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');

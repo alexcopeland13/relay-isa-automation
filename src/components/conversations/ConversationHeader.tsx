@@ -1,7 +1,7 @@
 
 import { format, parseISO } from 'date-fns';
 import { Clock, Calendar, Phone, Mail, MessageSquare, BarChart, Download, Play, PhoneIncoming, PhoneOutgoing, PhoneCall } from 'lucide-react';
-import { ExtractedInfo } from '@/data/sampleConversation';
+import { ExtractedInfo } from '@/types/conversation';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { CallSchedulerModal } from './CallSchedulerModal';
@@ -9,16 +9,16 @@ import { ActiveCallInterface } from './ActiveCallInterface';
 import { useState } from 'react';
 
 interface ConversationHeaderProps {
-  leadInfo: {
+  leadInfo?: {
     name: string;
     email: string;
     phone: string;
     source: string;
   };
-  timestamp: string;
-  duration: string;
-  type: string;
-  qualification: string | ExtractedInfo['qualification'];
+  timestamp?: string;
+  duration?: string;
+  type?: string;
+  qualification?: string | ExtractedInfo['qualification'];
 }
 
 const getQualificationBadgeColor = (status: string) => {
@@ -55,19 +55,29 @@ export const ConversationHeader = ({
   leadInfo, 
   timestamp, 
   duration, 
-  type,
+  type = 'Unknown',
   qualification
 }: ConversationHeaderProps) => {
   const [showActiveCall, setShowActiveCall] = useState(false);
   
-  const formattedDate = format(parseISO(timestamp), 'MMMM d, yyyy');
-  const formattedTime = format(parseISO(timestamp), 'h:mm a');
+  // Null guards
+  if (!leadInfo) {
+    return (
+      <div className="p-6 border-b border-border">
+        <div className="text-center text-muted-foreground">
+          <p>No conversation data available</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const formattedDate = timestamp ? format(parseISO(timestamp), 'MMMM d, yyyy') : 'Unknown date';
+  const formattedTime = timestamp ? format(parseISO(timestamp), 'h:mm a') : 'Unknown time';
   
   // Get the qualification status and confidence score, handling both string and object types
-  // Add null checks to prevent accessing properties on undefined
   const qualificationStatus = typeof qualification === 'string' 
     ? qualification 
-    : qualification?.status || 'Unknown'; // Provide a default value
+    : qualification?.status || 'Unknown';
     
   const confidenceScore = typeof qualification === 'object' && qualification
     ? Math.round(qualification.confidenceScore * 100) 
@@ -107,7 +117,7 @@ export const ConversationHeader = ({
         
         <div className="flex items-center gap-1.5">
           <Clock className="h-4 w-4" />
-          <span>Duration: {duration}</span>
+          <span>Duration: {duration || '0m 0s'}</span>
         </div>
       </div>
       

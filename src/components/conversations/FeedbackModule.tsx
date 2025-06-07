@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { AIPerformance } from '@/data/sampleConversation';
+import { AIPerformance } from '@/types/conversation';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,10 +13,22 @@ import {
 } from 'lucide-react';
 
 interface FeedbackModuleProps {
-  aiPerformance: AIPerformance;
+  aiPerformance?: AIPerformance;
 }
 
 export const FeedbackModule = ({ aiPerformance }: FeedbackModuleProps) => {
+  // Null guard
+  if (!aiPerformance) {
+    return (
+      <div className="p-6 h-[600px] flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p>No AI performance data available</p>
+        </div>
+      </div>
+    );
+  }
+
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [ratings, setRatings] = useState({

@@ -272,12 +272,7 @@ export function useLeadsData() {
         event: '*',
         schema: 'public',
         table: 'leads'
-      }, handleLeadChange)
-      .on('error', (error) => {
-        console.error('📡 Leads channel error:', error);
-        setConnectionError('Leads real-time connection error');
-        setRealTimeStatus('disconnected');
-      });
+      }, handleLeadChange);
 
     // Subscribe using v2 pattern (zero arguments)
     const subscribeToLeads = async () => {
@@ -304,10 +299,7 @@ export function useLeadsData() {
         event: '*',
         schema: 'public',
         table: 'conversation_extractions'
-      }, handleExtractionChange)
-      .on('error', (error) => {
-        console.error('📡 Extractions channel error:', error);
-      });
+      }, handleExtractionChange);
 
     // Subscribe to extractions using v2 pattern
     const subscribeToExtractions = async () => {

@@ -70,15 +70,6 @@ export function useRealtimeExtractions(conversationIds: string[]) {
             return updated;
           });
         }
-      })
-      .on('error', (error) => {
-        console.error('📡 Extractions channel error:', error);
-        setConnectionError('Failed to connect to extraction updates');
-        toast({
-          title: "Connection Error",
-          description: "Lost connection to AI insights updates.",
-          variant: "destructive",
-        });
       });
 
     // Subscribe using v2 pattern (zero arguments)

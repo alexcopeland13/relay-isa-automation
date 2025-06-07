@@ -66,15 +66,6 @@ export function useRealtimeConversations(conversationIds: string[]) {
             return updated;
           });
         }
-      })
-      .on('error', (error) => {
-        console.error('📡 Conversations channel error:', error);
-        setConnectionError('Failed to connect to conversation updates');
-        toast({
-          title: "Connection Error",
-          description: "Lost connection to conversation updates.",
-          variant: "destructive",
-        });
       });
 
     // Subscribe using v2 pattern (zero arguments)

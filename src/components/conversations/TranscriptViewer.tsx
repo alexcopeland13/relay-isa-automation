@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Message } from '@/types/conversation';
+import { Message, HighlightItem } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -74,13 +74,19 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
   };
 
   // Helper function to convert highlights to proper format
-  const getHighlights = (highlights?: string[]): { type: string; text: string; confidence: number }[] => {
+  const getHighlights = (highlights?: (string | HighlightItem)[]): { type: string; text: string; confidence: number }[] => {
     if (!highlights) return [];
-    return highlights.map(highlight => ({
-      type: 'general',
-      text: highlight,
-      confidence: 0.8
-    }));
+    return highlights.map(highlight => {
+      if (typeof highlight === 'string') {
+        return {
+          type: 'general',
+          text: highlight,
+          confidence: 0.8
+        };
+      } else {
+        return highlight;
+      }
+    });
   };
 
   // Filter messages based on active view

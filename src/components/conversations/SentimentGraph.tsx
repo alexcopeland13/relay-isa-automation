@@ -1,7 +1,6 @@
 
-
 import { useState } from 'react';
-import { Message } from '@/types/conversation';
+import { Message, HighlightItem } from '@/types/conversation';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -226,8 +225,10 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
                     if (!highlight) return null;
                     
                     const isObject = typeof highlight === 'object' && highlight !== null;
-                    const displayText = isObject ? highlight.text : highlight;
-                    const tooltipText = isObject ? `${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)` : highlight;
+                    const displayText: string = isObject ? (highlight as HighlightItem).text : (highlight as string);
+                    const tooltipText: string = isObject 
+                      ? `${(highlight as HighlightItem).type} (${Math.round((highlight as HighlightItem).confidence * 100)}% confidence)` 
+                      : (highlight as string);
                     
                     return (
                       <span 
@@ -254,4 +255,3 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
     </div>
   );
 };
-

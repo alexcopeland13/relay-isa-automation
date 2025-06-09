@@ -2,10 +2,50 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Import utilities
+import { parsePhoneNumber } from 'https://esm.sh/libphonenumber-js@1.12.8';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+function normalizePhone(phone: string): string {
+  try {
+    const parsed = parsePhoneNumber(phone, 'US');
+    return parsed.number;
+  } catch {
+    return phone;
+  }
+}
+
+function splitTranscriptToMessages(raw: string) {
+  if (!raw) return [];
+  
+  return raw.split('\n')
+    .map((line, i) => {
+      const isAgent = line.startsWith('Agent:') || line.startsWith('AI Agent:');
+      const isLead = line.startsWith('Lead:') || line.startsWith('Customer:') || line.startsWith('User:');
+      
+      let role = 'lead'; // default
+      let content = line.trim();
+      
+      if (isAgent) {
+        role = 'agent';
+        content = line.replace(/^(Agent|AI Agent):\s?/, '').trim();
+      } else if (isLead) {
+        role = 'lead';
+        content = line.replace(/^(Lead|Customer|User):\s?/, '').trim();
+      }
+      
+      return {
+        role,
+        content,
+        seq: i
+      };
+    })
+    .filter(m => m.content.length > 0);
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -102,15 +142,15 @@ serve(async (req) => {
     if (eventType === 'call_started') {
       console.log('🚀 Processing call_started event');
       
-      // Look up lead by phone number - try multiple phone fields
+      // Look up lead by phone number - try multiple phone fields and normalize them
       const phoneNumbers = [
         callData.from_number,
         callData.to_number,
         callData.caller_number,
         callData.phone_number
-      ].filter(Boolean);
+      ].filter(Boolean).map(normalizePhone);
 
-      console.log('🔍 Looking up lead by phone numbers:', phoneNumbers);
+      console.log('🔍 Looking up lead by normalized phone numbers:', phoneNumbers);
 
       let phoneMapping = null;
       for (const phone of phoneNumbers) {
@@ -164,7 +204,7 @@ serve(async (req) => {
         }
       }
 
-      // Create conversation record with active status
+      // Create conversation record with pending extraction status
       const { data: conversation, error: convError } = await supabaseClient
         .from('conversations')
         .insert({
@@ -172,6 +212,7 @@ serve(async (req) => {
           lead_id: phoneMapping?.lead_id || null,
           direction: callData.direction || 'inbound',
           call_status: 'active',
+          extraction_status: 'pending',
           started_at: new Date().toISOString(),
           agent_id: 'retell_ai_v2'
         })
@@ -208,7 +249,8 @@ serve(async (req) => {
           ended_at: new Date().toISOString(),
           duration: callData.duration_ms ? Math.round(callData.duration_ms / 1000) : 0,
           recording_url: callData.recording_url || null,
-          transcript: callData.transcript || null
+          transcript: callData.transcript || null,
+          extraction_status: 'pending' // Set to pending for AI processing
         })
         .eq('call_sid', callData.call_id)
         .select()
@@ -220,6 +262,29 @@ serve(async (req) => {
       }
 
       console.log('✅ Updated conversation to completed:', conversation?.id);
+
+      // Split transcript into messages
+      if (callData.transcript && conversation) {
+        const messages = splitTranscriptToMessages(callData.transcript);
+        if (messages.length > 0) {
+          const messageInserts = messages.map(m => ({
+            conversation_id: conversation.id,
+            role: m.role,
+            content: m.content,
+            seq: m.seq
+          }));
+
+          const { error: msgError } = await supabaseClient
+            .from('conversation_messages')
+            .insert(messageInserts);
+
+          if (msgError) {
+            console.error('❌ Error inserting conversation messages:', msgError);
+          } else {
+            console.log('✅ Inserted', messages.length, 'conversation messages');
+          }
+        }
+      }
 
       // Update lead's last contacted timestamp
       if (conversation?.lead_id) {

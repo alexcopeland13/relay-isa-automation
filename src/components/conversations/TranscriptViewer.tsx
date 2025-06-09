@@ -7,27 +7,99 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchBar } from './transcript/SearchBar';
 import { MessageBubble } from './transcript/MessageBubble';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 import React from 'react';
 
 interface TranscriptViewerProps {
   messages: Message[];
+  conversationId?: string;
 }
 
-export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
+interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: 'agent' | 'lead';
+  content: string;
+  seq: number;
+  ts: string;
+}
+
+export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [activeView, setActiveView] = useState<'all' | 'highlights' | 'questions'>('all');
+  const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // Load conversation messages if conversationId is provided
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const loadConversationMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('conversation_messages')
+          .select('*')
+          .eq('conversation_id', conversationId)
+          .order('seq', { ascending: true });
+
+        if (error) {
+          console.error('Error loading conversation messages:', error);
+          return;
+        }
+
+        setConversationMessages(data || []);
+      } catch (error) {
+        console.error('Error loading conversation messages:', error);
+      }
+    };
+
+    loadConversationMessages();
+
+    // Subscribe to real-time updates for conversation messages
+    const channel = supabase
+      .channel(`conversation-messages-${conversationId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_messages',
+        filter: `conversation_id=eq.${conversationId}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newMessage = payload.new as ConversationMessage;
+          setConversationMessages(prev => 
+            [...prev, newMessage].sort((a, b) => a.seq - b.seq)
+          );
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
+
+  // Convert conversation messages to Message format for display
+  const displayMessages: Message[] = conversationMessages.length > 0 
+    ? conversationMessages.map((msg, index) => ({
+        id: msg.id,
+        content: msg.content,
+        role: msg.role === 'agent' ? 'ai' : 'user',
+        timestamp: new Date(msg.ts).toLocaleTimeString(),
+        sentiment: undefined,
+        highlights: undefined
+      }))
+    : messages;
   
   // Ensure refs array length matches the number of messages
   useEffect(() => {
-    messageRefs.current = messageRefs.current.slice(0, messages.length);
-    while (messageRefs.current.length < messages.length) {
+    messageRefs.current = messageRefs.current.slice(0, displayMessages.length);
+    while (messageRefs.current.length < displayMessages.length) {
       messageRefs.current.push(null);
     }
-  }, [messages]);
+  }, [displayMessages]);
   
   // Search for matches when query changes
   useEffect(() => {
@@ -37,7 +109,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
     }
     
     const matches: number[] = [];
-    messages.forEach((message, index) => {
+    displayMessages.forEach((message, index) => {
       if (message.content.toLowerCase().includes(searchQuery.toLowerCase())) {
         matches.push(index);
       }
@@ -45,7 +117,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
     
     setSearchResults(matches);
     setCurrentSearchIndex(matches.length > 0 ? 0 : -1);
-  }, [searchQuery, messages]);
+  }, [searchQuery, displayMessages]);
   
   // Scroll to current search result
   useEffect(() => {
@@ -90,7 +162,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
   };
 
   // Filter messages based on active view
-  const filteredMessages = messages.filter(message => {
+  const filteredMessages = displayMessages.filter(message => {
     if (activeView === 'all') return true;
     if (activeView === 'highlights') return message.highlights && message.highlights.length > 0;
     if (activeView === 'questions') return message.content.includes('?');
@@ -143,7 +215,7 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
           {filteredMessages.length > 0 ? (
             filteredMessages.map((message, index) => (
               <MessageBubble
-                key={index}
+                key={message.id || index}
                 ref={(el) => {
                   messageRefs.current[index] = el;
                 }}
@@ -162,6 +234,9 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
                 <>
                   <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
                   <p>No messages available in this conversation.</p>
+                  {conversationId && (
+                    <p className="text-xs mt-1">Transcript will appear here once the conversation begins.</p>
+                  )}
                 </>
               ) : activeView === 'highlights' ? (
                 <>

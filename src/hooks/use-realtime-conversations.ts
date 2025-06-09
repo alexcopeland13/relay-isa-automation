@@ -7,29 +7,44 @@ interface RealtimeConversationData {
   id: string;
   transcript: string;
   call_status: string;
+  extraction_status: string;
   sentiment_score?: number;
   ended_at?: string;
 }
 
+interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: 'agent' | 'lead';
+  content: string;
+  seq: number;
+  ts: string;
+}
+
 export function useRealtimeConversations(conversationIds: string[]) {
   const [conversationUpdates, setConversationUpdates] = useState<Record<string, RealtimeConversationData>>({});
+  const [conversationMessages, setConversationMessages] = useState<Record<string, ConversationMessage[]>>({});
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
   const channelRef = useRef<any>(null);
+  const messagesChannelRef = useRef<any>(null);
 
   useEffect(() => {
     if (conversationIds.length === 0) return;
 
-    // Clean up existing channel
+    // Clean up existing channels
     if (channelRef.current) {
       channelRef.current.unsubscribe();
     }
+    if (messagesChannelRef.current) {
+      messagesChannelRef.current.unsubscribe();
+    }
 
-    // Create new channel with dynamic filter
+    // Subscribe to conversation changes
     channelRef.current = supabase
       .channel('conversations-realtime')
       .on('postgres_changes', {
-        event: '*', // Listen for INSERT, UPDATE, and DELETE
+        event: '*',
         schema: 'public',
         table: 'conversations',
         filter: `id=in.(${conversationIds.join(',')})`
@@ -56,7 +71,15 @@ export function useRealtimeConversations(conversationIds: string[]) {
           if (conversation.call_status === 'completed') {
             toast({
               title: "Call Ended",
-              description: "The active call has been completed.",
+              description: "The conversation has been completed and is ready for review.",
+            });
+          }
+          
+          // Show toast for extraction completion
+          if (conversation.extraction_status === 'done') {
+            toast({
+              title: "Analysis Complete",
+              description: "AI has finished analyzing the conversation.",
             });
           }
         } else if (payload.eventType === 'DELETE') {
@@ -68,10 +91,33 @@ export function useRealtimeConversations(conversationIds: string[]) {
         }
       });
 
-    // Subscribe using v2 pattern (zero arguments)
+    // Subscribe to conversation messages
+    messagesChannelRef.current = supabase
+      .channel('conversation-messages-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_messages',
+        filter: `conversation_id=in.(${conversationIds.join(',')})`
+      }, (payload) => {
+        const message = payload.new as ConversationMessage;
+        
+        if (payload.eventType === 'INSERT') {
+          setConversationMessages(prev => ({
+            ...prev,
+            [message.conversation_id]: [
+              ...(prev[message.conversation_id] || []),
+              message
+            ].sort((a, b) => a.seq - b.seq)
+          }));
+        }
+      });
+
+    // Subscribe using v2 pattern
     const subscribeToConversations = async () => {
       try {
         await channelRef.current.subscribe();
+        await messagesChannelRef.current.subscribe();
         console.log('📡 Conversations subscription successful');
         setConnectionError(null);
       } catch (error) {
@@ -86,12 +132,17 @@ export function useRealtimeConversations(conversationIds: string[]) {
       if (channelRef.current) {
         channelRef.current.unsubscribe();
       }
+      if (messagesChannelRef.current) {
+        messagesChannelRef.current.unsubscribe();
+      }
     };
   }, [conversationIds, toast]);
 
   return {
     conversationUpdates,
+    conversationMessages,
     connectionError,
-    getConversationUpdate: (id: string) => conversationUpdates[id]
+    getConversationUpdate: (id: string) => conversationUpdates[id],
+    getConversationMessages: (id: string) => conversationMessages[id] || []
   };
 }

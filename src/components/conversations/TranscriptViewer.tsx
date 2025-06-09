@@ -65,6 +65,24 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
     setCurrentSearchIndex((prevIndex) => (prevIndex - 1 + searchResults.length) % searchResults.length);
   };
 
+  // Helper function to convert sentiment number to string
+  const getSentimentString = (sentiment?: number): 'positive' | 'negative' | 'neutral' => {
+    if (!sentiment) return 'neutral';
+    if (sentiment > 0) return 'positive';
+    if (sentiment < 0) return 'negative';
+    return 'neutral';
+  };
+
+  // Helper function to convert highlights to proper format
+  const getHighlights = (highlights?: string[]): { type: string; text: string; confidence: number }[] => {
+    if (!highlights) return [];
+    return highlights.map(highlight => ({
+      type: 'general',
+      text: highlight,
+      confidence: 0.8
+    }));
+  };
+
   // Filter messages based on active view
   const filteredMessages = messages.filter(message => {
     if (activeView === 'all') return true;
@@ -126,8 +144,8 @@ export const TranscriptViewer = ({ messages }: TranscriptViewerProps) => {
                 speaker={message.role === 'user' ? 'Lead' : 'AI Agent'}
                 timestamp={message.timestamp}
                 text={message.content}
-                sentiment={message.sentiment}
-                highlights={message.highlights}
+                sentiment={getSentimentString(message.sentiment)}
+                highlights={getHighlights(message.highlights)}
                 searchQuery={searchQuery}
                 isCurrentSearchResult={searchResults.includes(index) && currentSearchIndex === searchResults.indexOf(index)}
               />

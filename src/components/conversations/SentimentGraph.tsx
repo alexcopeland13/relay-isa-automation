@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Message } from '@/types/conversation';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -100,9 +101,9 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
             {data.message.timestamp}
           </p>
           <p className="text-sm truncate max-w-[200px]">
-            {data.message.text.length > 60 
-              ? `${data.message.text.substring(0, 60)}...` 
-              : data.message.text}
+            {data.message.content.length > 60 
+              ? `${data.message.content.substring(0, 60)}...` 
+              : data.message.content}
           </p>
         </div>
       );
@@ -214,7 +215,7 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
           </div>
           
           <ScrollArea className="h-24 border border-border rounded-md p-3 bg-secondary/50">
-            <p className="text-sm">{selectedPoint.message.text}</p>
+            <p className="text-sm">{selectedPoint.message.content}</p>
             
             {selectedPoint.message.highlights && selectedPoint.message.highlights.length > 0 && (
               <div className="mt-2 pt-2 border-t border-border">
@@ -224,9 +225,9 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
                     <span 
                       key={i} 
                       className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
-                      title={`${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)`}
+                      title={typeof highlight === 'object' ? `${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)` : highlight}
                     >
-                      {highlight.text}
+                      {typeof highlight === 'object' ? highlight.text : highlight}
                     </span>
                   ))}
                 </div>

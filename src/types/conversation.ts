@@ -1,4 +1,3 @@
-
 export interface CategoryItem {
   value: string;
   confidence: number;
@@ -18,13 +17,19 @@ export interface SuggestedAction {
   channel?: string;
 }
 
+export interface HighlightItem {
+  type: string;
+  text: string;
+  confidence: number;
+}
+
 export interface Message {
   id: string;
   content: string;
   role: 'ai' | 'user' | 'system';
   timestamp: string;
   sentiment?: number;
-  highlights?: string[];
+  highlights?: (string | HighlightItem)[];
 }
 
 export interface ExtractedInfo {

@@ -224,13 +224,18 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
                 <div className="flex flex-wrap gap-1">
                   {selectedPoint.message.highlights.map((highlight, i) => {
                     if (!highlight) return null;
+                    
+                    const isObject = typeof highlight === 'object' && highlight !== null;
+                    const displayText = isObject ? highlight.text : highlight;
+                    const tooltipText = isObject ? `${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)` : highlight;
+                    
                     return (
                       <span 
                         key={i} 
                         className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
-                        title={typeof highlight === 'object' && highlight ? `${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)` : highlight}
+                        title={tooltipText}
                       >
-                        {typeof highlight === 'object' && highlight ? highlight.text : highlight}
+                        {displayText}
                       </span>
                     );
                   })}

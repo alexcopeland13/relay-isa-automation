@@ -100,7 +100,7 @@ export function useConversationPipeline() {
           table: 'conversations'
         },
         async (payload) => {
-          const conversation = payload.new;
+          const conversation = payload.new as any;
           
           // Process when extraction_status becomes 'pending' and transcript exists
           if (conversation.extraction_status === 'pending' && 

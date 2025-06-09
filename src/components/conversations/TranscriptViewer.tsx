@@ -1,6 +1,5 @@
-
 import { useState, useRef, useEffect } from 'react';
-import { Message, HighlightItem } from '@/types/conversation';
+import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,20 +7,12 @@ import { SearchBar } from './transcript/SearchBar';
 import { MessageBubble } from './transcript/MessageBubble';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { convertConversationMessagesToDisplayMessages } from '@/lib/transcriptUtils';
 import React from 'react';
 
 interface TranscriptViewerProps {
   messages: Message[];
   conversationId?: string;
-}
-
-interface ConversationMessage {
-  id: string;
-  conversation_id: string;
-  role: 'agent' | 'lead';
-  content: string;
-  seq: number;
-  ts: string;
 }
 
 export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerProps) => {
@@ -39,9 +30,10 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
 
     const loadConversationMessages = async () => {
       try {
-        const { data, error } = await supabase
+        // Use explicit type casting to work around TypeScript issues
+        const { data, error } = await (supabase as any)
           .from('conversation_messages')
-          .select('*')
+          .select('id, conversation_id, role, content, seq, ts')
           .eq('conversation_id', conversationId)
           .order('seq', { ascending: true });
 
@@ -83,14 +75,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
 
   // Convert conversation messages to Message format for display
   const displayMessages: Message[] = conversationMessages.length > 0 
-    ? conversationMessages.map((msg, index) => ({
-        id: msg.id,
-        content: msg.content,
-        role: msg.role === 'agent' ? 'ai' : 'user',
-        timestamp: new Date(msg.ts).toLocaleTimeString(),
-        sentiment: undefined,
-        highlights: undefined
-      }))
+    ? convertConversationMessagesToDisplayMessages(conversationMessages)
     : messages;
   
   // Ensure refs array length matches the number of messages

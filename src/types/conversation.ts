@@ -32,6 +32,16 @@ export interface Message {
   highlights?: (string | HighlightItem)[];
 }
 
+// New interface for conversation messages from database
+export interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: 'agent' | 'lead';
+  content: string;
+  seq: number;
+  ts: string;
+}
+
 export interface ExtractedInfo {
   propertyInfo: {
     currentMortgage: string;

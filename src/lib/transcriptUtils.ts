@@ -1,5 +1,6 @@
 
 import { parsePhoneNumber } from 'libphonenumber-js';
+import { ConversationMessage, Message } from '@/types/conversation';
 
 export function normalizePhone(phone: string): string {
   try {
@@ -36,4 +37,16 @@ export function splitTranscriptToMessages(raw: string) {
       };
     })
     .filter(m => m.content.length > 0);
+}
+
+// Adapter to convert database rows to our Message interface
+export function convertConversationMessagesToDisplayMessages(messages: ConversationMessage[]): Message[] {
+  return messages.map((msg) => ({
+    id: msg.id,
+    content: msg.content,
+    role: msg.role === 'agent' ? 'ai' : 'user',
+    timestamp: new Date(msg.ts).toLocaleTimeString(),
+    sentiment: undefined,
+    highlights: undefined
+  }));
 }

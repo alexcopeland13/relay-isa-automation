@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react';
 import { Message } from '@/types/conversation';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -221,15 +222,18 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
               <div className="mt-2 pt-2 border-t border-border">
                 <p className="text-xs font-medium mb-1">Key Information:</p>
                 <div className="flex flex-wrap gap-1">
-                  {selectedPoint.message.highlights.map((highlight, i) => (
-                    <span 
-                      key={i} 
-                      className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
-                      title={typeof highlight === 'object' ? `${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)` : highlight}
-                    >
-                      {typeof highlight === 'object' ? highlight.text : highlight}
-                    </span>
-                  ))}
+                  {selectedPoint.message.highlights.map((highlight, i) => {
+                    if (!highlight) return null;
+                    return (
+                      <span 
+                        key={i} 
+                        className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800"
+                        title={typeof highlight === 'object' && highlight ? `${highlight.type} (${Math.round(highlight.confidence * 100)}% confidence)` : highlight}
+                      >
+                        {typeof highlight === 'object' && highlight ? highlight.text : highlight}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -245,3 +249,4 @@ export const SentimentGraph = ({ messages }: SentimentGraphProps) => {
     </div>
   );
 };
+

@@ -31,17 +31,14 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
 
     const loadConversationMessages = async () => {
       try {
-        // Use explicit column selection and proper type casting to avoid deep TypeScript recursion
-        const response = await supabase
+        const { data, error } = await supabase
           .from('conversation_messages')
           .select('id, conversation_id, role, content, seq, ts')
           .eq('conversation_id', conversationId)
-          .order('seq', { ascending: true });
-
-        const { data, error } = response as {
-          data: ConversationMessage[] | null;
-          error: any;
-        };
+          .order('seq', { ascending: true }) as {
+            data: ConversationMessage[] | null;
+            error: any;
+          };
 
         if (error) {
           console.error('Error loading conversation messages:', error);

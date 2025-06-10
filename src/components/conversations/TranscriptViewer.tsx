@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
@@ -30,12 +31,17 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
 
     const loadConversationMessages = async () => {
       try {
-        // Use explicit type casting to work around TypeScript issues
-        const { data, error } = await (supabase as any)
+        // Use explicit column selection and proper type casting to avoid deep TypeScript recursion
+        const response = await supabase
           .from('conversation_messages')
           .select('id, conversation_id, role, content, seq, ts')
           .eq('conversation_id', conversationId)
           .order('seq', { ascending: true });
+
+        const { data, error } = response as {
+          data: ConversationMessage[] | null;
+          error: any;
+        };
 
         if (error) {
           console.error('Error loading conversation messages:', error);
@@ -86,7 +92,6 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
     }
   }, [displayMessages]);
   
-  // Search for matches when query changes
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setSearchResults([]);
@@ -104,7 +109,6 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
     setCurrentSearchIndex(matches.length > 0 ? 0 : -1);
   }, [searchQuery, displayMessages]);
   
-  // Scroll to current search result
   useEffect(() => {
     if (currentSearchIndex >= 0 && searchResults.length > 0) {
       const messageIndex = searchResults[currentSearchIndex];

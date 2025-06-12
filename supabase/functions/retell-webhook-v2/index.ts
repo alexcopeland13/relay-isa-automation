@@ -80,6 +80,54 @@ async function insertLiveMessage(supabaseClient: any, conversationId: string, ut
   }
 }
 
+// Helper to trigger AI processing
+async function triggerAIProcessing(supabaseClient: any, conversationId: string, transcript: string) {
+  try {
+    console.log('🤖 Triggering AI processor for conversation:', conversationId);
+    
+    // Set status to processing immediately
+    await supabaseClient
+      .from('conversations')
+      .update({ extraction_status: 'processing' })
+      .eq('id', conversationId);
+    
+    // Call the AI conversation processor
+    const { data, error } = await supabaseClient.functions.invoke('ai-conversation-processor', {
+      body: {
+        action: 'extract_entities',
+        data: {
+          conversation_id: conversationId,
+          transcript: transcript
+        }
+      }
+    });
+
+    if (error) {
+      console.error('❌ AI processor error:', error);
+      // Set status to failed and log error
+      await supabaseClient
+        .from('conversations')
+        .update({ extraction_status: 'failed' })
+        .eq('id', conversationId);
+      throw error;
+    }
+
+    console.log('✅ AI processor completed successfully:', data);
+    
+    // Status will be set to 'done' by the AI processor itself
+    return data;
+
+  } catch (error) {
+    console.error('❌ Error triggering AI processing:', error);
+    // Ensure status is set to failed
+    await supabaseClient
+      .from('conversations')
+      .update({ extraction_status: 'failed' })
+      .eq('id', conversationId);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -311,7 +359,7 @@ serve(async (req) => {
     } else if (eventType === 'call_ended') {
       console.log('🏁 Processing call_ended event');
       
-      // Update conversation with end status
+      // Update conversation with end status and set extraction_status to pending
       const { data: conversation, error: updateError } = await supabaseClient
         .from('conversations')
         .update({
@@ -362,7 +410,19 @@ serve(async (req) => {
         console.log('✅ Updated lead last_contacted timestamp');
       }
 
-      // Process post-call analysis data if available
+      // **PHASE 3: TRIGGER AI PROCESSING**
+      if (conversation && callData.transcript) {
+        console.log('🤖 Starting AI processing for completed conversation');
+        try {
+          await triggerAIProcessing(supabaseClient, conversation.id, callData.transcript);
+          console.log('✅ AI processing triggered successfully');
+        } catch (aiError) {
+          console.error('❌ AI processing failed:', aiError);
+          // Don't fail the webhook - just log the error
+        }
+      }
+
+      // Process post-call analysis data if available (legacy support)
       if (callData.post_call_analysis) {
         console.log('🤖 Processing post-call analysis data');
         await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, callData.post_call_analysis);

@@ -1,3 +1,5 @@
+import type { Database } from '@/integrations/supabase/types';
+
 export interface CategoryItem {
   value: string;
   confidence: number;
@@ -32,15 +34,8 @@ export interface Message {
   highlights?: (string | HighlightItem)[];
 }
 
-// New interface for conversation messages from database
-export interface ConversationMessage {
-  id: string;
-  conversation_id: string;
-  role: 'agent' | 'lead';
-  content: string;
-  seq: number;
-  ts: string;
-}
+// Use the generated Supabase type as the single source of truth
+export type ConversationMessage = Database['public']['Tables']['conversation_messages']['Row'];
 
 export interface ExtractedInfo {
   propertyInfo: {

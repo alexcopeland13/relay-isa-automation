@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ConversationMessage } from '@/types/conversation';
 
 interface RealtimeConversationData {
   id: string;
@@ -10,15 +11,6 @@ interface RealtimeConversationData {
   extraction_status: string;
   sentiment_score?: number;
   ended_at?: string;
-}
-
-interface ConversationMessage {
-  id: string;
-  conversation_id: string;
-  role: 'agent' | 'lead';
-  content: string;
-  seq: number;
-  ts: string;
 }
 
 export function useRealtimeConversations(conversationIds: string[]) {
@@ -100,9 +92,8 @@ export function useRealtimeConversations(conversationIds: string[]) {
         table: 'conversation_messages',
         filter: `conversation_id=in.(${conversationIds.join(',')})`
       }, (payload) => {
-        const message = payload.new as ConversationMessage;
-        
         if (payload.eventType === 'INSERT') {
+          const message = payload.new as ConversationMessage;
           setConversationMessages(prev => ({
             ...prev,
             [message.conversation_id]: [

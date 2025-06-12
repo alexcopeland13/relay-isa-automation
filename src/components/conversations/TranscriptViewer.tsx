@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
@@ -89,6 +88,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
     }
   }, [displayMessages]);
   
+  // search functionality
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setSearchResults([]);

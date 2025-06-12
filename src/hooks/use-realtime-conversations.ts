@@ -91,7 +91,7 @@ export function useRealtimeConversations(conversationIds: string[]) {
         }
       });
 
-    // Subscribe to conversation messages
+    // Subscribe to conversation messages using type casting
     messagesChannelRef.current = supabase
       .channel('conversation-messages-realtime')
       .on('postgres_changes', {

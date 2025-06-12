@@ -19,7 +19,7 @@ function normalizePhone(phone: string): string {
   }
 }
 
-function splitTranscriptToMessages(raw: string) {
+function splitTranscriptToMessages(raw: string, conversationId: string) {
   if (!raw) return [];
   
   return raw.split('\n')
@@ -39,12 +39,45 @@ function splitTranscriptToMessages(raw: string) {
       }
       
       return {
+        conversation_id: conversationId,
         role,
         content,
         seq: i
       };
     })
     .filter(m => m.content.length > 0);
+}
+
+// Helper to insert or update a single message during live transcript streaming
+async function insertLiveMessage(supabaseClient: any, conversationId: string, utterance: any, seq: number) {
+  try {
+    const role = utterance.speaker === 'agent' ? 'agent' : 'lead';
+    const content = utterance.content || utterance.text || '';
+    
+    if (!content.trim()) return;
+
+    const messageData = {
+      conversation_id: conversationId,
+      role,
+      content: content.trim(),
+      seq: seq
+    };
+
+    console.log('📝 Inserting live message:', messageData);
+
+    const { error } = await supabaseClient
+      .from('conversation_messages')
+      .insert(messageData);
+
+    if (error) {
+      console.error('❌ Error inserting live message:', error);
+    } else {
+      console.log('✅ Inserted live message for conversation:', conversationId);
+    }
+
+  } catch (error) {
+    console.error('❌ Error processing live message:', error);
+  }
 }
 
 serve(async (req) => {
@@ -238,6 +271,43 @@ serve(async (req) => {
 
       console.log('✅ Created initial extraction record');
 
+    } else if (eventType === 'transcript_update') {
+      console.log('📝 Processing transcript_update event (LIVE STREAMING)');
+      
+      // Find the conversation by call_id
+      const { data: conversation, error: findError } = await supabaseClient
+        .from('conversations')
+        .select('id')
+        .eq('call_sid', callData.call_id || callData.call?.call_id)
+        .single();
+
+      if (findError || !conversation) {
+        console.error('❌ Could not find conversation for transcript_update:', findError);
+        return new Response(JSON.stringify({ error: 'Conversation not found' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404,
+        });
+      }
+
+      // Handle live transcript streaming - insert individual utterances
+      if (callData.utterances && Array.isArray(callData.utterances)) {
+        console.log('📝 Processing', callData.utterances.length, 'live utterances');
+        
+        for (let i = 0; i < callData.utterances.length; i++) {
+          const utterance = callData.utterances[i];
+          await insertLiveMessage(supabaseClient, conversation.id, utterance, i);
+        }
+      } else if (callData.transcript) {
+        // Fallback: update conversation transcript if no structured utterances
+        console.log('📝 Updating conversation transcript (fallback)');
+        await supabaseClient
+          .from('conversations')
+          .update({ transcript: callData.transcript })
+          .eq('call_sid', callData.call_id || callData.call?.call_id);
+      }
+
+      console.log('✅ Processed transcript_update for conversation:', conversation.id);
+
     } else if (eventType === 'call_ended') {
       console.log('🏁 Processing call_ended event');
       
@@ -263,25 +333,22 @@ serve(async (req) => {
 
       console.log('✅ Updated conversation to completed:', conversation?.id);
 
-      // Split transcript into messages
+      // Final transcript processing - split and insert any missing messages
       if (callData.transcript && conversation) {
-        const messages = splitTranscriptToMessages(callData.transcript);
+        const messages = splitTranscriptToMessages(callData.transcript, conversation.id);
         if (messages.length > 0) {
-          const messageInserts = messages.map(m => ({
-            conversation_id: conversation.id,
-            role: m.role,
-            content: m.content,
-            seq: m.seq
-          }));
-
+          // Use upsert to avoid duplicates (in case some messages were already inserted via transcript_update)
           const { error: msgError } = await supabaseClient
             .from('conversation_messages')
-            .insert(messageInserts);
+            .upsert(messages, { 
+              onConflict: 'conversation_id,seq',
+              ignoreDuplicates: true
+            });
 
           if (msgError) {
-            console.error('❌ Error inserting conversation messages:', msgError);
+            console.error('❌ Error upserting final conversation messages:', msgError);
           } else {
-            console.log('✅ Inserted', messages.length, 'conversation messages');
+            console.log('✅ Upserted', messages.length, 'final conversation messages');
           }
         }
       }
@@ -333,23 +400,6 @@ serve(async (req) => {
         }
       }
       
-    } else if (eventType === 'transcript_update') {
-      console.log('📝 Processing transcript_update event');
-      
-      // Update conversation with latest transcript
-      const { error: transcriptError } = await supabaseClient
-        .from('conversations')
-        .update({
-          transcript: callData.transcript || null
-        })
-        .eq('call_sid', callData.call_id);
-
-      if (transcriptError) {
-        console.error('❌ Error updating transcript:', transcriptError);
-        throw transcriptError;
-      }
-
-      console.log('✅ Updated conversation transcript');
     } else {
       console.log('❓ Unknown event type received:', eventType);
     }

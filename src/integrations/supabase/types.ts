@@ -303,6 +303,44 @@ export type Database = {
           },
         ]
       }
+      conversation_messages: {
+        Row: {
+          content: string
+          conversation_id: string | null
+          created_at: string
+          id: string
+          role: string
+          seq: number
+          ts: string
+        }
+        Insert: {
+          content: string
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          role: string
+          seq?: number
+          ts?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          role?: string
+          seq?: number
+          ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           agent_id: string | null
@@ -312,6 +350,7 @@ export type Database = {
           direction: string | null
           duration: number | null
           ended_at: string | null
+          extraction_status: string | null
           id: string
           lead_id: string | null
           recording_url: string | null
@@ -327,6 +366,7 @@ export type Database = {
           direction?: string | null
           duration?: number | null
           ended_at?: string | null
+          extraction_status?: string | null
           id?: string
           lead_id?: string | null
           recording_url?: string | null
@@ -342,6 +382,7 @@ export type Database = {
           direction?: string | null
           duration?: number | null
           ended_at?: string | null
+          extraction_status?: string | null
           id?: string
           lead_id?: string | null
           recording_url?: string | null
@@ -947,6 +988,7 @@ export type Database = {
           direction: string | null
           duration: number | null
           ended_at: string | null
+          extraction_status: string | null
           id: string
           lead_id: string | null
           recording_url: string | null

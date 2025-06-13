@@ -11,26 +11,32 @@ export function normalizePhone(phone: string): string {
   }
 }
 
-export function splitTranscriptToMessages(raw: string) {
+export function splitTranscriptToMessages(raw: string, conversationId: string) {
   if (!raw) return [];
   
   return raw.split('\n')
     .map((line, i) => {
-      const isAgent = line.startsWith('Agent:') || line.startsWith('AI Agent:');
-      const isLead = line.startsWith('Lead:') || line.startsWith('Customer:') || line.startsWith('User:');
+      // More deterministic parsing - look for specific patterns
+      const agentMatch = line.match(/^(Agent|AI Agent):\s?(.+)$/);
+      const userMatch = line.match(/^(Lead|Customer|User):\s?(.+)$/);
       
       let role = 'lead'; // default
       let content = line.trim();
       
-      if (isAgent) {
+      if (agentMatch) {
         role = 'agent';
-        content = line.replace(/^(Agent|AI Agent):\s?/, '').trim();
-      } else if (isLead) {
+        content = agentMatch[2].trim();
+      } else if (userMatch) {
         role = 'lead';
-        content = line.replace(/^(Lead|Customer|User):\s?/, '').trim();
+        content = userMatch[2].trim();
+      } else if (line.trim()) {
+        // If no pattern matches but there's content, try to infer from context
+        // This is a fallback for malformed transcripts
+        content = line.trim();
       }
       
       return {
+        conversation_id: conversationId,
         role,
         content,
         seq: i

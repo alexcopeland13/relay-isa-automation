@@ -24,18 +24,22 @@ function splitTranscriptToMessages(raw: string, conversationId: string) {
   
   return raw.split('\n')
     .map((line, i) => {
-      const isAgent = line.startsWith('Agent:') || line.startsWith('AI Agent:');
-      const isLead = line.startsWith('Lead:') || line.startsWith('Customer:') || line.startsWith('User:');
+      // More deterministic parsing - look for specific patterns
+      const agentMatch = line.match(/^(Agent|AI Agent):\s?(.+)$/);
+      const userMatch = line.match(/^(Lead|Customer|User):\s?(.+)$/);
       
       let role = 'lead'; // default
       let content = line.trim();
       
-      if (isAgent) {
+      if (agentMatch) {
         role = 'agent';
-        content = line.replace(/^(Agent|AI Agent):\s?/, '').trim();
-      } else if (isLead) {
+        content = agentMatch[2].trim();
+      } else if (userMatch) {
         role = 'lead';
-        content = line.replace(/^(Lead|Customer|User):\s?/, '').trim();
+        content = userMatch[2].trim();
+      } else if (line.trim()) {
+        // If no pattern matches but there's content, try to infer from context
+        content = line.trim();
       }
       
       return {
@@ -84,6 +88,16 @@ async function insertLiveMessage(supabaseClient: any, conversationId: string, ut
 async function triggerAIProcessing(supabaseClient: any, conversationId: string, transcript: string) {
   try {
     console.log('🤖 Triggering AI processor for conversation:', conversationId);
+    
+    // Skip if transcript is empty
+    if (!transcript || transcript.trim() === '') {
+      console.log('⚠️ Skipping AI processing - empty transcript');
+      await supabaseClient
+        .from('conversations')
+        .update({ extraction_status: 'skipped' })
+        .eq('id', conversationId);
+      return;
+    }
     
     // Set status to processing immediately
     await supabaseClient
@@ -385,7 +399,9 @@ serve(async (req) => {
       if (callData.transcript && conversation) {
         const messages = splitTranscriptToMessages(callData.transcript, conversation.id);
         if (messages.length > 0) {
-          // Use upsert to avoid duplicates (in case some messages were already inserted via transcript_update)
+          console.log(`📝 Parsed ${messages.length} messages for ${conversation.id}`);
+          
+          // Use upsert with ON CONFLICT to avoid duplicates
           const { error: msgError } = await supabaseClient
             .from('conversation_messages')
             .upsert(messages, { 

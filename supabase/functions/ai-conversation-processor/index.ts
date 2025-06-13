@@ -2,6 +2,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Import zod for JSON validation
+// @deno-types="https://deno.land/x/zod@v3.22.4/index.d.ts"
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
 // Import retry utility
 interface RetryOptions {
   retries: number;
@@ -55,6 +59,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Define the expected extraction schema
+const ExtractionSchema = z.object({
+  name: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  phone: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  email: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  property_type: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  price_range: z.object({
+    min: z.number(),
+    max: z.number(),
+    confidence: z.number()
+  }).optional(),
+  timeline: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  pre_approval_status: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  lead_temperature: z.object({
+    value: z.string(),
+    confidence: z.number()
+  }).optional(),
+  primary_concerns: z.array(z.any()).optional(),
+  interested_properties: z.array(z.any()).optional(),
+  requested_actions: z.array(z.any()).optional()
+});
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -74,6 +118,22 @@ serve(async (req) => {
       const { conversation_id, transcript } = data;
       
       console.log('🔄 Processing conversation:', conversation_id);
+      
+      // Guard against empty transcript
+      if (!transcript || transcript.trim() === '') {
+        console.log('⚠️ Empty transcript, skipping extraction');
+        await supabaseClient
+          .from('conversations')
+          .update({ extraction_status: 'skipped' })
+          .eq('id', conversation_id);
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Skipped extraction - empty transcript'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       
       // Update status to processing
       await supabaseClient
@@ -112,10 +172,10 @@ serve(async (req) => {
       } catch (error) {
         console.error('❌ Error in entity extraction:', error);
         
-        // Mark as pending for retry
+        // Mark as failed
         await supabaseClient
           .from('conversations')
-          .update({ extraction_status: 'pending' })
+          .update({ extraction_status: 'failed' })
           .eq('id', conversation_id);
           
         throw error;
@@ -142,6 +202,18 @@ async function extractEntitiesFromTranscript(transcript: string) {
     throw new Error('OpenAI API key not configured');
   }
 
+  // Chunk transcript if too long (rough estimate: 1 token ≈ 4 chars)
+  const maxLength = 20000; // roughly 5k tokens
+  let processedTransript = transcript;
+  
+  if (transcript.length > maxLength) {
+    console.log('📏 Transcript too long, chunking...');
+    // Take the first and last portions to get opening and closing
+    const firstPart = transcript.substring(0, maxLength / 2);
+    const lastPart = transcript.substring(transcript.length - maxLength / 2);
+    processedTransript = `${firstPart}\n...[transcript truncated]...\n${lastPart}`;
+  }
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -153,25 +225,30 @@ async function extractEntitiesFromTranscript(transcript: string) {
       messages: [
         {
           role: 'system',
-          content: `Extract structured data from this real estate conversation transcript. Return a JSON object with these fields:
-          - name: {value: string, confidence: number} - Lead's full name
-          - phone: {value: string, confidence: number} - Phone number in E.164 format
-          - email: {value: string, confidence: number} - Email address
-          - property_type: {value: string, confidence: number} - Type of property interested in
-          - price_range: {min: number, max: number, confidence: number} - Price range
-          - timeline: {value: string, confidence: number} - Buying timeline
-          - pre_approval_status: {value: string, confidence: number} - Pre-approval status
-          - lead_temperature: {value: string, confidence: number} - hot/warm/cool/cold
-          - primary_concerns: array of concern objects
-          - interested_properties: array of property objects
-          - requested_actions: array of action objects`
+          content: `Extract structured data from this real estate conversation transcript. Return ONLY valid JSON with these fields:
+          {
+            "name": {"value": "string", "confidence": 0.8},
+            "phone": {"value": "string", "confidence": 0.8},
+            "email": {"value": "string", "confidence": 0.8},
+            "property_type": {"value": "string", "confidence": 0.8},
+            "price_range": {"min": 400000, "max": 500000, "confidence": 0.8},
+            "timeline": {"value": "string", "confidence": 0.8},
+            "pre_approval_status": {"value": "string", "confidence": 0.8},
+            "lead_temperature": {"value": "hot|warm|cool|cold", "confidence": 0.8},
+            "primary_concerns": [],
+            "interested_properties": [],
+            "requested_actions": []
+          }
+          
+          Return only the JSON object, no other text. If a field is not found, omit it entirely.`
         },
         {
           role: 'user',
-          content: transcript
+          content: processedTransript
         }
       ],
       temperature: 0.1,
+      max_tokens: 1000,
     }),
   });
 
@@ -182,10 +259,31 @@ async function extractEntitiesFromTranscript(transcript: string) {
   const result = await response.json();
   const content = result.choices[0].message.content;
   
+  console.log('🔍 Raw OpenAI response:', content);
+  
   try {
-    return JSON.parse(content);
-  } catch {
-    throw new Error('Failed to parse OpenAI response as JSON');
+    const parsed = JSON.parse(content);
+    // Validate the parsed JSON against our schema
+    const validated = ExtractionSchema.parse(parsed);
+    return validated;
+  } catch (parseError) {
+    console.error('❌ JSON parsing failed:', parseError);
+    console.error('❌ Raw content:', content);
+    
+    // Try to extract JSON from the content if it's wrapped in markdown or other text
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const extracted = JSON.parse(jsonMatch[0]);
+        const validated = ExtractionSchema.parse(extracted);
+        return validated;
+      } catch (secondParseError) {
+        console.error('❌ Second JSON parsing attempt failed:', secondParseError);
+      }
+    }
+    
+    // If all parsing fails, log and set extraction status to failed
+    throw new Error('Failed to parse OpenAI response as valid JSON');
   }
 }
 

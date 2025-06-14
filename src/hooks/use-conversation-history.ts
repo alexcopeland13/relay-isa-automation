@@ -27,6 +27,18 @@ export function useConversationHistory(leadId?: string) {
     try {
       console.log('📞 Fetching conversation history for lead:', leadId);
       
+      // First, let's check if we have any conversations at all
+      const { data: allConversations, error: countError } = await supabase
+        .from('conversations')
+        .select('id, lead_id, call_status')
+        .limit(10);
+      
+      console.log('📊 Total conversations in database:', allConversations?.length || 0, allConversations);
+      
+      if (countError) {
+        console.error('❌ Error counting conversations:', countError);
+      }
+
       let query = supabase
         .from('conversations')
         .select(`
@@ -51,30 +63,39 @@ export function useConversationHistory(leadId?: string) {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error in main query:', error);
+        throw error;
+      }
 
-      const historyData: ConversationHistory[] = (data || []).map(conv => ({
-        id: conv.id,
-        created_at: conv.created_at,
-        call_sid: conv.call_sid,
-        direction: conv.direction || 'inbound',
-        duration: conv.duration || 0,
-        call_status: conv.call_status,
-        transcript: conv.transcript || '',
-        sentiment_score: conv.sentiment_score || 0,
-        recording_url: conv.recording_url || '',
-        lead_id: conv.lead_id,
-        lead_name: conv.leads ? 
-          `${conv.leads.first_name || ''} ${conv.leads.last_name || ''}`.trim() : 
-          'Unknown',
-        extractions: conv.conversation_extractions || []
-      }));
+      console.log('📋 Raw conversation data from query:', data);
 
+      const historyData: ConversationHistory[] = (data || []).map(conv => {
+        console.log('🔍 Processing conversation:', conv.id, conv);
+        
+        return {
+          id: conv.id,
+          created_at: conv.created_at,
+          call_sid: conv.call_sid || 'unknown',
+          direction: conv.direction || 'inbound',
+          duration: conv.duration || 0,
+          call_status: conv.call_status || 'completed',
+          transcript: conv.transcript || '',
+          sentiment_score: conv.sentiment_score || 0,
+          recording_url: conv.recording_url || '',
+          lead_id: conv.lead_id || 'unknown',
+          lead_name: conv.leads ? 
+            `${conv.leads.first_name || ''} ${conv.leads.last_name || ''}`.trim() : 
+            'Unknown Lead',
+          extractions: conv.conversation_extractions || []
+        };
+      });
+
+      console.log('✅ Processed conversation history:', historyData.length, historyData);
       setConversations(historyData);
-      console.log('📊 Conversation history loaded:', historyData.length);
 
     } catch (error) {
-      console.error('Error fetching conversation history:', error);
+      console.error('❌ Error fetching conversation history:', error);
       toast({
         title: "Error Loading History",
         description: "Could not load conversation history.",
@@ -99,6 +120,7 @@ export function useConversationHistory(leadId?: string) {
           table: 'conversations'
         },
         () => {
+          console.log('📡 Real-time update detected, refetching conversation history');
           fetchConversationHistory();
         }
       )

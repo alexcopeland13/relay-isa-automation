@@ -69,14 +69,26 @@ async function insertLiveMessage(supabaseClient: any, conversationId: string, ut
 
     console.log('📝 Inserting live message:', messageData);
 
+    // Use upsert with the new unique constraint
     const { error } = await supabaseClient
       .from('conversation_messages')
-      .insert(messageData);
+      .upsert(messageData, {
+        onConflict: 'conversation_id,seq',
+        ignoreDuplicates: false
+      });
 
     if (error) {
-      console.error('❌ Error inserting live message:', error);
+      console.error('❌ Error upserting live message:', error);
+      // Fallback to insert
+      const { error: insertError } = await supabaseClient
+        .from('conversation_messages')
+        .insert(messageData);
+      
+      if (insertError) {
+        console.error('❌ Error inserting live message fallback:', insertError);
+      }
     } else {
-      console.log('✅ Inserted live message for conversation:', conversationId);
+      console.log('✅ Upserted live message for conversation:', conversationId);
     }
 
   } catch (error) {
@@ -395,22 +407,32 @@ serve(async (req) => {
 
       console.log('✅ Updated conversation to completed:', conversation?.id);
 
-      // Final transcript processing - split and insert any missing messages
+      // Final transcript processing - split and upsert any missing messages
       if (callData.transcript && conversation) {
         const messages = splitTranscriptToMessages(callData.transcript, conversation.id);
         if (messages.length > 0) {
           console.log(`📝 Parsed ${messages.length} messages for ${conversation.id}`);
           
-          // Use upsert with ON CONFLICT to avoid duplicates
+          // Use upsert with the new unique constraint
           const { error: msgError } = await supabaseClient
             .from('conversation_messages')
             .upsert(messages, { 
               onConflict: 'conversation_id,seq',
-              ignoreDuplicates: true
+              ignoreDuplicates: false
             });
 
           if (msgError) {
             console.error('❌ Error upserting final conversation messages:', msgError);
+            // Fallback to batch insert
+            for (const message of messages) {
+              try {
+                await supabaseClient
+                  .from('conversation_messages')
+                  .insert(message);
+              } catch (insertError) {
+                console.error('❌ Error inserting individual message:', insertError);
+              }
+            }
           } else {
             console.log('✅ Upserted', messages.length, 'final conversation messages');
           }

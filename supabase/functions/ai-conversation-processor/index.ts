@@ -152,7 +152,7 @@ serve(async (req) => {
         // Upsert lead from entities
         const leadId = await upsertLeadFromEntities(entities, conversation_id, supabaseClient);
         
-        // Persist extraction data
+        // Persist extraction data with improved error handling
         await persistExtraction(conversation_id, leadId, entities, supabaseClient);
         
         // Mark as done
@@ -379,17 +379,30 @@ async function persistExtraction(conversationId: string, leadId: string, entitie
     raw_extraction_data: entities
   };
 
-  const { error } = await supabaseClient
-    .from('conversation_extractions')
-    .upsert(extractionData, {
-      onConflict: 'conversation_id',
-      ignoreDuplicates: false
-    });
+  try {
+    const { error } = await supabaseClient
+      .from('conversation_extractions')
+      .upsert(extractionData, {
+        onConflict: 'conversation_id',
+        ignoreDuplicates: false
+      });
 
-  if (error) {
-    console.error('❌ Error persisting extraction:', error);
-    throw error;
+    if (error) {
+      console.error('❌ Error persisting extraction:', error);
+      // Try insert instead if upsert fails
+      const { error: insertError } = await supabaseClient
+        .from('conversation_extractions')
+        .insert(extractionData);
+      
+      if (insertError) {
+        console.error('❌ Error inserting extraction:', insertError);
+        throw insertError;
+      }
+    }
+
+    console.log('✅ Persisted extraction data');
+  } catch (error) {
+    console.error('❌ Final error persisting extraction:', error);
+    // Don't throw - let the conversation processing continue
   }
-
-  console.log('✅ Persisted extraction data');
 }

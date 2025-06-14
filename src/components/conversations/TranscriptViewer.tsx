@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
@@ -23,6 +22,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [activeView, setActiveView] = useState<'all' | 'highlights' | 'questions'>('all');
   const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
   
   // Load conversation messages if conversationId is provided
@@ -31,21 +31,26 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
 
     const loadConversationMessages = async () => {
       try {
+        setIsLoading(true);
+        console.log('🔍 Loading messages for conversation:', conversationId);
+        
         const { data, error } = await supabase
           .from('conversation_messages')
           .select('id, conversation_id, role, content, seq, ts')
           .eq('conversation_id', conversationId)
-          .order('seq', { ascending: true })
-          .returns<ConversationMessage[]>();
+          .order('seq', { ascending: true });
 
         if (error) {
-          console.error('Error loading conversation messages:', error);
+          console.error('❌ Error loading conversation messages:', error);
           return;
         }
 
+        console.log('✅ Loaded conversation messages:', data?.length || 0);
         setConversationMessages(data || []);
       } catch (error) {
-        console.error('Error loading conversation messages:', error);
+        console.error('❌ Error loading conversation messages:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -60,10 +65,19 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         table: 'conversation_messages',
         filter: `conversation_id=eq.${conversationId}`
       }, (payload) => {
+        console.log('📡 Real-time message update:', payload);
         if (payload.eventType === 'INSERT') {
           const newMessage = payload.new as ConversationMessage;
+          setConversationMessages(prev => {
+            const exists = prev.some(msg => msg.id === newMessage.id);
+            if (exists) return prev;
+            return [...prev, newMessage].sort((a, b) => a.seq - b.seq);
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedMessage = payload.new as ConversationMessage;
           setConversationMessages(prev => 
-            [...prev, newMessage].sort((a, b) => a.seq - b.seq)
+            prev.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
+              .sort((a, b) => a.seq - b.seq)
           );
         }
       })
@@ -154,6 +168,15 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
     return true;
   });
 
+  // Debug logging
+  console.log('🔍 TranscriptViewer Debug:', {
+    conversationId,
+    conversationMessagesCount: conversationMessages.length,
+    displayMessagesCount: displayMessages.length,
+    filteredMessagesCount: filteredMessages.length,
+    isLoading
+  });
+
   return (
     <div className="flex flex-col h-full border rounded-md overflow-hidden">
       {/* Transcript toolbar */}
@@ -197,7 +220,12 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
       {/* Message area */}
       <ScrollArea className="flex-1 px-4 py-2">
         <div className="space-y-2 pb-4">
-          {filteredMessages.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center text-muted-foreground py-8 flex flex-col items-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-4" />
+              <p>Loading conversation messages...</p>
+            </div>
+          ) : filteredMessages.length > 0 ? (
             filteredMessages.map((message, index) => (
               <MessageBubble
                 key={message.id || index}
@@ -220,7 +248,11 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
                   <MessageSquare className="h-8 w-8 mb-2 opacity-40" />
                   <p>No messages available in this conversation.</p>
                   {conversationId && (
-                    <p className="text-xs mt-1">Transcript will appear here once the conversation begins.</p>
+                    <div className="text-xs mt-2 space-y-1">
+                      <p>Conversation ID: {conversationId}</p>
+                      <p>Messages in DB: {conversationMessages.length}</p>
+                      <p>Transcript will appear here once messages are processed.</p>
+                    </div>
                   )}
                 </>
               ) : activeView === 'highlights' ? (

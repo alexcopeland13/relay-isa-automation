@@ -25,6 +25,14 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
   const [showNotification, setShowNotification] = useState(true);
   const { toast } = useToast();
   
+  // Debug logging for conversation data
+  console.log('📋 ConversationInterface received conversation:', {
+    id: conversation?.id,
+    leadInfoId: conversation?.leadInfo?.id,
+    hasMessages: conversation?.messages?.length || 0,
+    hasTranscript: !!conversation?.transcript
+  });
+  
   // Integrate with our hooks
   const { 
     conversationData, 
@@ -98,6 +106,7 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
 
   // Ensure we have the transcript messages for TranscriptViewer
   const transcriptMessages = conversation?.messages || [];
+  const conversationId = conversation?.id;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-15rem)]">
@@ -133,7 +142,10 @@ export const ConversationInterface = ({ conversation }: { conversation: any }) =
             
             <div className="flex-1">
               <TabsContent value="transcript" className="h-full m-0 p-0">
-                <TranscriptViewer messages={transcriptMessages} />
+                <TranscriptViewer 
+                  messages={transcriptMessages} 
+                  conversationId={conversationId}
+                />
               </TabsContent>
               
               <TabsContent value="insights" className="h-full m-0 p-4">

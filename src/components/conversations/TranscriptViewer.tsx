@@ -46,9 +46,14 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         }
 
         console.log('✅ Loaded conversation messages:', data?.length || 0, data);
-        // Map the data to match our interface, handling missing created_at
+        // Map the data to match our interface, handling missing created_at and type casting
         const mappedMessages: ConversationMessage[] = (data || []).map(msg => ({
-          ...msg,
+          id: msg.id,
+          conversation_id: msg.conversation_id,
+          role: msg.role as 'agent' | 'lead', // Type cast the role
+          content: msg.content,
+          seq: msg.seq,
+          ts: msg.ts,
           created_at: msg.created_at || msg.ts // Fallback to ts if created_at is missing
         }));
         setConversationMessages(mappedMessages);
@@ -72,24 +77,36 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
       }, (payload) => {
         console.log('📡 Real-time message update:', payload);
         if (payload.eventType === 'INSERT') {
-          const newMessage = payload.new as ConversationMessage;
-          // Ensure created_at is set
-          if (!newMessage.created_at) {
-            newMessage.created_at = newMessage.ts;
-          }
+          const newMessage = payload.new as any;
+          // Convert to our typed interface
+          const typedMessage: ConversationMessage = {
+            id: newMessage.id,
+            conversation_id: newMessage.conversation_id,
+            role: newMessage.role as 'agent' | 'lead',
+            content: newMessage.content,
+            seq: newMessage.seq,
+            ts: newMessage.ts,
+            created_at: newMessage.created_at || newMessage.ts
+          };
           setConversationMessages(prev => {
-            const exists = prev.some(msg => msg.id === newMessage.id);
+            const exists = prev.some(msg => msg.id === typedMessage.id);
             if (exists) return prev;
-            return [...prev, newMessage].sort((a, b) => a.seq - b.seq);
+            return [...prev, typedMessage].sort((a, b) => a.seq - b.seq);
           });
         } else if (payload.eventType === 'UPDATE') {
-          const updatedMessage = payload.new as ConversationMessage;
-          // Ensure created_at is set
-          if (!updatedMessage.created_at) {
-            updatedMessage.created_at = updatedMessage.ts;
-          }
+          const updatedMessage = payload.new as any;
+          // Convert to our typed interface
+          const typedMessage: ConversationMessage = {
+            id: updatedMessage.id,
+            conversation_id: updatedMessage.conversation_id,
+            role: updatedMessage.role as 'agent' | 'lead',
+            content: updatedMessage.content,
+            seq: updatedMessage.seq,
+            ts: updatedMessage.ts,
+            created_at: updatedMessage.created_at || updatedMessage.ts
+          };
           setConversationMessages(prev => 
-            prev.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
+            prev.map(msg => msg.id === typedMessage.id ? typedMessage : msg)
               .sort((a, b) => a.seq - b.seq)
           );
         }

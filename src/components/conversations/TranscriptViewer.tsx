@@ -36,7 +36,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         
         const { data, error } = await supabase
           .from('conversation_messages')
-          .select('id, conversation_id, role, content, seq, ts')
+          .select('id, conversation_id, role, content, seq, ts, created_at')
           .eq('conversation_id', conversationId)
           .order('seq', { ascending: true });
 
@@ -45,8 +45,13 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
           return;
         }
 
-        console.log('✅ Loaded conversation messages:', data?.length || 0);
-        setConversationMessages(data || []);
+        console.log('✅ Loaded conversation messages:', data?.length || 0, data);
+        // Map the data to match our interface, handling missing created_at
+        const mappedMessages: ConversationMessage[] = (data || []).map(msg => ({
+          ...msg,
+          created_at: msg.created_at || msg.ts // Fallback to ts if created_at is missing
+        }));
+        setConversationMessages(mappedMessages);
       } catch (error) {
         console.error('❌ Error loading conversation messages:', error);
       } finally {
@@ -68,6 +73,10 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         console.log('📡 Real-time message update:', payload);
         if (payload.eventType === 'INSERT') {
           const newMessage = payload.new as ConversationMessage;
+          // Ensure created_at is set
+          if (!newMessage.created_at) {
+            newMessage.created_at = newMessage.ts;
+          }
           setConversationMessages(prev => {
             const exists = prev.some(msg => msg.id === newMessage.id);
             if (exists) return prev;
@@ -75,6 +84,10 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
           });
         } else if (payload.eventType === 'UPDATE') {
           const updatedMessage = payload.new as ConversationMessage;
+          // Ensure created_at is set
+          if (!updatedMessage.created_at) {
+            updatedMessage.created_at = updatedMessage.ts;
+          }
           setConversationMessages(prev => 
             prev.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
               .sort((a, b) => a.seq - b.seq)

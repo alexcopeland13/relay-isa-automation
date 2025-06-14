@@ -34,8 +34,16 @@ export interface Message {
   highlights?: (string | HighlightItem)[];
 }
 
-// Use the generated Supabase type as the single source of truth
-export type ConversationMessage = Database['public']['Tables']['conversation_messages']['Row'];
+// Use a custom interface that makes created_at optional for our UI needs
+export interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: 'agent' | 'lead';
+  content: string;
+  seq: number;
+  ts: string;
+  created_at?: string; // Make this optional for now
+}
 
 export interface ExtractedInfo {
   propertyInfo: {

@@ -354,6 +354,8 @@ export type Database = {
           id: string
           lead_id: string | null
           recording_url: string | null
+          retell_call_analysis: Json | null
+          retell_call_data: Json | null
           sentiment_score: number | null
           started_at: string | null
           transcript: string | null
@@ -370,6 +372,8 @@ export type Database = {
           id?: string
           lead_id?: string | null
           recording_url?: string | null
+          retell_call_analysis?: Json | null
+          retell_call_data?: Json | null
           sentiment_score?: number | null
           started_at?: string | null
           transcript?: string | null
@@ -386,6 +390,8 @@ export type Database = {
           id?: string
           lead_id?: string | null
           recording_url?: string | null
+          retell_call_analysis?: Json | null
+          retell_call_data?: Json | null
           sentiment_score?: number | null
           started_at?: string | null
           transcript?: string | null
@@ -992,6 +998,8 @@ export type Database = {
           id: string
           lead_id: string | null
           recording_url: string | null
+          retell_call_analysis: Json | null
+          retell_call_data: Json | null
           sentiment_score: number | null
           started_at: string | null
           transcript: string | null

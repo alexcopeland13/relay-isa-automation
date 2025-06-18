@@ -1,26 +1,30 @@
 
-import { parsePhoneNumber } from 'libphonenumber-js';
 import { ConversationMessage, Message } from '@/types/conversation';
 
-export function normalizePhone(phone: string): string {
-  try {
-    const parsed = parsePhoneNumber(phone, 'US');
-    return parsed.number;
-  } catch {
-    return phone;
-  }
+// Convert conversation messages from database to display format
+export function convertConversationMessagesToDisplayMessages(
+  conversationMessages: ConversationMessage[]
+): Message[] {
+  return conversationMessages.map(msg => ({
+    id: msg.id,
+    content: msg.content,
+    role: msg.role === 'agent' ? 'ai' : 'user',
+    timestamp: msg.ts || msg.created_at || new Date().toISOString(),
+    sentiment: undefined,
+    highlights: []
+  }));
 }
 
-export function splitTranscriptToMessages(raw: string, conversationId: string) {
-  if (!raw) return [];
+// Parse legacy transcript text to conversation messages (fallback)
+export function parseTranscriptToMessages(transcript: string, conversationId: string): ConversationMessage[] {
+  if (!transcript) return [];
   
-  return raw.split('\n')
+  return transcript.split('\n')
     .map((line, i) => {
-      // More deterministic parsing - look for specific patterns
       const agentMatch = line.match(/^(Agent|AI Agent):\s?(.+)$/);
       const userMatch = line.match(/^(Lead|Customer|User):\s?(.+)$/);
       
-      let role = 'lead'; // default
+      let role: 'agent' | 'lead' = 'lead';
       let content = line.trim();
       
       if (agentMatch) {
@@ -30,29 +34,18 @@ export function splitTranscriptToMessages(raw: string, conversationId: string) {
         role = 'lead';
         content = userMatch[2].trim();
       } else if (line.trim()) {
-        // If no pattern matches but there's content, try to infer from context
-        // This is a fallback for malformed transcripts
         content = line.trim();
       }
       
       return {
+        id: `${conversationId}-${i}`,
         conversation_id: conversationId,
         role,
         content,
-        seq: i
+        seq: i,
+        ts: new Date().toISOString(),
+        created_at: new Date().toISOString()
       };
     })
     .filter(m => m.content.length > 0);
-}
-
-// Adapter to convert database rows to our Message interface
-export function convertConversationMessagesToDisplayMessages(messages: ConversationMessage[]): Message[] {
-  return messages.map((msg) => ({
-    id: msg.id,
-    content: msg.content,
-    role: msg.role === 'agent' ? 'ai' : 'user',
-    timestamp: new Date(msg.ts).toLocaleTimeString(),
-    sentiment: undefined,
-    highlights: undefined
-  }));
 }

@@ -19,6 +19,60 @@ function normalizePhone(phone: string): string {
   }
 }
 
+// Enhanced function to fetch complete call data from Retell API
+async function fetchCompleteCallData(callId: string) {
+  try {
+    console.log('🔍 Fetching complete call data from Retell API for:', callId);
+    
+    const retellApiKey = Deno.env.get('RETELL_API_KEY');
+    if (!retellApiKey) {
+      throw new Error('RETELL_API_KEY not found in environment');
+    }
+    
+    const response = await fetch(`https://api.retellai.com/get-call/${callId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${retellApiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Retell API responded with status: ${response.status}`);
+    }
+    
+    const callData = await response.json();
+    console.log('✅ Complete call data fetched:', {
+      call_id: callData.call_id,
+      has_transcript_object: !!callData.transcript_object,
+      has_call_analysis: !!callData.call_analysis,
+      transcript_utterances: callData.transcript_object?.length || 0,
+      call_analysis_keys: callData.call_analysis ? Object.keys(callData.call_analysis) : []
+    });
+    
+    return callData;
+  } catch (error) {
+    console.error('❌ Error fetching complete call data:', error);
+    throw error;
+  }
+}
+
+// Helper to convert Retell transcript_object to our conversation messages format
+function convertRetellTranscriptToMessages(transcriptObject: any[], conversationId: string) {
+  if (!transcriptObject || !Array.isArray(transcriptObject)) {
+    console.log('⚠️ No transcript_object available, skipping conversion');
+    return [];
+  }
+
+  return transcriptObject.map((utterance, index) => ({
+    conversation_id: conversationId,
+    role: utterance.role === 'agent' ? 'agent' : 'lead',
+    content: utterance.content || '',
+    seq: index,
+    ts: new Date(utterance.timestamp).toISOString()
+  }));
+}
+
 function splitTranscriptToMessages(raw: string, conversationId: string) {
   if (!raw) return [];
   
@@ -165,7 +219,7 @@ serve(async (req) => {
       status: 'Retell webhook v2 endpoint is active',
       timestamp: new Date().toISOString(),
       method: 'GET',
-      version: 'v2'
+      version: 'v2-enhanced'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
@@ -173,7 +227,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('=== RETELL WEBHOOK V2 RECEIVED ===');
+    console.log('=== RETELL WEBHOOK V2 ENHANCED RECEIVED ===');
     console.log('Method:', req.method);
     console.log('URL:', req.url);
     console.log('Headers:', Object.fromEntries(req.headers.entries()));
@@ -193,7 +247,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           status: 'success', 
           message: 'Empty body received, likely a health check',
-          version: 'v2'
+          version: 'v2-enhanced'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
@@ -212,16 +266,16 @@ serve(async (req) => {
       });
     }
 
-    // Log webhook event for debugging - with v2 marker
+    // Log webhook event for debugging - with v2-enhanced marker
     await supabaseClient
       .from('webhook_events')
       .insert({
-        provider: 'retell-v2',
+        provider: 'retell-v2-enhanced',
         event_id: body.call?.call_id || body.event || 'unknown',
         payload: body
       });
 
-    console.log('✅ Webhook event logged to database with retell-v2 provider');
+    console.log('✅ Webhook event logged to database with retell-v2-enhanced provider');
 
     // Handle different webhook formats with enhanced logging
     let eventType, callData;
@@ -321,7 +375,7 @@ serve(async (req) => {
           call_status: 'active',
           extraction_status: 'pending',
           started_at: new Date().toISOString(),
-          agent_id: 'retell_ai_v2'
+          agent_id: 'retell_ai_v2_enhanced'
         })
         .select()
         .single();
@@ -340,7 +394,7 @@ serve(async (req) => {
           conversation_id: conversation.id,
           lead_id: phoneMapping?.lead_id || null,
           extraction_timestamp: new Date().toISOString(),
-          extraction_version: '2.0'
+          extraction_version: '2.0-enhanced'
         });
 
       console.log('✅ Created initial extraction record');
@@ -383,19 +437,39 @@ serve(async (req) => {
       console.log('✅ Processed transcript_update for conversation:', conversation.id);
 
     } else if (eventType === 'call_ended') {
-      console.log('🏁 Processing call_ended event');
+      console.log('🏁 Processing call_ended event - ENHANCED WITH COMPLETE CALL DATA FETCH');
       
-      // Update conversation with end status and set extraction_status to pending
+      // **ENHANCED: Fetch complete call data from Retell API**
+      let completeCallData;
+      try {
+        completeCallData = await fetchCompleteCallData(callData.call_id);
+        console.log('✅ Enhanced call data fetched successfully');
+      } catch (error) {
+        console.error('❌ Failed to fetch complete call data, using webhook data:', error);
+        completeCallData = callData;
+      }
+      
+      // Update conversation with enhanced data
+      const conversationUpdate: any = {
+        call_status: 'completed',
+        ended_at: new Date().toISOString(),
+        duration: completeCallData.duration_ms ? Math.round(completeCallData.duration_ms / 1000) : 0,
+        recording_url: completeCallData.recording_url || null,
+        transcript: completeCallData.transcript || null,
+        extraction_status: 'pending',
+        // Store complete Retell data as JSONB
+        retell_call_data: completeCallData
+      };
+
+      // Add call analysis if available
+      if (completeCallData.call_analysis) {
+        conversationUpdate.retell_call_analysis = completeCallData.call_analysis;
+        console.log('📊 Retell call analysis available:', Object.keys(completeCallData.call_analysis));
+      }
+
       const { data: conversation, error: updateError } = await supabaseClient
         .from('conversations')
-        .update({
-          call_status: 'completed',
-          ended_at: new Date().toISOString(),
-          duration: callData.duration_ms ? Math.round(callData.duration_ms / 1000) : 0,
-          recording_url: callData.recording_url || null,
-          transcript: callData.transcript || null,
-          extraction_status: 'pending' // Set to pending for AI processing
-        })
+        .update(conversationUpdate)
         .eq('call_sid', callData.call_id)
         .select()
         .single();
@@ -405,15 +479,35 @@ serve(async (req) => {
         throw updateError;
       }
 
-      console.log('✅ Updated conversation to completed:', conversation?.id);
+      console.log('✅ Updated conversation with enhanced data:', conversation?.id);
 
-      // Final transcript processing - split and upsert any missing messages
-      if (callData.transcript && conversation) {
-        const messages = splitTranscriptToMessages(callData.transcript, conversation.id);
+      // **ENHANCED: Use transcript_object if available for structured messages**
+      if (completeCallData.transcript_object && Array.isArray(completeCallData.transcript_object)) {
+        console.log(`📝 Using Retell's structured transcript_object with ${completeCallData.transcript_object.length} utterances`);
+        
+        const structuredMessages = convertRetellTranscriptToMessages(completeCallData.transcript_object, conversation.id);
+        
+        if (structuredMessages.length > 0) {
+          const { error: msgError } = await supabaseClient
+            .from('conversation_messages')
+            .upsert(structuredMessages, { 
+              onConflict: 'conversation_id,seq',
+              ignoreDuplicates: false
+            });
+
+          if (msgError) {
+            console.error('❌ Error upserting structured conversation messages:', msgError);
+          } else {
+            console.log('✅ Upserted', structuredMessages.length, 'structured conversation messages');
+          }
+        }
+      } else if (completeCallData.transcript && conversation) {
+        // Fallback to parsing text transcript
+        console.log('📝 Falling back to parsing text transcript');
+        const messages = splitTranscriptToMessages(completeCallData.transcript, conversation.id);
         if (messages.length > 0) {
           console.log(`📝 Parsed ${messages.length} messages for ${conversation.id}`);
           
-          // Use upsert with the new unique constraint
           const { error: msgError } = await supabaseClient
             .from('conversation_messages')
             .upsert(messages, { 
@@ -423,16 +517,6 @@ serve(async (req) => {
 
           if (msgError) {
             console.error('❌ Error upserting final conversation messages:', msgError);
-            // Fallback to batch insert
-            for (const message of messages) {
-              try {
-                await supabaseClient
-                  .from('conversation_messages')
-                  .insert(message);
-              } catch (insertError) {
-                console.error('❌ Error inserting individual message:', insertError);
-              }
-            }
           } else {
             console.log('✅ Upserted', messages.length, 'final conversation messages');
           }
@@ -448,22 +532,14 @@ serve(async (req) => {
         console.log('✅ Updated lead last_contacted timestamp');
       }
 
-      // **PHASE 3: TRIGGER AI PROCESSING**
-      if (conversation && callData.transcript) {
-        console.log('🤖 Starting AI processing for completed conversation');
-        try {
-          await triggerAIProcessing(supabaseClient, conversation.id, callData.transcript);
-          console.log('✅ AI processing triggered successfully');
-        } catch (aiError) {
-          console.error('❌ AI processing failed:', aiError);
-          // Don't fail the webhook - just log the error
-        }
-      }
-
-      // Process post-call analysis data if available (legacy support)
-      if (callData.post_call_analysis) {
-        console.log('🤖 Processing post-call analysis data');
-        await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, callData.post_call_analysis);
+      // **ENHANCED: Use available analysis data before triggering AI processing**
+      console.log('🤖 Starting enhanced AI processing for completed conversation');
+      try {
+        await triggerAIProcessing(supabaseClient, conversation.id, completeCallData.transcript || '');
+        console.log('✅ AI processing triggered successfully');
+      } catch (aiError) {
+        console.error('❌ AI processing failed:', aiError);
+        // Don't fail the webhook - just log the error
       }
 
     } else if (eventType === 'call_analyzed') {
@@ -484,225 +560,25 @@ serve(async (req) => {
       }
 
       console.log('✅ Updated conversation with analysis data');
-
-      // Process post-call analysis if available
-      if (callData.post_call_analysis) {
-        const { data: conversation } = await supabaseClient
-          .from('conversations')
-          .select('id, lead_id')
-          .eq('call_sid', callData.call_id)
-          .single();
-        
-        if (conversation) {
-          await processPostCallAnalysis(supabaseClient, conversation.id, conversation.lead_id, callData.post_call_analysis);
-        }
-      }
       
     } else {
       console.log('❓ Unknown event type received:', eventType);
     }
 
-    console.log('=== WEBHOOK V2 PROCESSING COMPLETE ===');
+    console.log('=== WEBHOOK V2 ENHANCED PROCESSING COMPLETE ===');
 
-    return new Response(JSON.stringify({ success: true, version: 'v2' }), {
+    return new Response(JSON.stringify({ success: true, version: 'v2-enhanced' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (error) {
-    console.error('=== WEBHOOK V2 ERROR ===');
+    console.error('=== WEBHOOK V2 ENHANCED ERROR ===');
     console.error('Error details:', error);
     console.error('Stack trace:', error.stack);
-    return new Response(JSON.stringify({ error: error.message, version: 'v2' }), {
+    return new Response(JSON.stringify({ error: error.message, version: 'v2-enhanced' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }
 });
-
-// Helper function to process post-call analysis data
-async function processPostCallAnalysis(supabaseClient: any, conversationId: string, leadId: string | null, analysisData: any) {
-  try {
-    console.log('🤖 Processing post-call analysis for conversation:', conversationId);
-    
-    // Prepare extraction data with all new fields
-    const extractionData = {
-      conversation_id: conversationId,
-      lead_id: leadId,
-      extraction_timestamp: new Date().toISOString(),
-      extraction_version: '2.0',
-      
-      // Lead qualification and scoring
-      lead_temperature: analysisData.lead_temperature || null,
-      lead_score: analysisData.lead_score ? parseInt(analysisData.lead_score) : null,
-      lead_qualification_status: analysisData.lead_qualification_status || null,
-      call_outcome: analysisData.call_outcome || null,
-      
-      // Property information
-      property_address: analysisData.property_address || null,
-      property_mls_number: analysisData.property_mls_number || null,
-      property_price: analysisData.property_price ? parseInt(analysisData.property_price) : null,
-      property_type: analysisData.property_type || null,
-      property_use: analysisData.property_use || null,
-      multiple_properties_interested: analysisData.multiple_properties_interested === 'true' || analysisData.multiple_properties_interested === true,
-      
-      // Contact preferences
-      preferred_contact_method: analysisData.preferred_contact_method || null,
-      best_time_to_call: analysisData.best_time_to_call || null,
-      
-      // Financial information
-      credit_score_range: analysisData.credit_score_range || null,
-      annual_income: analysisData.annual_income ? parseInt(analysisData.annual_income) : null,
-      monthly_debt_payments: analysisData.monthly_debt_payments ? parseInt(analysisData.monthly_debt_payments) : null,
-      employment_status: analysisData.employment_status || null,
-      employment_length: analysisData.employment_length || null,
-      is_self_employed: analysisData.is_self_employed === 'true' || analysisData.is_self_employed === true,
-      
-      // Loan details
-      loan_amount: analysisData.loan_amount ? parseInt(analysisData.loan_amount) : null,
-      loan_type: analysisData.loan_type || null,
-      down_payment_amount: analysisData.down_payment_amount ? parseInt(analysisData.down_payment_amount) : null,
-      down_payment_percentage: analysisData.down_payment_percentage ? parseInt(analysisData.down_payment_percentage) : null,
-      has_co_borrower: analysisData.has_co_borrower === 'true' || analysisData.has_co_borrower === true,
-      
-      // Buyer profile
-      first_time_buyer: analysisData.first_time_buyer === 'true' || analysisData.first_time_buyer === true,
-      va_eligible: analysisData.va_eligible === 'true' || analysisData.va_eligible === true,
-      ready_to_buy_timeline: analysisData.ready_to_buy_timeline || null,
-      
-      // Current situation
-      pre_approval_status: analysisData.pre_approval_status || null,
-      current_lender: analysisData.current_lender || null,
-      has_realtor: analysisData.has_realtor === 'true' || analysisData.has_realtor === true,
-      realtor_name: analysisData.realtor_name || null,
-      
-      // Preferences and concerns
-      wants_credit_review: analysisData.wants_credit_review === 'true' || analysisData.wants_credit_review === true,
-      wants_down_payment_assistance: analysisData.wants_down_payment_assistance === 'true' || analysisData.wants_down_payment_assistance === true,
-      credit_concerns: analysisData.credit_concerns === 'true' || analysisData.credit_concerns === true,
-      debt_concerns: analysisData.debt_concerns === 'true' || analysisData.debt_concerns === true,
-      down_payment_concerns: analysisData.down_payment_concerns === 'true' || analysisData.down_payment_concerns === true,
-      job_change_concerns: analysisData.job_change_concerns === 'true' || analysisData.job_change_concerns === true,
-      interest_rate_concerns: analysisData.interest_rate_concerns === 'true' || analysisData.interest_rate_concerns === true,
-      
-      // Complex data as JSONB
-      objection_details: analysisData.objection_details || null,
-      next_steps: analysisData.next_steps || null,
-      primary_concerns: analysisData.primary_concerns || null,
-      interested_properties: analysisData.interested_properties || null,
-      requested_actions: analysisData.requested_actions || null,
-      
-      // Timeline and follow-up
-      buying_timeline: analysisData.buying_timeline || null,
-      follow_up_date: analysisData.follow_up_date || null,
-      overlay_education_completed: analysisData.overlay_education_completed === 'true' || analysisData.overlay_education_completed === true,
-      knows_overlays: analysisData.knows_overlays === 'true' || analysisData.knows_overlays === true,
-      
-      // Summary and raw data
-      conversation_summary: analysisData.conversation_summary || null,
-      raw_extraction_data: analysisData
-    };
-
-    // Update existing extraction record or create new one
-    const { error: extractionError } = await supabaseClient
-      .from('conversation_extractions')
-      .upsert(extractionData, {
-        onConflict: 'conversation_id',
-        ignoreDuplicates: false
-      });
-
-    if (extractionError) {
-      console.error('❌ Error updating conversation extraction:', extractionError);
-      throw extractionError;
-    }
-
-    console.log('✅ Successfully processed post-call analysis data');
-
-    // Update qualification_data table if lead exists
-    if (leadId && analysisData) {
-      await updateQualificationData(supabaseClient, leadId, conversationId, analysisData);
-    }
-
-  } catch (error) {
-    console.error('❌ Error processing post-call analysis:', error);
-    throw error;
-  }
-}
-
-// Helper function to update qualification_data table
-async function updateQualificationData(supabaseClient: any, leadId: string, conversationId: string, analysisData: any) {
-  try {
-    const qualificationUpdate = {
-      lead_id: leadId,
-      conversation_id: conversationId,
-      
-      // Financial qualification
-      annual_income: analysisData.annual_income ? parseInt(analysisData.annual_income) : null,
-      loan_amount: analysisData.loan_amount ? parseInt(analysisData.loan_amount) : null,
-      down_payment_percentage: analysisData.down_payment_percentage ? parseInt(analysisData.down_payment_percentage) : null,
-      estimated_credit_score: analysisData.credit_score_range || null,
-      
-      // Employment details
-      is_self_employed: analysisData.is_self_employed === 'true' || analysisData.is_self_employed === true,
-      has_co_borrower: analysisData.has_co_borrower === 'true' || analysisData.has_co_borrower === true,
-      
-      // Property details
-      property_type: analysisData.property_type || null,
-      property_use: analysisData.property_use || null,
-      property_price: analysisData.property_price ? parseInt(analysisData.property_price) : null,
-      property_address: analysisData.property_address || null,
-      property_mls_number: analysisData.property_mls_number || null,
-      has_specific_property: analysisData.property_address ? true : false,
-      multiple_properties_interested: analysisData.multiple_properties_interested === 'true' || analysisData.multiple_properties_interested === true,
-      
-      // Loan details
-      loan_type: analysisData.loan_type || null,
-      pre_approval_status: analysisData.pre_approval_status || null,
-      current_lender: analysisData.current_lender || null,
-      
-      // Buyer profile
-      first_time_buyer: analysisData.first_time_buyer === 'true' || analysisData.first_time_buyer === true,
-      va_eligible: analysisData.va_eligible === 'true' || analysisData.va_eligible === true,
-      
-      // Timeline and preferences
-      ready_to_buy_timeline: analysisData.ready_to_buy_timeline || null,
-      lead_temperature: analysisData.lead_temperature || null,
-      preferred_contact_method: analysisData.preferred_contact_method || null,
-      best_time_to_call: analysisData.best_time_to_call || null,
-      
-      // Concerns and preferences
-      wants_credit_review: analysisData.wants_credit_review === 'true' || analysisData.wants_credit_review === true,
-      wants_down_payment_assistance: analysisData.wants_down_payment_assistance === 'true' || analysisData.wants_down_payment_assistance === true,
-      credit_concerns: analysisData.credit_concerns === 'true' || analysisData.credit_concerns === true,
-      debt_concerns: analysisData.debt_concerns === 'true' || analysisData.debt_concerns === true,
-      down_payment_concerns: analysisData.down_payment_concerns === 'true' || analysisData.down_payment_concerns === true,
-      job_change_concerns: analysisData.job_change_concerns === 'true' || analysisData.job_change_concerns === true,
-      interest_rate_concerns: analysisData.interest_rate_concerns === 'true' || analysisData.interest_rate_concerns === true,
-      
-      // Education and knowledge
-      knows_about_overlays: analysisData.knows_overlays === 'true' || analysisData.knows_overlays === true,
-      overlay_education_completed: analysisData.overlay_education_completed === 'true' || analysisData.overlay_education_completed === true,
-      
-      // Complex data
-      objection_details: analysisData.objection_details || null,
-      qualifying_notes: analysisData.conversation_summary || null
-    };
-
-    // Upsert qualification data
-    const { error: qualError } = await supabaseClient
-      .from('qualification_data')
-      .upsert(qualificationUpdate, {
-        onConflict: 'lead_id,conversation_id',
-        ignoreDuplicates: false
-      });
-
-    if (qualError) {
-      console.error('❌ Error updating qualification data:', qualError);
-    } else {
-      console.log('✅ Successfully updated qualification data for lead:', leadId);
-    }
-
-  } catch (error) {
-    console.error('❌ Error updating qualification data:', error);
-  }
-}

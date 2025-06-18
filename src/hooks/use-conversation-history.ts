@@ -16,6 +16,9 @@ interface ConversationHistory {
   lead_id: string;
   lead_name: string;
   extractions: any[];
+  // Enhanced fields from Retell API
+  retell_call_data?: any;
+  retell_call_analysis?: any;
 }
 
 export function useConversationHistory(leadId?: string) {
@@ -25,15 +28,17 @@ export function useConversationHistory(leadId?: string) {
 
   const fetchConversationHistory = async () => {
     try {
-      console.log('📞 Fetching conversation history for lead:', leadId);
+      console.log('📞 Fetching enhanced conversation history for lead:', leadId);
       
       // First, let's check if we have any conversations at all
       const { data: allConversations, error: countError } = await supabase
         .from('conversations')
-        .select('id, lead_id, call_status')
+        .select('id, lead_id, call_status, retell_call_data, retell_call_analysis')
         .limit(10);
       
-      console.log('📊 Total conversations in database:', allConversations?.length || 0, allConversations);
+      console.log('📊 Total conversations in database:', allConversations?.length || 0);
+      console.log('📊 Conversations with enhanced data:', 
+        allConversations?.filter(c => c.retell_call_data).length || 0);
       
       if (countError) {
         console.error('❌ Error counting conversations:', countError);
@@ -52,6 +57,8 @@ export function useConversationHistory(leadId?: string) {
           sentiment_score,
           recording_url,
           lead_id,
+          retell_call_data,
+          retell_call_analysis,
           leads(first_name, last_name),
           conversation_extractions(*)
         `)
@@ -71,7 +78,11 @@ export function useConversationHistory(leadId?: string) {
       console.log('📋 Raw conversation data from query:', data);
 
       const historyData: ConversationHistory[] = (data || []).map(conv => {
-        console.log('🔍 Processing conversation:', conv.id, conv);
+        console.log('🔍 Processing conversation:', conv.id, {
+          has_retell_data: !!conv.retell_call_data,
+          has_call_analysis: !!conv.retell_call_analysis,
+          transcript_length: conv.transcript?.length || 0
+        });
         
         return {
           id: conv.id,
@@ -87,11 +98,16 @@ export function useConversationHistory(leadId?: string) {
           lead_name: conv.leads ? 
             `${conv.leads.first_name || ''} ${conv.leads.last_name || ''}`.trim() : 
             'Unknown Lead',
-          extractions: conv.conversation_extractions || []
+          extractions: conv.conversation_extractions || [],
+          retell_call_data: conv.retell_call_data,
+          retell_call_analysis: conv.retell_call_analysis
         };
       });
 
-      console.log('✅ Processed conversation history:', historyData.length, historyData);
+      console.log('✅ Processed enhanced conversation history:', historyData.length, {
+        with_retell_data: historyData.filter(c => c.retell_call_data).length,
+        with_call_analysis: historyData.filter(c => c.retell_call_analysis).length
+      });
       setConversations(historyData);
 
     } catch (error) {
@@ -111,7 +127,7 @@ export function useConversationHistory(leadId?: string) {
 
     // Set up real-time subscription
     const channel = supabase
-      .channel('conversation-history')
+      .channel('conversation-history-enhanced')
       .on(
         'postgres_changes',
         {
@@ -120,7 +136,7 @@ export function useConversationHistory(leadId?: string) {
           table: 'conversations'
         },
         () => {
-          console.log('📡 Real-time update detected, refetching conversation history');
+          console.log('📡 Real-time update detected, refetching enhanced conversation history');
           fetchConversationHistory();
         }
       )

@@ -23,17 +23,37 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
   const [activeView, setActiveView] = useState<'all' | 'highlights' | 'questions'>('all');
   const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [enhancedData, setEnhancedData] = useState<any>(null);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
   
-  // Load conversation messages if conversationId is provided
+  // Load conversation messages and enhanced data if conversationId is provided
   useEffect(() => {
     if (!conversationId) return;
 
-    const loadConversationMessages = async () => {
+    const loadConversationData = async () => {
       try {
         setIsLoading(true);
-        console.log('🔍 Loading messages for conversation:', conversationId);
+        console.log('🔍 Loading enhanced conversation data for:', conversationId);
         
+        // First get the conversation with enhanced Retell data
+        const { data: conversation, error: convError } = await supabase
+          .from('conversations')
+          .select('retell_call_data, retell_call_analysis')
+          .eq('id', conversationId)
+          .single();
+          
+        if (!convError && conversation) {
+          setEnhancedData({
+            retell_call_data: conversation.retell_call_data,
+            retell_call_analysis: conversation.retell_call_analysis
+          });
+          console.log('✅ Enhanced conversation data loaded:', {
+            has_retell_data: !!conversation.retell_call_data,
+            has_call_analysis: !!conversation.retell_call_analysis
+          });
+        }
+        
+        // Load conversation messages
         const { data, error } = await supabase
           .from('conversation_messages')
           .select('id, conversation_id, role, content, seq, ts, created_at')
@@ -58,13 +78,13 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         }));
         setConversationMessages(mappedMessages);
       } catch (error) {
-        console.error('❌ Error loading conversation messages:', error);
+        console.error('❌ Error loading conversation data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadConversationMessages();
+    loadConversationData();
 
     // Subscribe to real-time updates for conversation messages
     const channel = supabase
@@ -199,11 +219,12 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
   });
 
   // Debug logging
-  console.log('🔍 TranscriptViewer Debug:', {
+  console.log('🔍 TranscriptViewer Enhanced Debug:', {
     conversationId,
     conversationMessagesCount: conversationMessages.length,
     displayMessagesCount: displayMessages.length,
     filteredMessagesCount: filteredMessages.length,
+    hasEnhancedData: !!enhancedData,
     isLoading
   });
 
@@ -211,13 +232,22 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
     <div className="flex flex-col h-full border rounded-md overflow-hidden">
       {/* Transcript toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)} className="w-auto">
-          <TabsList className="h-8">
-            <TabsTrigger value="all" className="text-xs px-3">All</TabsTrigger>
-            <TabsTrigger value="highlights" className="text-xs px-3">Highlights</TabsTrigger>
-            <TabsTrigger value="questions" className="text-xs px-3">Questions</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-4">
+          <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)} className="w-auto">
+            <TabsList className="h-8">
+              <TabsTrigger value="all" className="text-xs px-3">All</TabsTrigger>
+              <TabsTrigger value="highlights" className="text-xs px-3">Highlights</TabsTrigger>
+              <TabsTrigger value="questions" className="text-xs px-3">Questions</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {/* Enhanced data indicator */}
+          {enhancedData?.retell_call_data && (
+            <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+              Enhanced Data
+            </div>
+          )}
+        </div>
         
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -253,7 +283,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
           {isLoading ? (
             <div className="text-center text-muted-foreground py-8 flex flex-col items-center">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-4" />
-              <p>Loading conversation messages...</p>
+              <p>Loading enhanced conversation data...</p>
             </div>
           ) : filteredMessages.length > 0 ? (
             filteredMessages.map((message, index) => (
@@ -281,6 +311,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
                     <div className="text-xs mt-2 space-y-1">
                       <p>Conversation ID: {conversationId}</p>
                       <p>Messages in DB: {conversationMessages.length}</p>
+                      <p>Enhanced Data: {enhancedData ? 'Available' : 'Not Available'}</p>
                       <p>Transcript will appear here once messages are processed.</p>
                     </div>
                   )}

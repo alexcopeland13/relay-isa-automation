@@ -14,6 +14,35 @@ export interface RetellCallRequest {
   retell_llm_dynamic_variables?: Record<string, any>;
 }
 
+// Enhanced interfaces based on Retell API documentation
+export interface TranscriptUtterance {
+  role: 'agent' | 'user';
+  content: string;
+  timestamp: number;
+}
+
+export interface CallAnalysis {
+  call_summary?: string;
+  user_sentiment?: string;
+  agent_sentiment?: string;
+  call_successful?: boolean;
+  custom_analysis_data?: Record<string, any>;
+}
+
+export interface CallLatency {
+  llm?: number;
+  tts?: number;
+  stt?: number;
+  e2e?: number;
+}
+
+export interface CallCost {
+  llm?: number;
+  tts?: number;
+  stt?: number;
+  total?: number;
+}
+
 export interface RetellCall {
   call_id: string;
   agent_id: string;
@@ -21,16 +50,37 @@ export interface RetellCall {
   call_status: 'registered' | 'ongoing' | 'ended' | 'error';
   start_timestamp?: number;
   end_timestamp?: number;
+  duration_ms?: number;
   from_number?: string;
   to_number?: string;
   direction: 'inbound' | 'outbound';
   disconnection_reason?: string;
-  call_analysis?: {
-    call_summary?: string;
-    user_sentiment?: string;
-    agent_sentiment?: string;
-    call_successful?: boolean;
-  };
+  
+  // Enhanced transcript data
+  transcript?: string;
+  transcript_object?: TranscriptUtterance[];
+  transcript_with_tool_calls?: any[];
+  
+  // Call analysis and insights
+  call_analysis?: CallAnalysis;
+  
+  // Additional metadata
+  metadata?: Record<string, any>;
+  retell_llm_dynamic_variables?: Record<string, any>;
+  collected_dynamic_variables?: Record<string, any>;
+  
+  // Recording and logs
+  recording_url?: string;
+  public_log_url?: string;
+  knowledge_base_retrieved_contents_url?: string;
+  
+  // Performance metrics
+  latency?: CallLatency;
+  call_cost?: CallCost;
+  
+  // Privacy settings
+  opt_out_sensitive_data_storage?: boolean;
+  opt_in_signed_url?: boolean;
 }
 
 export interface RetellAgent {
@@ -81,9 +131,20 @@ class RetellAPIService {
     return response;
   }
 
-  // Get call details
+  // Get comprehensive call details - NEW ENHANCED METHOD
   async getCall(callId: string): Promise<RetellCall> {
-    return await this.makeRequest(`/get-call/${callId}`);
+    console.log('🔍 Fetching complete call data for:', callId);
+    
+    const callData = await this.makeRequest(`/get-call/${callId}`);
+    
+    console.log('✅ Complete call data retrieved:', {
+      call_id: callData.call_id,
+      has_transcript_object: !!callData.transcript_object,
+      has_call_analysis: !!callData.call_analysis,
+      transcript_utterances: callData.transcript_object?.length || 0
+    });
+    
+    return callData;
   }
 
   // List all calls with optional filtering
@@ -139,4 +200,15 @@ export function formatPhoneForRetell(phone: string): string {
   
   // Already formatted or international
   return digits.startsWith('+') ? digits : `+${digits}`;
+}
+
+// Helper function to convert Retell transcript_object to our conversation messages format
+export function convertRetellTranscriptToMessages(transcriptObject: TranscriptUtterance[]) {
+  return transcriptObject.map((utterance, index) => ({
+    conversation_id: '', // Will be set when saving
+    role: utterance.role === 'agent' ? 'agent' : 'lead',
+    content: utterance.content,
+    seq: index,
+    ts: new Date(utterance.timestamp).toISOString()
+  }));
 }

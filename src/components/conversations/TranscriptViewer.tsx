@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
@@ -24,6 +25,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
   const [conversationMessages, setConversationMessages] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [enhancedData, setEnhancedData] = useState<any>(null);
+  const [leadInfo, setLeadInfo] = useState<any>(null);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
   
   // Load conversation messages and enhanced data if conversationId is provided
@@ -35,10 +37,15 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         setIsLoading(true);
         console.log('🔍 Loading enhanced conversation data for:', conversationId);
         
-        // First get the conversation with enhanced Retell data
+        // First get the conversation with enhanced Retell data and lead info
         const { data: conversation, error: convError } = await supabase
           .from('conversations')
-          .select('retell_call_data, retell_call_analysis')
+          .select(`
+            retell_call_data, 
+            retell_call_analysis,
+            lead_id,
+            leads(first_name, last_name, phone, email)
+          `)
           .eq('id', conversationId)
           .single();
           
@@ -47,9 +54,16 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
             retell_call_data: conversation.retell_call_data,
             retell_call_analysis: conversation.retell_call_analysis
           });
+          
+          // Set lead info for better caller identification
+          if (conversation.leads) {
+            setLeadInfo(conversation.leads);
+          }
+          
           console.log('✅ Enhanced conversation data loaded:', {
             has_retell_data: !!conversation.retell_call_data,
-            has_call_analysis: !!conversation.retell_call_analysis
+            has_call_analysis: !!conversation.retell_call_analysis,
+            lead_name: conversation.leads ? `${conversation.leads.first_name} ${conversation.leads.last_name}` : 'Unknown'
           });
         }
         
@@ -62,6 +76,20 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
 
         if (error) {
           console.error('❌ Error loading conversation messages:', error);
+          // Try to extract messages from Retell transcript_object if no messages in DB
+          if (conversation?.retell_call_data?.transcript_object) {
+            console.log('📝 Extracting messages from Retell transcript_object');
+            const retellMessages = conversation.retell_call_data.transcript_object.map((utterance: any, index: number) => ({
+              id: `retell-${index}`,
+              conversation_id: conversationId,
+              role: utterance.role === 'agent' ? 'agent' : 'lead',
+              content: utterance.content || '',
+              seq: index,
+              ts: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString(),
+              created_at: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString()
+            }));
+            setConversationMessages(retellMessages);
+          }
           return;
         }
 
@@ -70,11 +98,11 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         const mappedMessages: ConversationMessage[] = (data || []).map(msg => ({
           id: msg.id,
           conversation_id: msg.conversation_id,
-          role: msg.role as 'agent' | 'lead', // Type cast the role
+          role: msg.role as 'agent' | 'lead',
           content: msg.content,
           seq: msg.seq,
           ts: msg.ts,
-          created_at: msg.created_at || msg.ts // Fallback to ts if created_at is missing
+          created_at: msg.created_at || msg.ts
         }));
         setConversationMessages(mappedMessages);
       } catch (error) {
@@ -98,7 +126,6 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         console.log('📡 Real-time message update:', payload);
         if (payload.eventType === 'INSERT') {
           const newMessage = payload.new as any;
-          // Convert to our typed interface
           const typedMessage: ConversationMessage = {
             id: newMessage.id,
             conversation_id: newMessage.conversation_id,
@@ -115,7 +142,6 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
           });
         } else if (payload.eventType === 'UPDATE') {
           const updatedMessage = payload.new as any;
-          // Convert to our typed interface
           const typedMessage: ConversationMessage = {
             id: updatedMessage.id,
             conversation_id: updatedMessage.conversation_id,
@@ -225,8 +251,20 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
     displayMessagesCount: displayMessages.length,
     filteredMessagesCount: filteredMessages.length,
     hasEnhancedData: !!enhancedData,
+    leadInfo,
     isLoading
   });
+
+  // Get speaker name based on role and lead info
+  const getSpeakerName = (role: string) => {
+    if (role === 'user' || role === 'lead') {
+      if (leadInfo && leadInfo.first_name && leadInfo.last_name) {
+        return `${leadInfo.first_name} ${leadInfo.last_name}`;
+      }
+      return 'Lead';
+    }
+    return 'AI Agent';
+  };
 
   return (
     <div className="flex flex-col h-full border rounded-md overflow-hidden">
@@ -245,6 +283,13 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
           {enhancedData?.retell_call_data && (
             <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
               Enhanced Data
+            </div>
+          )}
+          
+          {/* Lead info indicator */}
+          {leadInfo && (
+            <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+              {leadInfo.first_name} {leadInfo.last_name}
             </div>
           )}
         </div>
@@ -292,7 +337,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
                 ref={(el) => {
                   messageRefs.current[index] = el;
                 }}
-                speaker={message.role === 'user' ? 'Lead' : 'AI Agent'}
+                speaker={getSpeakerName(message.role)}
                 timestamp={message.timestamp}
                 text={message.content}
                 sentiment={getSentimentString(message.sentiment)}
@@ -312,6 +357,7 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
                       <p>Conversation ID: {conversationId}</p>
                       <p>Messages in DB: {conversationMessages.length}</p>
                       <p>Enhanced Data: {enhancedData ? 'Available' : 'Not Available'}</p>
+                      <p>Lead: {leadInfo ? `${leadInfo.first_name} ${leadInfo.last_name}` : 'Unknown'}</p>
                       <p>Transcript will appear here once messages are processed.</p>
                     </div>
                   )}

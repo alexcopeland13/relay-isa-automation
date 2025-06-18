@@ -64,13 +64,32 @@ function convertRetellTranscriptToMessages(transcriptObject: any[], conversation
     return [];
   }
 
-  return transcriptObject.map((utterance, index) => ({
-    conversation_id: conversationId,
-    role: utterance.role === 'agent' ? 'agent' : 'lead',
-    content: utterance.content || '',
-    seq: index,
-    ts: new Date(utterance.timestamp).toISOString()
-  }));
+  return transcriptObject.map((utterance, index) => {
+    // Handle different timestamp formats from Retell
+    let timestamp = new Date().toISOString(); // fallback
+    
+    if (utterance.timestamp) {
+      // Try parsing as milliseconds first
+      if (typeof utterance.timestamp === 'number') {
+        timestamp = new Date(utterance.timestamp).toISOString();
+      } else if (typeof utterance.timestamp === 'string') {
+        // Try parsing as ISO string
+        try {
+          timestamp = new Date(utterance.timestamp).toISOString();
+        } catch (e) {
+          console.warn('⚠️ Could not parse timestamp:', utterance.timestamp);
+        }
+      }
+    }
+
+    return {
+      conversation_id: conversationId,
+      role: utterance.role === 'agent' ? 'agent' : 'lead',
+      content: utterance.content || '',
+      seq: index,
+      ts: timestamp
+    };
+  });
 }
 
 function splitTranscriptToMessages(raw: string, conversationId: string) {

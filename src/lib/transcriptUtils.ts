@@ -49,3 +49,24 @@ export function parseTranscriptToMessages(transcript: string, conversationId: st
     })
     .filter(m => m.content.length > 0);
 }
+
+// Extract caller name from Retell call data
+export function extractCallerNameFromRetellData(retellCallData: any): string | null {
+  if (!retellCallData) return null;
+  
+  // Try to extract from various fields in Retell data
+  if (retellCallData.caller_name) {
+    return retellCallData.caller_name;
+  }
+  
+  if (retellCallData.from_number_name) {
+    return retellCallData.from_number_name;
+  }
+  
+  // Try to extract from collected variables
+  if (retellCallData.collected_dynamic_variables?.caller_name) {
+    return retellCallData.collected_dynamic_variables.caller_name;
+  }
+  
+  return null;
+}

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
@@ -14,6 +13,16 @@ import React from 'react';
 interface TranscriptViewerProps {
   messages: Message[];
   conversationId?: string;
+}
+
+// Helper type for Retell call data structure
+interface RetellCallData {
+  transcript_object?: Array<{
+    role: string;
+    content: string;
+    timestamp?: number | string;
+  }>;
+  [key: string]: any;
 }
 
 export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerProps) => {
@@ -77,18 +86,24 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
         if (error) {
           console.error('❌ Error loading conversation messages:', error);
           // Try to extract messages from Retell transcript_object if no messages in DB
-          if (conversation?.retell_call_data?.transcript_object) {
-            console.log('📝 Extracting messages from Retell transcript_object');
-            const retellMessages = conversation.retell_call_data.transcript_object.map((utterance: any, index: number) => ({
-              id: `retell-${index}`,
-              conversation_id: conversationId,
-              role: utterance.role === 'agent' ? 'agent' : 'lead',
-              content: utterance.content || '',
-              seq: index,
-              ts: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString(),
-              created_at: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString()
-            }));
-            setConversationMessages(retellMessages);
+          if (conversation?.retell_call_data && 
+              typeof conversation.retell_call_data === 'object' && 
+              conversation.retell_call_data !== null) {
+            
+            const retellData = conversation.retell_call_data as RetellCallData;
+            if (retellData.transcript_object && Array.isArray(retellData.transcript_object)) {
+              console.log('📝 Extracting messages from Retell transcript_object');
+              const retellMessages = retellData.transcript_object.map((utterance: any, index: number) => ({
+                id: `retell-${index}`,
+                conversation_id: conversationId,
+                role: utterance.role === 'agent' ? 'agent' : 'lead',
+                content: utterance.content || '',
+                seq: index,
+                ts: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString(),
+                created_at: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString()
+              }));
+              setConversationMessages(retellMessages);
+            }
           }
           return;
         }

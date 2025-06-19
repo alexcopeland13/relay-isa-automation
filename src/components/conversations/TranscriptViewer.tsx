@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Message, HighlightItem, ConversationMessage } from '@/types/conversation';
 import { Search, Download, Flag, MessageSquare, Info } from 'lucide-react';
@@ -93,10 +94,10 @@ export const TranscriptViewer = ({ messages, conversationId }: TranscriptViewerP
             const retellData = conversation.retell_call_data as RetellCallData;
             if (retellData.transcript_object && Array.isArray(retellData.transcript_object)) {
               console.log('📝 Extracting messages from Retell transcript_object');
-              const retellMessages = retellData.transcript_object.map((utterance: any, index: number) => ({
+              const retellMessages: ConversationMessage[] = retellData.transcript_object.map((utterance: any, index: number) => ({
                 id: `retell-${index}`,
                 conversation_id: conversationId,
-                role: utterance.role === 'agent' ? 'agent' : 'lead',
+                role: (utterance.role === 'agent' ? 'agent' : 'lead') as 'agent' | 'lead',
                 content: utterance.content || '',
                 seq: index,
                 ts: utterance.timestamp ? new Date(utterance.timestamp).toISOString() : new Date().toISOString(),

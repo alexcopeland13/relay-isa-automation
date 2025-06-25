@@ -44,6 +44,7 @@ async function fetchCompleteCallData(callId: string) {
     const callData = await response.json();
     console.log('✅ Complete call data fetched:', {
       call_id: callData.call_id,
+      agent_id: callData.agent_id,
       has_transcript_object: !!callData.transcript_object,
       has_call_analysis: !!callData.call_analysis,
       transcript_utterances: callData.transcript_object?.length || 0,
@@ -227,6 +228,42 @@ async function triggerAIProcessing(supabaseClient: any, conversationId: string, 
   }
 }
 
+// NEW: Function to clean up stuck active conversations older than 30 minutes
+async function cleanupStuckConversations(supabaseClient: any) {
+  try {
+    console.log('🧹 Checking for stuck active conversations...');
+    
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    
+    const { data: stuckConversations } = await supabaseClient
+      .from('conversations')
+      .select('id, call_sid, agent_id, created_at')
+      .eq('call_status', 'active')
+      .lt('created_at', thirtyMinutesAgo);
+
+    if (stuckConversations && stuckConversations.length > 0) {
+      console.log(`🔧 Found ${stuckConversations.length} stuck conversations, cleaning up...`);
+      
+      for (const conv of stuckConversations) {
+        await supabaseClient
+          .from('conversations')
+          .update({
+            call_status: 'completed',
+            ended_at: new Date().toISOString(),
+            extraction_status: 'pending'
+          })
+          .eq('id', conv.id);
+        
+        console.log(`✅ Cleaned up stuck conversation: ${conv.id} (call_sid: ${conv.call_sid})`);
+      }
+    } else {
+      console.log('✅ No stuck conversations found');
+    }
+  } catch (error) {
+    console.error('❌ Error cleaning up stuck conversations:', error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -238,7 +275,7 @@ serve(async (req) => {
       status: 'Retell webhook v2 endpoint is active',
       timestamp: new Date().toISOString(),
       method: 'GET',
-      version: 'v2-enhanced'
+      version: 'v2-enhanced-fixed'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
@@ -246,7 +283,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('=== RETELL WEBHOOK V2 ENHANCED RECEIVED ===');
+    console.log('=== RETELL WEBHOOK V2 ENHANCED FIXED RECEIVED ===');
     console.log('Method:', req.method);
     console.log('URL:', req.url);
     console.log('Headers:', Object.fromEntries(req.headers.entries()));
@@ -255,6 +292,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Run cleanup of stuck conversations on every webhook
+    await cleanupStuckConversations(supabaseClient);
 
     let body;
     try {
@@ -266,7 +306,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           status: 'success', 
           message: 'Empty body received, likely a health check',
-          version: 'v2-enhanced'
+          version: 'v2-enhanced-fixed'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
@@ -285,16 +325,16 @@ serve(async (req) => {
       });
     }
 
-    // Log webhook event for debugging - with v2-enhanced marker
+    // Log webhook event for debugging - with v2-enhanced-fixed marker
     await supabaseClient
       .from('webhook_events')
       .insert({
-        provider: 'retell-v2-enhanced',
+        provider: 'retell-v2-enhanced-fixed',
         event_id: body.call?.call_id || body.event || 'unknown',
         payload: body
       });
 
-    console.log('✅ Webhook event logged to database with retell-v2-enhanced provider');
+    console.log('✅ Webhook event logged to database with retell-v2-enhanced-fixed provider');
 
     // Handle different webhook formats with enhanced logging
     let eventType, callData;
@@ -321,6 +361,31 @@ serve(async (req) => {
 
     if (eventType === 'call_started') {
       console.log('🚀 Processing call_started event');
+      
+      const callId = callData.call_id;
+      const dynamicAgentId = callData.agent_id || 'retell_ai_v2_enhanced'; // FIXED: Use dynamic agent ID
+      
+      console.log(`🎯 Using agent_id: ${dynamicAgentId} for call: ${callId}`);
+      
+      // Check for existing conversation to prevent duplicates
+      const { data: existingConversation } = await supabaseClient
+        .from('conversations')
+        .select('id, call_status')
+        .eq('call_sid', callId)
+        .single();
+
+      if (existingConversation) {
+        console.log(`⚠️ Conversation already exists for call_sid: ${callId}, skipping creation`);
+        return new Response(JSON.stringify({ 
+          status: 'success', 
+          message: 'Conversation already exists',
+          conversation_id: existingConversation.id,
+          version: 'v2-enhanced-fixed'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
       
       // Look up lead by phone number - try multiple phone fields and normalize them
       const phoneNumbers = [
@@ -384,17 +449,17 @@ serve(async (req) => {
         }
       }
 
-      // Create conversation record with pending extraction status
+      // Create conversation record with dynamic agent ID
       const { data: conversation, error: convError } = await supabaseClient
         .from('conversations')
         .insert({
-          call_sid: callData.call_id,
+          call_sid: callId,
           lead_id: phoneMapping?.lead_id || null,
           direction: callData.direction || 'inbound',
           call_status: 'active',
           extraction_status: 'pending',
           started_at: new Date().toISOString(),
-          agent_id: 'retell_ai_v2_enhanced'
+          agent_id: dynamicAgentId // FIXED: Use dynamic agent ID instead of hardcoded
         })
         .select()
         .single();
@@ -404,7 +469,7 @@ serve(async (req) => {
         throw convError;
       }
 
-      console.log('✅ Created active conversation:', conversation.id);
+      console.log(`✅ Created active conversation: ${conversation.id} with agent_id: ${dynamicAgentId}`);
 
       // Create initial extraction record
       await supabaseClient
@@ -413,7 +478,7 @@ serve(async (req) => {
           conversation_id: conversation.id,
           lead_id: phoneMapping?.lead_id || null,
           extraction_timestamp: new Date().toISOString(),
-          extraction_version: '2.0-enhanced'
+          extraction_version: '2.0-enhanced-fixed'
         });
 
       console.log('✅ Created initial extraction record');
@@ -468,7 +533,11 @@ serve(async (req) => {
         completeCallData = callData;
       }
       
-      // Update conversation with enhanced data
+      // Get dynamic agent ID from complete call data
+      const dynamicAgentId = completeCallData.agent_id || callData.agent_id || 'retell_ai_v2_enhanced';
+      console.log(`🎯 Using dynamic agent_id: ${dynamicAgentId} for completed call: ${callData.call_id}`);
+      
+      // Update conversation with enhanced data and dynamic agent ID
       const conversationUpdate: any = {
         call_status: 'completed',
         ended_at: new Date().toISOString(),
@@ -476,6 +545,7 @@ serve(async (req) => {
         recording_url: completeCallData.recording_url || null,
         transcript: completeCallData.transcript || null,
         extraction_status: 'pending',
+        agent_id: dynamicAgentId, // FIXED: Update with dynamic agent ID
         // Store complete Retell data as JSONB
         retell_call_data: completeCallData
       };
@@ -498,7 +568,7 @@ serve(async (req) => {
         throw updateError;
       }
 
-      console.log('✅ Updated conversation with enhanced data:', conversation?.id);
+      console.log(`✅ Updated conversation with enhanced data and agent_id: ${dynamicAgentId}, conversation: ${conversation?.id}`);
 
       // **ENHANCED: Use transcript_object if available for structured messages**
       if (completeCallData.transcript_object && Array.isArray(completeCallData.transcript_object)) {
@@ -584,18 +654,18 @@ serve(async (req) => {
       console.log('❓ Unknown event type received:', eventType);
     }
 
-    console.log('=== WEBHOOK V2 ENHANCED PROCESSING COMPLETE ===');
+    console.log('=== WEBHOOK V2 ENHANCED FIXED PROCESSING COMPLETE ===');
 
-    return new Response(JSON.stringify({ success: true, version: 'v2-enhanced' }), {
+    return new Response(JSON.stringify({ success: true, version: 'v2-enhanced-fixed' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (error) {
-    console.error('=== WEBHOOK V2 ENHANCED ERROR ===');
+    console.error('=== WEBHOOK V2 ENHANCED FIXED ERROR ===');
     console.error('Error details:', error);
     console.error('Stack trace:', error.stack);
-    return new Response(JSON.stringify({ error: error.message, version: 'v2-enhanced' }), {
+    return new Response(JSON.stringify({ error: error.message, version: 'v2-enhanced-fixed' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

@@ -16,20 +16,29 @@ verify_jwt = false
 [functions.retell-webhook-v2]
 verify_jwt = false
 
+[functions.retell-webhook-v3]
+verify_jwt = false
+
 [functions.cinc-webhook]
-verify_jwt = false # Secured by x-cinc-signature
+verify_jwt = false
+
+[functions.cinc-webhook-v2]
+verify_jwt = false
+
+[functions.makecom-callback]
+verify_jwt = false
 
 [functions.lead-lookup]
 # verify_jwt = true by default
 
-[functions.schedule-callback] # Added this function in a previous step
+[functions.schedule-callback]
 verify_jwt = false
 
-[functions.cal-webhook] # Newly added function
-verify_jwt = false # Public webhook endpoint
+[functions.cal-webhook]
+verify_jwt = false
 
-[functions.send-sms] # New SMS sending function
-verify_jwt = false # Public function for webhook calls
+[functions.send-sms]
+verify_jwt = false
 
 [functions.retell-api-proxy]
-verify_jwt = false # Public proxy for Retell API calls
+verify_jwt = false

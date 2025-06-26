@@ -60,6 +60,129 @@ export type Database = {
           },
         ]
       }
+      ai_profiles: {
+        Row: {
+          annual_income: number | null
+          best_time_to_call: string | null
+          buying_timeline: string | null
+          concerns: Json | null
+          conversation_id: string | null
+          created_at: string | null
+          credit_score_range: string | null
+          current_lender: string | null
+          data_confidence_score: number | null
+          debt_to_income_ratio: number | null
+          down_payment_percentage: number | null
+          employment_length: string | null
+          employment_status: string | null
+          extraction_version: string | null
+          has_realtor: boolean | null
+          id: string
+          is_self_employed: boolean | null
+          lead_id: string
+          loan_amount: number | null
+          loan_type: string | null
+          monthly_debt_payments: number | null
+          motivation_factors: Json | null
+          pre_approval_status: string | null
+          preferred_contact_method: string | null
+          preferred_locations: Json | null
+          price_range_max: number | null
+          price_range_min: number | null
+          processed_by: string | null
+          profile_completeness_score: number | null
+          property_type: string | null
+          property_use: string | null
+          realtor_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          annual_income?: number | null
+          best_time_to_call?: string | null
+          buying_timeline?: string | null
+          concerns?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          credit_score_range?: string | null
+          current_lender?: string | null
+          data_confidence_score?: number | null
+          debt_to_income_ratio?: number | null
+          down_payment_percentage?: number | null
+          employment_length?: string | null
+          employment_status?: string | null
+          extraction_version?: string | null
+          has_realtor?: boolean | null
+          id?: string
+          is_self_employed?: boolean | null
+          lead_id: string
+          loan_amount?: number | null
+          loan_type?: string | null
+          monthly_debt_payments?: number | null
+          motivation_factors?: Json | null
+          pre_approval_status?: string | null
+          preferred_contact_method?: string | null
+          preferred_locations?: Json | null
+          price_range_max?: number | null
+          price_range_min?: number | null
+          processed_by?: string | null
+          profile_completeness_score?: number | null
+          property_type?: string | null
+          property_use?: string | null
+          realtor_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          annual_income?: number | null
+          best_time_to_call?: string | null
+          buying_timeline?: string | null
+          concerns?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          credit_score_range?: string | null
+          current_lender?: string | null
+          data_confidence_score?: number | null
+          debt_to_income_ratio?: number | null
+          down_payment_percentage?: number | null
+          employment_length?: string | null
+          employment_status?: string | null
+          extraction_version?: string | null
+          has_realtor?: boolean | null
+          id?: string
+          is_self_employed?: boolean | null
+          lead_id?: string
+          loan_amount?: number | null
+          loan_type?: string | null
+          monthly_debt_payments?: number | null
+          motivation_factors?: Json | null
+          pre_approval_status?: string | null
+          preferred_contact_method?: string | null
+          preferred_locations?: Json | null
+          price_range_max?: number | null
+          price_range_min?: number | null
+          processed_by?: string | null
+          profile_completeness_score?: number | null
+          property_type?: string | null
+          property_use?: string | null
+          realtor_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_profiles_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_profiles_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           created_at: string | null
@@ -140,6 +263,59 @@ export type Database = {
             columns: ["specialist_id"]
             isOneToOne: false
             referencedRelation: "specialists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cinc_lead_mapping: {
+        Row: {
+          cinc_contact_id: string | null
+          cinc_lead_id: string
+          cinc_payload: Json | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          lead_v2_id: string | null
+          phone_e164: string
+          phone_raw: string | null
+          processed_at: string | null
+          processing_status: string | null
+          received_at: string | null
+        }
+        Insert: {
+          cinc_contact_id?: string | null
+          cinc_lead_id: string
+          cinc_payload?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_v2_id?: string | null
+          phone_e164: string
+          phone_raw?: string | null
+          processed_at?: string | null
+          processing_status?: string | null
+          received_at?: string | null
+        }
+        Update: {
+          cinc_contact_id?: string | null
+          cinc_lead_id?: string
+          cinc_payload?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_v2_id?: string | null
+          phone_e164?: string
+          phone_raw?: string | null
+          processed_at?: string | null
+          processing_status?: string | null
+          received_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cinc_lead_mapping_lead_v2_id_fkey"
+            columns: ["lead_v2_id"]
+            isOneToOne: false
+            referencedRelation: "leads_v2"
             referencedColumns: ["id"]
           },
         ]
@@ -433,6 +609,74 @@ export type Database = {
           },
         ]
       }
+      conversations_v2: {
+        Row: {
+          ai_insights: Json | null
+          ai_summary: string | null
+          call_quality_score: number | null
+          call_status: string | null
+          created_at: string | null
+          direction: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          lead_id: string
+          recording_url: string | null
+          retell_agent_id: string | null
+          retell_call_id: string
+          sentiment_score: number | null
+          started_at: string | null
+          transcript: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_insights?: Json | null
+          ai_summary?: string | null
+          call_quality_score?: number | null
+          call_status?: string | null
+          created_at?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_id: string
+          recording_url?: string | null
+          retell_agent_id?: string | null
+          retell_call_id: string
+          sentiment_score?: number | null
+          started_at?: string | null
+          transcript?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_insights?: Json | null
+          ai_summary?: string | null
+          call_quality_score?: number | null
+          call_status?: string | null
+          created_at?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_id?: string
+          recording_url?: string | null
+          retell_agent_id?: string | null
+          retell_call_id?: string
+          sentiment_score?: number | null
+          started_at?: string | null
+          transcript?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_v2_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -494,6 +738,174 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leads_v2: {
+        Row: {
+          assigned_to: string | null
+          cinc_data: Json | null
+          cinc_lead_id: string | null
+          cinc_received_at: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          full_name: string | null
+          id: string
+          last_contacted_at: string | null
+          last_name: string | null
+          lead_score: number | null
+          lead_temperature: string | null
+          next_follow_up_at: string | null
+          phone_e164: string
+          phone_raw: string | null
+          profile_data: Json | null
+          qualification_status: string | null
+          source: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          cinc_data?: Json | null
+          cinc_lead_id?: string | null
+          cinc_received_at?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          last_name?: string | null
+          lead_score?: number | null
+          lead_temperature?: string | null
+          next_follow_up_at?: string | null
+          phone_e164: string
+          phone_raw?: string | null
+          profile_data?: Json | null
+          qualification_status?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          cinc_data?: Json | null
+          cinc_lead_id?: string | null
+          cinc_received_at?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          last_name?: string | null
+          lead_score?: number | null
+          lead_temperature?: string | null
+          next_follow_up_at?: string | null
+          phone_e164?: string
+          phone_raw?: string | null
+          profile_data?: Json | null
+          qualification_status?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      makecom_workflows: {
+        Row: {
+          completed_at: string | null
+          conversation_id: string | null
+          created_at: string | null
+          error_message: string | null
+          execution_id: string | null
+          execution_time_ms: number | null
+          id: string
+          input_data: Json | null
+          lead_id: string | null
+          output_data: Json | null
+          started_at: string | null
+          status: string
+          workflow_name: string
+        }
+        Insert: {
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          execution_id?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          input_data?: Json | null
+          lead_id?: string | null
+          output_data?: Json | null
+          started_at?: string | null
+          status: string
+          workflow_name: string
+        }
+        Update: {
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          execution_id?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          input_data?: Json | null
+          lead_id?: string | null
+          output_data?: Json | null
+          started_at?: string | null
+          status?: string
+          workflow_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "makecom_workflows_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makecom_workflows_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      migration_status: {
+        Row: {
+          created_at: string | null
+          entity_type: string
+          id: string
+          migrated_at: string | null
+          new_id: string | null
+          notes: string | null
+          old_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_type: string
+          id?: string
+          migrated_at?: string | null
+          new_id?: string | null
+          notes?: string | null
+          old_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_type?: string
+          id?: string
+          migrated_at?: string | null
+          new_id?: string | null
+          notes?: string | null
+          old_id?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       payouts: {
         Row: {
@@ -964,6 +1376,30 @@ export type Database = {
           max_leads_per_day?: number | null
           phone?: string | null
           specialty?: string | null
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          enabled: boolean
+          feature: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          feature: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean
+          feature?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

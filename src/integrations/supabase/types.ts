@@ -742,6 +742,7 @@ export type Database = {
       leads_v2: {
         Row: {
           assigned_to: string | null
+          boldtrail_contact_id: string | null
           cinc_data: Json | null
           cinc_lead_id: string | null
           cinc_received_at: string | null
@@ -765,6 +766,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          boldtrail_contact_id?: string | null
           cinc_data?: Json | null
           cinc_lead_id?: string | null
           cinc_received_at?: string | null
@@ -788,6 +790,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          boldtrail_contact_id?: string | null
           cinc_data?: Json | null
           cinc_lead_id?: string | null
           cinc_received_at?: string | null
